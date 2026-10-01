@@ -79,7 +79,7 @@ Atualização necessária: reinicie o serviço com os arquivos atuais, mantendo 
 
 Abas começam à esquerda, sem nome ou ícone visível de identidade; a região mantém nome acessível. Todos os comandos permanecem visíveis no canto direito da mesma linha em desktop: Criar assunto, Histórico/Fechar histórico, Desfazer, Atualizar. Atribuição e retirada são realizadas exclusivamente pelo menu contextual de cada linha; não há seletor de pastas ou ações em lote na toolbar. Renomear/excluir aparecem quando uma pasta real está ativa. Não há Mais opções nem card expansível. Botões com rótulos pequenos, espaços reduzidos e abas com rolagem horizontal; em telas estreitas, os comandos quebram linha sem desaparecer. A aba ativa tem indicador cinza interno, sem borda preta externa; o foco por teclado usa contorno azul interno somente em focus-visible.
 
-A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI para evitar sobreposição. Histórico fica fora da parte sticky com rolagem própria, limitado a 45vh. Avisos de filtro/conexão permanecem visíveis; o limite das contagens está no tooltip e descrição acessível. Layout conferido em fixture longa de 50 processos, desktop e 520px, com cabeçalho de 65px e contêiner de rolagem. Fixture: node tools/preview.mjs. Atualize apenas extensão e bloco, sem reiniciar backend.
+A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI para evitar sobreposição. Histórico fica fora da parte sticky com rolagem própria, limitado a 45vh. Avisos de conexão permanecem visíveis; o limite das contagens está no tooltip e descrição acessível. Layout conferido em fixture longa de 50 processos, desktop e 520px, com cabeçalho de 65px e contêiner de rolagem. Fixture: node tools/preview.mjs. Atualize apenas extensão e bloco, sem reiniciar backend.
 
 
 
@@ -87,10 +87,14 @@ A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI par
 
 ## Tema e integração visual
 
-A barra acompanha a variável oficial --infra-esquema-cor-barra-sistema observada no SEI; fallback lê a cor do navInfraBarraNavegacao ou usa tom neutro. Identidade e foco usam contraste calculado. Abas Geral, Sem assunto e pastas têm fundo branco, texto e contagens pretos, com fonte, padding, altura e espaçamento iguais aos comandos. A aba ativa recebe um indicador inferior discreto. Botões recebem somente a classe visual infraButton e dimensões/fonte/cores lidas de um botão nativo, sem copiar handlers. Observadores seletivos de tema e load de estilos atualizam cores, sem polling. Status e histórico mantêm cores semânticas. Não altera preferência de tema do SEI.
+A barra acompanha a variável oficial --infra-esquema-cor-barra-sistema observada no SEI; fallback lê a cor do navInfraBarraNavegacao ou usa tom neutro. Identidade e foco usam contraste calculado. Abas Sem assunto e pastas têm fundo branco, texto e contagens pretos, com fonte, padding, altura e espaçamento iguais aos comandos. A aba ativa recebe um indicador inferior discreto. Botões recebem somente a classe visual infraButton e dimensões/fonte/cores lidas de um botão nativo, sem copiar handlers. Observadores seletivos de tema e load de estilos atualizam cores, sem polling. Status e histórico mantêm cores semânticas. Não altera preferência de tema do SEI.
 
 Espaço antes da tabela: contêiner divInfraAreaPaginacaoSuperior vazio é recolhido somente dentro do formulário marcado da lista de bloco; controles ou texto de paginação fazem ele reaparecer. Margem inferior da barra reduzida a 3px. Recarregue extensão e bloco; sem alteração no serviço/banco.
 
 
 Foreground da faixa: lê o texto do identificador do cabeçalho (#spnInfraIdentificacaoSistema/.infraTituloLogoSistema), pois a variável de texto geral é do corpo. Preserva branco quando adequado; ajusta levemente o fundo para contraste mínimo 4,5:1 ou usa fallback preto/branco em temas muito claros. Botões mantêm foreground nativo próprio. Separador vertical distingue abas de ações no desktop e horizontal na quebra responsiva.
 
+
+Geral não exibe contagem: recebe destaque amarelo, mais forte quando selecionado, e tooltip para retornar a todos os processos da página. Não há linha de filtro ativo ou botão Mostrar todos; o retorno ocorre pela própria aba Geral. Contagens das demais abas são preservadas.
+
+O clone de referência em referencias/sei mantém seu Git independente e não integra o checkpoint do organizador. node_modules, data e artifacts continuam ignorados.

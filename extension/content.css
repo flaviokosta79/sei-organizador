@@ -90,5 +90,9 @@
 #sei-organizador [role=tab]:focus-visible{outline:2px solid #155f9b;outline-offset:-4px}
 #sei-organizador [role=tab]::after{color:#000000;background:#0000000a;font-size:inherit}
 #sei-organizador .so-toolbar{gap:4px}
+#sei-organizador [role=tab][data-tab=general]{font-weight:bold;border-color:#ad861b;background:#fff3c4;color:#000}
+#sei-organizador [role=tab][data-tab=general][aria-selected=true]{background:#ffdf73;box-shadow:inset 0 -2px 0 #9c7410}
+#sei-organizador [role=tab][data-tab=general]:hover{background:#ffe79b}
+#sei-organizador [role=tab][data-tab=general]::after{display:none}
 
 
