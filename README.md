@@ -21,11 +21,11 @@ Em `chrome://extensions`, habilite modo desenvolvedor e carregue a pasta `extens
 ## Comportamento
 
 - Geral conserva todos os processos carregados e os comandos originais. Classificar nunca chama operações do SEI.
-- Crie assuntos manualmente; use o clique direito na área da linha para Atribuir a/Retirar de uma pasta. Um processo pode estar em várias abas. Renomear/excluir aba mantém os processos no bloco.
+- Crie assuntos manualmente; clique no controle da coluna Assunto ou use o clique direito na área da linha para Atribuir a/Retirar de uma pasta. Um processo pode estar em várias abas. Renomear/excluir aba mantém os processos no bloco.
 - Trocar de aba desmarca seleções que ficaram ocultas para evitar ações nativas sobre linhas invisíveis.
 - Sincronização a cada 10 segundos enquanto a página está visível. Conflitos de versão são rejeitados; recarregue e repita a intenção. Não há gravação offline: falhas retornam ao Geral e desabilitam alterações até reconexão.
 - Histórico mostra as últimas 100 operações; todo histórico permanece no SQLite. Desfazer restaura o estado anterior à última operação do bloco, incluindo operações de colegas. Desfazer novamente alterna os estados; não é uma pilha pessoal de undo.
-- Paginação/pesquisa: apenas processos presentes no DOM podem ser selecionados. Classificações são persistidas por ID e reaplicadas quando a página é carregada. Contagens globais de processos não são apresentadas. Mudanças de linhas na tabela são observadas; substituição completa da tabela exige recarregar.
+- Paginação/pesquisa: apenas processos presentes no DOM podem ser selecionados. Classificações são persistidas por ID e reaplicadas quando a página é carregada. Contagens globais de processos não são apresentadas. Mudanças de linhas na tabela são observadas; substituição completa da tabela é detectada e reinicializa a interface.
 
 ## Dados e limites de confiança
 
@@ -85,7 +85,7 @@ Atualização necessária: reinicie o serviço com os arquivos atuais, mantendo 
 
 ## Barra compacta e visível
 
-Abas começam à esquerda, sem nome ou ícone visível de identidade; a região mantém nome acessível. Todos os comandos permanecem visíveis no canto direito da mesma linha em desktop: Criar assunto, Histórico/Fechar histórico, Desfazer, Atualizar. Atribuição e retirada são realizadas exclusivamente pelo menu contextual de cada linha; não há seletor de pastas ou ações em lote na toolbar. Renomear/excluir aparecem quando uma pasta real está ativa. Não há Mais opções nem card expansível. Botões com rótulos pequenos, espaços reduzidos e abas com rolagem horizontal; em telas estreitas, os comandos quebram linha sem desaparecer. Somente a aba ativa tem fundo colorido com contraste; as demais ficam brancas com texto preto. O foco de teclado permanece interno, somente em focus-visible.
+Abas começam à esquerda, sem nome ou ícone visível de identidade; a região mantém nome acessível. Todos os comandos permanecem visíveis no canto direito da mesma linha em desktop: Criar assunto, Histórico/Fechar histórico, Desfazer, Atualizar. Atribuição e retirada usam o menu de cada processo, aberto pelo controle Assunto, clique direito ou teclado; não há seletor de pastas ou ações em lote na toolbar. Renomear/excluir aparecem quando uma pasta real está ativa. Não há Mais opções nem card expansível. Botões com rótulos pequenos, espaços reduzidos e abas com rolagem horizontal; em telas estreitas, os comandos quebram linha sem desaparecer. Somente a aba ativa tem fundo colorido com contraste; as demais ficam brancas com texto preto. O foco de teclado permanece interno, somente em focus-visible.
 
 A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI para evitar sobreposição. Histórico fica fora da parte sticky com rolagem própria, limitado a 45vh. Avisos de conexão permanecem visíveis; o limite das contagens está no tooltip e descrição acessível. Layout conferido em fixture longa de 50 processos, desktop e 520px, com cabeçalho de 65px e contêiner de rolagem. Fixture: node tools/preview.mjs. Atualize apenas extensão e bloco, sem reiniciar backend.
 
@@ -113,7 +113,7 @@ A tabela insere Assunto e Status depois de Tipo e antes de Anotações. Assunto 
 
 Cabeçalhos são reconhecidos pelo nome; células usam data-label ou o mapeamento semântico dos cabeçalhos nativos. Novas colunas têm data-so-column e são inseridas uma única vez em linhas novas. colgroup simples e colspan de linha inteira são ajustados; cabeçalhos mesclados ou colgroups complexos não recebem a extensão da tabela. Seleção, Sequência e Processo usam espaço compacto; o número completo e copiar permanecem em uma linha. Anotações recebe o espaço restante; tabelas estreitas têm rolagem horizontal própria.
 
-Estrutura SEI inspecionada somente em leitura. Visual validado na fixture em 2560, 1366 e 520 px; regressões cobrem novas linhas, múltiplos vínculos, estado desconhecido, ações nativas e seletor de status. Operações reais de anotar/remover não foram executadas; alterações em outras versões do DOM/JavaScript SEI podem exigir adaptação. Recarregue a extensão em chrome://extensions e depois o bloco. Não requer reinício do serviço nem mudança no banco.
+Estrutura SEI inspecionada somente em leitura. Visual validado na fixture em 2560, 1366 e 520 px; regressões cobrem novas linhas, múltiplos vínculos, estado desconhecido, ações nativas e seletor de status. Operações reais de anotar/remover não foram executadas; alterações em outras versões do DOM/JavaScript SEI podem exigir adaptação. Recarregue a extensão em chrome://extensions e depois o bloco. Reinicie o serviço atualizado para a proteção adicional do desfazer por identificador de histórico; não há mudança no banco.
 
 ## Cabeçalho da tabela durante a rolagem
 
@@ -127,11 +127,11 @@ O SEI pode retornar à lista com acao=rel_bloco_protocolo_listar e acao_origem=r
 
 ## Estado da publicação e limites
 
-Em 01/10/2026, a versão final passou `npm run check` e 21 testes. Fixtures visuais foram conferidas em 2560, 1366 e 520 px, incluindo rolagem vertical até o último processo e horizontal com títulos alinhados. Os testes cobrem também origem nativa de retorno, cabeçalho original único, altura dinâmica, novas linhas, colunas idempotentes, múltiplos assuntos, status, cópia, histórico, conflitos e isolamento.
+Em 01/10/2026, as salvaguardas de navegação passaram `npm run check` e 24 testes. Fixtures visuais foram conferidas em 2560, 1366 e 520 px, incluindo rolagem vertical até o último processo e horizontal com títulos alinhados. Os testes cobrem também origem nativa de retorno, cabeçalho original único, altura dinâmica, novas linhas, colunas idempotentes, múltiplos assuntos, status, cópia, histórico, conflitos e isolamento.
 
 O usuário confirmou funcionamento no SEI real após a correção de origem. Essa confirmação é validação manual, não uma suíte automatizada no SEI. O agente inspecionou a página somente em leitura e não executou exclusão, tramitação ou outras mutações reais. Nenhuma VPS foi implantada neste trabalho.
 
-A extensão exige a rota de lista, formulário/tabela esperados, IDs válidos e órgão SEPM quando identificável. Origens aceitas: bloco_interno_listar e rel_bloco_protocolo_excluir. Outras variantes de navegação, layouts ou JavaScript nativo de outras versões podem exigir adaptação. Substituição completa da tabela exige recarga; cabeçalhos mesclados e colgroups complexos não recebem novas colunas. Identidade do autor é informativa; controle de acesso do serviço precisa ser definido antes de disponibilizar aos colegas.
+A extensão exige a rota de lista, formulário/tabela esperados, IDs válidos e órgão SEPM quando identificável. A ativação reconhece a rota de lista e o título/cabeçalho Processos do Bloco Interno; não depende de acao_origem. Outras variantes de navegação, layouts ou JavaScript nativo de outras versões podem exigir adaptação. Substituição completa da tabela recebe reinicialização automática; cabeçalhos mesclados e colgroups complexos não recebem novas colunas. Identidade do autor é informativa; controle de acesso do serviço precisa ser definido antes de disponibilizar aos colegas.
 
 Para preparar o serviço em Docker, sem expor a porta publicamente:
 
@@ -150,3 +150,32 @@ Compress-Archive -Path extension,server,test,tools,deploy,package.json,package-l
 ```
 
 Veja [CHANGELOG.md](CHANGELOG.md) para o resumo das mudanças.
+
+### Correção de retorno após anotações
+
+A página real também retorna à lista com acao_origem=rel_bloco_protocolo_alterar. A dependência da origem foi removida: a extensão exige acao=rel_bloco_protocolo_listar e identificação explícita de Processos do Bloco Interno no título ou h1, além das validações existentes. Testes cobrem origens variadas/ausentes e confirmam nenhuma inserção ou chamada em páginas de processo. A alteração visual relatada na página do processo ainda não foi reproduzida no navegador real. Recarregue extensão e bloco para validar.
+
+## Salvaguardas de permanência
+
+Um observador de ciclo de vida aguarda o DOM da lista, restaura a barra se removida e reinicializa quando formulário/tabela/unidade/bloco mudam. Não depende da origem de retorno. Há âncora alternativa na própria tabela quando os contêineres opcionais estão ausentes. Retorno pelo histórico do navegador (pageshow/bfcache) reconstrói observadores e sincronização.
+
+Cada instância limpa timers, observadores, eventos e elementos gerados ao sair da lista; atributos nativos das linhas são restaurados. Respostas atrasadas não atualizam instâncias substituídas. A interface não é duplicada e não é inserida em páginas de processo ou outros tipos de bloco. Falhas de inicialização são registradas no console, sem catch silencioso.
+
+A permanência é nas listas de bloco interno reconhecidas, enquanto a extensão estiver habilitada no Chrome. Ela não se impõe a outras páginas nem pode contornar desabilitação/recarregamento pelo navegador. Sem conexão, Geral e a barra permanecem, e alterações compartilhadas são bloqueadas para não gravar dados inventados. Testes simulam barra removida, tabela nova, chegada tardia do DOM, navegação para processo, retorno e ausência de contêiner opcional. Recarregue extensão e bloco após atualizar.
+
+### Assunto, filtro de status e desfazer compartilhado
+
+O controle Assunto é um botão acessível com menu de atribuir/retirar múltiplas pastas; Enter, Espaço, clique direito e Shift+F10 permitem abrir. Escape retorna o foco. Sem conexão o botão fica indisponível; se não houver pastas, crie um assunto primeiro.
+
+O seletor de status inclui Todos os status e Sem status e combina com a aba de assunto. Visualizando indica os filtros e quantos processos carregados estão visíveis; Limpar filtros restaura Geral e Todos os status. Contagens de abas respeitam o status selecionado; contagens das opções de status respeitam a aba selecionada. Todas são limitadas à página/pesquisa carregada, sem afirmar totais do bloco. Processos ocultos são desmarcados. Sem sincronização ou mapa de status disponível, o filtro de status volta a Todos e fica desabilitado, com indicação Status indisponível; desconhecido não é tratado como Sem status.
+
+Desfazer consulta novamente estado e histórico antes de apresentar ação, data e autor para confirmação específica. Essa operação é compartilhada, não uma pilha pessoal. Se o histórico e a versão não coincidirem, nenhuma confirmação ou gravação é feita. O envio usa a versão consultada e o identificador da ação confirmada; uma alteração concorrente provoca conflito e exige nova consulta/confirmação. Cancelamento não grava. Não usa o histórico já aberto como autorização. Reinicie o serviço com o código atualizado, preservando o banco, para validar também o identificador no servidor. Não há migração de dados ou novas permissões.
+
+Validação desta atualização: `npm run check` e 27 testes, incluindo interação acessível, filtros combinados, seleção oculta, indisponibilidade, cancelamento de desfazer, histórico divergente e conflito concorrente, além das salvaguardas anteriores.
+
+Para instalar esta atualização:
+
+1. Atualize os arquivos do projeto (Git ou ZIP), mantendo o banco SQLite e o volume existente.
+2. Reinicie o serviço com o código atualizado. Em Docker, reconstrua a imagem e recrie o serviço com o mesmo volume; não remova o volume. Não há migração de banco.
+3. Recarregue a extensão em `chrome://extensions` e depois a página do bloco interno.
+4. Confira Assunto clicável, filtro combinado e confirmação do desfazer. Cancelar a confirmação não altera o bloco.

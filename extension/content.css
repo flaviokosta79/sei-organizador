@@ -113,4 +113,11 @@
 #tblProtocolosBlocos .so-subject-more{display:inline-block;white-space:nowrap;font:11px Arial,sans-serif;color:#5c6872;margin-left:4px}
 #tblProtocolosBlocos .so-floating-header{position:relative;transform:translateY(var(--so-table-header-shift,0px));z-index:20;background:#f4f6f8;color:#212529;box-shadow:0 1px 0 #c8ced3;isolation:isolate}
 
+#tblProtocolosBlocos button.so-subject-label{cursor:pointer;text-align:left}
+#tblProtocolosBlocos button.so-subject-label:hover{background:#e5edf3;border-color:#8097ab}
+#tblProtocolosBlocos button.so-subject-label:focus-visible{outline:2px solid #155f9b;outline-offset:2px}
+#tblProtocolosBlocos button.so-subject-label:disabled{opacity:.65;cursor:default}
+#sei-organizador .so-toolbar .so-status-filter{font:var(--so-native-font);padding:var(--so-native-padding);background:var(--so-button-bg);color:var(--so-button-fg);border-color:var(--so-button-border);max-width:180px}
+#sei-organizador .so-viewing{max-width:360px}
+
 

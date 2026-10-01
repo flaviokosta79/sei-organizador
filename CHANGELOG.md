@@ -14,3 +14,23 @@
 - Funcionamento confirmado pelo usuário no SEI real; sem deploy de produção.
 
 Checkpoints anteriores preservados: 66c764d (barra aprovada) e f0bc4c2 (primeiro ajuste de Geral). O destaque permanente de Geral foi substituído no estado final pela indicação exclusiva da aba ativa.
+
+### Correção posterior de navegação
+
+- Reconhece a lista interna pelo título/cabeçalho e rota, sem depender da origem de retorno após anotar/excluir/navegar.
+- Regressão para páginas de processo e outros tipos de bloco; 22 testes passam.
+
+### Salvaguardas de ciclo de vida
+
+- Recuperação da barra, chegada tardia da lista e substituição de formulário/tabela.
+- Reinicialização ao retornar pelo histórico, sem timers/eventos duplicados.
+- Limpeza ao sair da lista e proteção contra respostas atrasadas.
+- 24 testes passam; conferência local no navegador sem erros de inicialização.
+
+### Usabilidade e desfazer seguro
+
+- Assunto clicável e acessível abre o menu de vínculos, preservando clique direito, teclado e múltiplas pastas.
+- Filtro de status combinado com assunto, contagens locais, indicação de filtros e limpeza; status desconhecido não vira Sem status.
+- Desfazer consulta a última ação e autor para confirmação; versão e identificador protegem contra histórico desatualizado e alterações concorrentes.
+- Salvaguardas de navegação, reconstrução e retorno pelo histórico preservadas; 27 testes.
+- Atualização: recarregar extensão e página do bloco; atualizar/reiniciar o serviço preservando SQLite/volume para validar o identificador da ação no desfazer. Sem migração de banco ou novas permissões.

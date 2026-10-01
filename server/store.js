@@ -24,7 +24,9 @@ export function createStore(path) {
           if(action.status==='none')delete next.statuses[action.processIds[0]];else next.statuses[action.processIds[0]]=action.status;break;
         case 'undo': {
           const h=db.prepare('SELECT * FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 1').get(unit,block);
-          if(!h) throw new Error('Sem alteração para desfazer'); Object.assign(next,{statuses:{}},JSON.parse(h.before)); break;
+          if(!h) throw new Error('Sem alteração para desfazer');
+          if(action.historyId!==undefined&&action.historyId!==h.id)throw Object.assign(new Error('A alteração confirmada não é mais a última do bloco. Confira novamente.'),{status:409});
+          Object.assign(next,{statuses:{}},JSON.parse(h.before)); break;
         }
         default: throw new Error('Operação inválida');
       }
