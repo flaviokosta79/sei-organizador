@@ -1,0 +1,29 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import net from 'node:net';
+import '../extension/history.js';
+test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
+ const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+ const dir=mkdtempSync(join(tmpdir(),'sei-http-'));const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,SEI_UNIT_ID:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+ try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),5000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
+ const base=`http://127.0.0.1:${port}`;assert.equal((await fetch(base+'/healthz')).status,200);assert.equal((await fetch(base+'/v1/units/9/blocks/2')).status,403);
+ const post=()=>fetch(base+'/v1/units/1/blocks/2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:0,actor:{name:'Teste'},action:{type:'create',name:'Assunto'}})});
+ const created=await post();assert.equal(created.status,200);const state=await created.json();assert.equal((await post()).status,409);
+ const tabId=state.tabs[0].id;
+ const operate=async(version,action)=>{const response=await fetch(base+'/v1/units/1/blocks/2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version,actor:{login:'teste'},action})});assert.equal(response.status,200);};
+ await operate(1,{type:'assign',tabId,processIds:['10'],processNumbers:{10:'SEI-123456/123456/2026'}});
+ await operate(2,{type:'rename',tabId,name:'Nova'});
+ await operate(3,{type:'unassign',tabId,processIds:['10']});
+ await operate(4,{type:'delete',tabId});
+ const h=await (await fetch(base+'/v1/units/1/blocks/2/history')).json();assert.equal(h[0].actor.verified,false);
+ assert.match(seiHistoryText(h[3]),/na pasta Assunto/);assert.match(seiHistoryText(h[3]),/SEI-123456\/123456\/2026/);assert.match(seiHistoryText(h[1]),/da pasta Nova/);assert.equal(h[2].action.tabName,'Assunto');
+ await operate(5,{type:'status',status:'attention',processIds:['10'],processNumbers:{10:'SEI-123456/123456/2026'}});
+ const updated=await(await fetch(base+'/v1/units/1/blocks/2')).json();assert.equal(updated.statuses[10],'attention');
+ const history=await(await fetch(base+'/v1/units/1/blocks/2/history')).json();assert.match(seiHistoryText(history[0]),/Sem status → Atenção/);
+ await operate(6,{type:'undo'});assert.deepEqual((await(await fetch(base+'/v1/units/1/blocks/2')).json()).statuses,{});
+ }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
+});
