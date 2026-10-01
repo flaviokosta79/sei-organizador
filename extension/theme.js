@@ -15,7 +15,9 @@ globalThis.seiApplyTheme=root=>{
      if(contrast(rgb,official)>=4.5)foreground=`rgb(${official.join(',')})`;
    }
    const native=document.querySelector('#divInfraBarraComandosSuperior .infraButton');const s=native?getComputedStyle(native):null;
+   let activeRgb=rgb.map(c=>Math.round(c*.7));while(contrast(activeRgb,[255,255,255])<4.5)activeRgb=activeRgb.map(c=>Math.floor(c*.9));
    const values={'--so-theme-bg':`rgb(${rgb.join(',')})`,'--so-theme-fg':foreground,'--so-button-bg':s?.backgroundColor||'#ffffff','--so-button-fg':s?.color||'#495057','--so-button-border':s?.borderColor||'#666666','--so-native-font':s?.font||'13px Arial, sans-serif','--so-native-padding':s?.padding||'4px 9px','--so-native-radius':s?.borderRadius||'4px'};
+   values['--so-active-bg']=`rgb(${activeRgb.join(',')})`;values['--so-active-fg']='#ffffff';
    const next=JSON.stringify(values);if(next===signature)return;signature=next;for(const [key,value] of Object.entries(values))root.style.setProperty(key,value);
  };
  let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;update();});};

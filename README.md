@@ -1,7 +1,16 @@
 # SEI Organizador — 0.1.0
 
-Extensão Chrome MV3 própria para a lista de processos dos blocos internos do SEI-RJ. Referências em `referencias/sei` permanecem intactas. Sem dependências de produção; requer Node.js 24. Para os testes de DOM, execute 
-pm ci` (jsdom é dependência de desenvolvimento).
+## Obter o projeto completo
+
+```powershell
+git clone --recurse-submodules https://github.com/flaviokosta79/sei-organizador.git
+cd sei-organizador
+npm ci
+```
+
+Para clone existente: `git submodule update --init`. SEI++ é referência independente do [projeto original](https://github.com/jonatasrs/sei), não necessário para executar o organizador. Sua licença e histórico são preservados; não há Git interno copiado como arquivo do projeto principal.
+
+Extensão Chrome MV3 própria para a lista de processos dos blocos internos do SEI-RJ. Referências em `referencias/sei` permanecem intactas como submódulo. Sem dependências de produção; requer Node.js 24. Para os testes de DOM, execute `npm ci` (jsdom é dependência de desenvolvimento).
 
 ## Executar localmente
 
@@ -28,13 +37,12 @@ Autor vem do title `a#lnkUsuarioSistema`: Nome (login/órgão). Na ausência do 
 
 Defina `SEI_UNIT_ID` e execute `docker compose -f deploy/compose.yaml up -d --build` no host escolhido. Porta publicada apenas no loopback; configure proxy HTTPS e acesso privado no host antes de disponibilizar aos colegas. Para proxy em outra rede/container adapte a rede Docker explicitamente. Volume nomeado preserva o SQLite entre recriações. Faça backup usando a API de backup do SQLite ou com o serviço parado (incluindo arquivos WAL se copiar enquanto ativo). Restaurar: pare serviço, restaure banco e permissões do volume, reinicie. Não remover o volume ao atualizar.
 
-`GET /healthz`; `GET /v1/units/:unit/blocks/:block`; `GET .../history`; `POST ...` com `{version,actor,action}`. Ações create/rename/delete/assign/unassign/undo. Serviço usa transação e versão para serializar alterações; execute uma instância com volume local, não compartilhe SQLite em NFS ou escale réplicas.
+`GET /healthz`; `GET /v1/units/:unit/blocks/:block`; `GET .../history`; `POST ...` com `{version,actor,action}`. Ações create/rename/delete/assign/unassign/undo/status. Serviço usa transação e versão para serializar alterações; execute uma instância com volume local, não compartilhe SQLite em NFS ou escale réplicas.
 
 ## Validação
 
 
-pm test` testa persistência, classificação, exclusão, recuperação, conflitos e isolamento. 
-pm run check` verifica sintaxe. Fixtures locais documentadas em `test`; nenhuma operação de gravação foi validada no SEI real. Seletores conferidos por inspeção somente leitura: formulário `#frmRelBlocoProtocoloLista`, tabela `#tblProtocolosBlocos`, links `id_procedimento`, inserção antes de `#divInfraAreaPaginacaoSuperior`. IDs de linha repetem `trPos0` e não são usados como identidade.
+`npm test` testa persistência, classificação, exclusão, recuperação, conflitos e isolamento. `npm run check` verifica sintaxe. Fixtures locais documentadas em `test`; nenhuma operação de gravação foi executada no SEI real pelo agente. Seletores conferidos por inspeção somente leitura: formulário `#frmRelBlocoProtocoloLista`, tabela `#tblProtocolosBlocos`, links `id_procedimento`, inserção antes de `#divInfraAreaPaginacaoSuperior`. IDs de linha repetem `trPos0` e não são usados como identidade.
 
 
 ## Histórico atualizado
@@ -69,7 +77,7 @@ O botão ⧉ ao lado do link copia apenas seu texto normalizado (espaços extern
 
 ## Status manual compartilhado
 
-Na coluna Anotações, o marcador permite escolher Atenção, Acompanhar, Urgente, Para arquivar ou Sem status. Um status por processo, independente dos assuntos. Clique abre seletor local; setas/Home/End, Enter, Escape e clique fora são suportados. Anotações e ações nativas permanecem. Não calcula prazos nem arquiva/tramita processos.
+Na coluna própria Status, o marcador permite escolher Atenção, Acompanhar, Urgente, Para arquivar ou Sem status. Um status por processo, independente dos assuntos. Clique abre seletor local; setas/Home/End, Enter, Escape e clique fora são suportados. Anotações e ações nativas permanecem. Não calcula prazos nem arquiva/tramita processos.
 
 O serviço valida allowlist, persiste mapa statuses por ID, registra anterior/novo e número no histórico, e mantém conflitos por versão e desfazer. Estados e snapshots antigos sem statuses são tratados como mapa vazio sem alterar esquema ou apagar histórico. Falha de conexão ou servidor antigo mostra Status indisponível; não afirma Sem status nem grava offline.
 
@@ -77,7 +85,7 @@ Atualização necessária: reinicie o serviço com os arquivos atuais, mantendo 
 
 ## Barra compacta e visível
 
-Abas começam à esquerda, sem nome ou ícone visível de identidade; a região mantém nome acessível. Todos os comandos permanecem visíveis no canto direito da mesma linha em desktop: Criar assunto, Histórico/Fechar histórico, Desfazer, Atualizar. Atribuição e retirada são realizadas exclusivamente pelo menu contextual de cada linha; não há seletor de pastas ou ações em lote na toolbar. Renomear/excluir aparecem quando uma pasta real está ativa. Não há Mais opções nem card expansível. Botões com rótulos pequenos, espaços reduzidos e abas com rolagem horizontal; em telas estreitas, os comandos quebram linha sem desaparecer. A aba ativa tem indicador cinza interno, sem borda preta externa; o foco por teclado usa contorno azul interno somente em focus-visible.
+Abas começam à esquerda, sem nome ou ícone visível de identidade; a região mantém nome acessível. Todos os comandos permanecem visíveis no canto direito da mesma linha em desktop: Criar assunto, Histórico/Fechar histórico, Desfazer, Atualizar. Atribuição e retirada são realizadas exclusivamente pelo menu contextual de cada linha; não há seletor de pastas ou ações em lote na toolbar. Renomear/excluir aparecem quando uma pasta real está ativa. Não há Mais opções nem card expansível. Botões com rótulos pequenos, espaços reduzidos e abas com rolagem horizontal; em telas estreitas, os comandos quebram linha sem desaparecer. Somente a aba ativa tem fundo colorido com contraste; as demais ficam brancas com texto preto. O foco de teclado permanece interno, somente em focus-visible.
 
 A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI para evitar sobreposição. Histórico fica fora da parte sticky com rolagem própria, limitado a 45vh. Avisos de conexão permanecem visíveis; o limite das contagens está no tooltip e descrição acessível. Layout conferido em fixture longa de 50 processos, desktop e 520px, com cabeçalho de 65px e contêiner de rolagem. Fixture: node tools/preview.mjs. Atualize apenas extensão e bloco, sem reiniciar backend.
 
@@ -87,7 +95,7 @@ A barra usa position:sticky no contêiner de rolagem e mede o cabeçalho SEI par
 
 ## Tema e integração visual
 
-A barra acompanha a variável oficial --infra-esquema-cor-barra-sistema observada no SEI; fallback lê a cor do navInfraBarraNavegacao ou usa tom neutro. Identidade e foco usam contraste calculado. Abas Sem assunto e pastas têm fundo branco, texto e contagens pretos, com fonte, padding, altura e espaçamento iguais aos comandos. A aba ativa recebe um indicador inferior discreto. Botões recebem somente a classe visual infraButton e dimensões/fonte/cores lidas de um botão nativo, sem copiar handlers. Observadores seletivos de tema e load de estilos atualizam cores, sem polling. Status e histórico mantêm cores semânticas. Não altera preferência de tema do SEI.
+A barra acompanha a variável oficial --infra-esquema-cor-barra-sistema observada no SEI; fallback lê a cor do navInfraBarraNavegacao ou usa tom neutro. A faixa, a indicação de visualização e o foco usam contraste calculado. Abas Sem assunto e pastas têm fundo branco, texto e contagens pretos, com fonte, padding, altura e espaçamento iguais aos comandos. A aba ativa usa tom mais escuro derivado do tema e texto branco com contraste mínimo 4,5:1. Botões recebem somente a classe visual infraButton e dimensões/fonte/cores lidas de um botão nativo, sem copiar handlers. Observadores seletivos de tema e load de estilos atualizam cores, sem polling. Status e histórico mantêm cores semânticas. Não altera preferência de tema do SEI.
 
 Espaço antes da tabela: contêiner divInfraAreaPaginacaoSuperior vazio é recolhido somente dentro do formulário marcado da lista de bloco; controles ou texto de paginação fazem ele reaparecer. Margem inferior da barra reduzida a 3px. Recarregue extensão e bloco; sem alteração no serviço/banco.
 
@@ -95,6 +103,50 @@ Espaço antes da tabela: contêiner divInfraAreaPaginacaoSuperior vazio é recol
 Foreground da faixa: lê o texto do identificador do cabeçalho (#spnInfraIdentificacaoSistema/.infraTituloLogoSistema), pois a variável de texto geral é do corpo. Preserva branco quando adequado; ajusta levemente o fundo para contraste mínimo 4,5:1 ou usa fallback preto/branco em temas muito claros. Botões mantêm foreground nativo próprio. Separador vertical distingue abas de ações no desktop e horizontal na quebra responsiva.
 
 
-Geral não exibe contagem: recebe destaque amarelo, mais forte quando selecionado, e tooltip para retornar a todos os processos da página. Não há linha de filtro ativo ou botão Mostrar todos; o retorno ocorre pela própria aba Geral. Contagens das demais abas são preservadas.
+Geral não exibe contagem e não tem destaque permanente. Somente a aba selecionada recebe cor, inclusive Geral e Sem assunto. A indicação compacta Visualizando mostra a pasta atual ou todos os processos; não há botão Mostrar todos. O retorno ocorre pela aba Geral. Contagens das demais abas são preservadas.
 
-O clone de referência em referencias/sei mantém seu Git independente e não integra o checkpoint do organizador. node_modules, data e artifacts continuam ignorados.
+O clone de referência em referencias/sei mantém seu Git independente. Não integrou os primeiros checkpoints; a publicação final o registra como submódulo, com URL original e commit fixado. node_modules, data e artifacts continuam ignorados.
+
+## Colunas Assunto e Status
+
+A tabela insere Assunto e Status depois de Tipo e antes de Anotações. Assunto mostra uma etiqueta e mais N quando necessário; tooltip e nome acessível trazem todos os vínculos válidos. Sem vínculo aparece Sem assunto; sem sincronização aparece Não sincronizado, sem afirmar ausência de classificação. Status permanece manual, com histórico, sincronização e desfazer existentes, e deixa Anotações livre.
+
+Cabeçalhos são reconhecidos pelo nome; células usam data-label ou o mapeamento semântico dos cabeçalhos nativos. Novas colunas têm data-so-column e são inseridas uma única vez em linhas novas. colgroup simples e colspan de linha inteira são ajustados; cabeçalhos mesclados ou colgroups complexos não recebem a extensão da tabela. Seleção, Sequência e Processo usam espaço compacto; o número completo e copiar permanecem em uma linha. Anotações recebe o espaço restante; tabelas estreitas têm rolagem horizontal própria.
+
+Estrutura SEI inspecionada somente em leitura. Visual validado na fixture em 2560, 1366 e 520 px; regressões cobrem novas linhas, múltiplos vínculos, estado desconhecido, ações nativas e seletor de status. Operações reais de anotar/remover não foram executadas; alterações em outras versões do DOM/JavaScript SEI podem exigir adaptação. Recarregue a extensão em chrome://extensions e depois o bloco. Não requer reinício do serviço nem mudança no banco.
+
+## Cabeçalho da tabela durante a rolagem
+
+As células originais do cabeçalho ficam visíveis imediatamente abaixo da barra durante a rolagem vertical, até o fim da tabela. Não há clone de checkbox, links de ordenação ou outros controles. A posição usa o fundo real da barra no viewport, incluindo quebra de comandos e avisos, e é limitada pelo final da tabela. O deslocamento vertical nas próprias células evita a limitação de position:sticky dentro do contêiner com overflow-x; a rolagem horizontal mantém títulos e dados alinhados.
+
+Scroll e resize agendam uma atualização por frame; ResizeObserver acompanha barra, tabela e cabeçalho SEI. Histórico permanece fora da região fixa. Conferido até o processo 50 em 2560 e 520 px, incluindo rolagem horizontal; regressão verifica altura variável, limite da tabela e controle original único. Recarregue a extensão e o bloco para aplicar.
+
+## Retorno nativo à lista após exclusão
+
+O SEI pode retornar à lista com acao=rel_bloco_protocolo_listar e acao_origem=rel_bloco_protocolo_excluir. Essa origem é aceita junto de bloco_interno_listar, mantendo validações de tabela/formulário, unidade e bloco. Antes, o filtro de origem encerrava a extensão antes de criar a barra nessa navegação. Correção reproduzida em fixture com a origem observada na página real; cabeçalho, colunas, cópia e sincronização inicializam normalmente. Não executa exclusão nem altera operações nativas.
+
+## Estado da publicação e limites
+
+Em 01/10/2026, a versão final passou `npm run check` e 21 testes. Fixtures visuais foram conferidas em 2560, 1366 e 520 px, incluindo rolagem vertical até o último processo e horizontal com títulos alinhados. Os testes cobrem também origem nativa de retorno, cabeçalho original único, altura dinâmica, novas linhas, colunas idempotentes, múltiplos assuntos, status, cópia, histórico, conflitos e isolamento.
+
+O usuário confirmou funcionamento no SEI real após a correção de origem. Essa confirmação é validação manual, não uma suíte automatizada no SEI. O agente inspecionou a página somente em leitura e não executou exclusão, tramitação ou outras mutações reais. Nenhuma VPS foi implantada neste trabalho.
+
+A extensão exige a rota de lista, formulário/tabela esperados, IDs válidos e órgão SEPM quando identificável. Origens aceitas: bloco_interno_listar e rel_bloco_protocolo_excluir. Outras variantes de navegação, layouts ou JavaScript nativo de outras versões podem exigir adaptação. Substituição completa da tabela exige recarga; cabeçalhos mesclados e colgroups complexos não recebem novas colunas. Identidade do autor é informativa; controle de acesso do serviço precisa ser definido antes de disponibilizar aos colegas.
+
+Para preparar o serviço em Docker, sem expor a porta publicamente:
+
+```powershell
+$env:SEI_UNIT_ID='ID_NUMERICO_DA_UNIDADE'
+docker compose -f deploy/compose.yaml up -d --build
+```
+
+Variáveis do serviço: SEI_UNIT_ID (obrigatória), HOST, PORT e DATA_FILE. O Compose mantém a publicação em loopback e SQLite em volume nomeado. Proxy/rede privada e acesso dos colegas não estão configurados por este repositório. Preserve o volume/banco ao atualizar.
+
+O ZIP é gerado e fica em artifacts (ignorado), assim como node_modules e dados operacionais não são publicados. O projeto permanece reproduzível a partir dos arquivos versionados. Para gerar a distribuição atual:
+
+```powershell
+New-Item -ItemType Directory -Path artifacts -Force
+Compress-Archive -Path extension,server,test,tools,deploy,package.json,package-lock.json,README.md,CHANGELOG.md,AGENTS.md,CLAUDE.md,.gitignore -DestinationPath artifacts/sei-organizador-0.1.0.zip -Force
+```
+
+Veja [CHANGELOG.md](CHANGELOG.md) para o resumo das mudanças.

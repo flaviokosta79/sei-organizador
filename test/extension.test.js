@@ -4,19 +4,46 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const source=readFileSync(new URL('../extension/content.js',import.meta.url),'utf8');
 const tick=()=>new Promise(r=>setTimeout(r,20));
-const row=id=>`<tr id="trPos0"><td><input type="checkbox" id="chkInfraItem${id}"></td><td><a href="?id_procedimento=${id}">Processo fictício</a></td></tr>`;
-function fixture(action='rel_bloco_protocolo_listar'){
- const dom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/SEPM)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista"><div id="divInfraAreaPaginacaoSuperior"></div><div id="divInfraAreaTabela"><table id="tblProtocolosBlocos"><tr><th>Processo</th></tr>${row('100')}${row('200')}</table></div><button id="native" type="button">Original</button></form>`,{url:`https://sei.rj.gov.br/sei/controlador.php?acao=${action}&acao_origem=bloco_interno_listar&id_bloco=2`,runScripts:'outside-only'});
+const row=id=>`<tr id="trPos0"><td><input type="checkbox" id="chkInfraItem${id}"></td><td data-label="Seq.">${id}</td><td data-label="Processo"><a href="?id_procedimento=${id}">Processo fictício</a></td><td data-label="Tipo">Tipo fictício</td><td data-label="Anotações">Anotação nativa</td><td data-label="Ações"><a href="#">Anotações</a></td></tr>`;
+function fixture(action='rel_bloco_protocolo_listar',origin='bloco_interno_listar'){
+ const dom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/SEPM)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista"><div id="divInfraAreaPaginacaoSuperior"></div><div id="divInfraAreaTabela"><table id="tblProtocolosBlocos"><tr><th></th><th>Seq.</th><th>Processo</th><th>Tipo</th><th>Anotações</th><th>Ações</th></tr>${row('100')}${row('200')}</table></div><button id="native" type="button">Original</button></form>`,{url:`https://sei.rj.gov.br/sei/controlador.php?acao=${action}&acao_origem=${origin}&id_bloco=2`,runScripts:'outside-only'});
  let offline=false;const calls=[];dom.window.chrome={runtime:{sendMessage:async msg=>{calls.push(msg);if(msg.history)return {data:['create','delete','assign','unassign','rename','undo'].map(type=>({version:1,time:'2026-10-01T12:00:00Z',actor:{login:'teste'},action:{type,tabName:'Assunto',processIds:['100']}}))};return offline?{error:'Falha simulada'}:{data:{version:1,tabs:[{id:'a',name:'Assunto'}],assignments:{'100':['a']}}};}}};
  dom.window.eval(readFileSync(new URL('../extension/history.js',import.meta.url),'utf8'));dom.window.eval(readFileSync(new URL('../extension/theme.js',import.meta.url),'utf8'));dom.window.eval(source);return {dom,calls,disconnect:()=>{offline=true;}};
 }
+test('retorno nativo de exclusão mantém inicialização, colunas e cabeçalho sem aceitar outras origens',async()=>{
+ const f=fixture('rel_bloco_protocolo_listar','rel_bloco_protocolo_excluir');try{await tick();const d=f.dom.window.document;assert.ok(d.querySelector('#sei-organizador'));assert.equal(d.querySelector('[data-tab=general]').getAttribute('aria-selected'),'true');assert.equal(d.querySelectorAll('th[data-so-column]').length,2);assert.equal(d.querySelectorAll('.so-floating-header').length,8);assert.equal(d.querySelectorAll('.so-copy-number').length,2);assert.ok(f.calls.length>0);}finally{f.dom.window.close();}
+ const unrelated=fixture('rel_bloco_protocolo_listar','bloco_assinatura_listar');try{await tick();assert.equal(unrelated.dom.window.document.querySelector('#sei-organizador'),null);assert.equal(unrelated.calls.length,0);}finally{unrelated.dom.window.close();}
+});
+test('colunas próprias idempotentes, múltiplos assuntos, novas linhas e estado desconhecido',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document,t=d.querySelector('table');const first=d.querySelector('#chkInfraItem100').closest('tr');
+ let state={version:2,tabs:[{id:'a',name:'Assunto'},{id:'b',name:'Outra'},{id:'c',name:'<Terceira>'}],assignments:{100:['a','b','c']},statuses:{100:'follow'}};
+ w.chrome.runtime.sendMessage=async()=>({data:state});const click=name=>Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent===name).click();click('Atualizar');await tick();
+ assert.deepEqual(Array.from(t.rows[0].cells).map(c=>c.textContent),['','Seq.','Processo','Tipo','Assunto','Status','Anotações','Ações']);
+ assert.equal(first.cells.length,8);assert.equal(first.querySelector('[data-so-column=subject]').textContent,'Assuntomais 2');assert.match(first.querySelector('[data-so-column=subject]').getAttribute('aria-label'),/<Terceira>/);assert.equal(first.querySelector('[data-so-column=subject] terceira'),null);
+ const note=first.querySelector('[data-label="Anotações"]'),nativeAction=first.querySelector('[data-label="Ações"] a');assert.equal(note.textContent,'Anotação nativa');assert.equal(note.querySelector('button'),null);assert.match(first.querySelector('[data-so-column=status]').textContent,/Acompanhar/);
+ let nativeClicks=0;nativeAction.addEventListener('click',()=>nativeClicks++);nativeAction.click();assert.equal(nativeClicks,1);
+ t.insertAdjacentHTML('beforeend',row('300')+'<tr><td colspan="6">Paginação nativa</td></tr>');await tick();click('Atualizar');await tick();assert.equal(t.querySelectorAll('th[data-so-column]').length,2);assert.equal(d.querySelector('#chkInfraItem300').closest('tr').cells.length,8);assert.equal(t.querySelector('[colspan]').colSpan,8);assert.equal(t.querySelectorAll('.so-status-marker').length,3);
+ click('Assunto');assert.equal(d.querySelector('.so-viewing').textContent,'Visualizando: Assunto');assert.equal(d.querySelector('[data-tab=general]').getAttribute('aria-selected'),'false');click('Geral');assert.equal(d.querySelector('.so-viewing').textContent,'Visualizando: todos os processos');assert.equal(first.querySelector('[data-so-column=subject]').textContent,'Assuntomais 2');
+ w.chrome.runtime.sendMessage=async()=>({error:'Offline'});click('Atualizar');await tick();assert.equal(first.querySelector('[data-so-column=subject]').textContent,'Não sincronizado');assert.match(first.querySelector('[data-so-column=status]').textContent,/indisponível/);assert.equal(d.querySelector('[data-tab=general]').getAttribute('aria-selected'),'true');assert.equal(nativeAction.isConnected,true);
+ }finally{f.dom.window.close();}
+});
+test('cabeçalho original acompanha altura da barra e limite da tabela sem duplicar controles',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document,t=d.querySelector('table'),header=t.rows[0],root=d.querySelector('#sei-organizador');
+ const all=d.createElement('input');all.type='checkbox';all.id='native-select-all';header.cells[0].append(all);let clicks=0;all.addEventListener('click',()=>clicks++);
+ let barBottom=120,tableTop=-300,tableBottom=1000;root.getBoundingClientRect=()=>({bottom:barBottom});t.getBoundingClientRect=()=>({top:tableTop,bottom:tableBottom});header.getBoundingClientRect=()=>({height:30});Object.defineProperty(header,'offsetTop',{value:0});
+ const recalc=async()=>{w.dispatchEvent(new w.Event('scroll'));await tick();};await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'420px');
+ barBottom=160;w.dispatchEvent(new w.Event('resize'));await tick();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'460px');
+ tableBottom=180;await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'450px');tableTop=200;tableBottom=900;await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'0px');
+ assert.equal(t.rows[0],header);assert.equal(d.querySelectorAll('#native-select-all').length,1);assert.equal(header.querySelectorAll('.so-floating-header').length,8);all.click();assert.equal(clicks,1);assert.equal(all.checked,true);
+ }finally{f.dom.window.close();}
+});
 test('Geral, seleção oculta, linhas de outra página, privacidade e indisponibilidade',async()=>{
  const f=fixture();try{await tick();const d=f.dom.window.document;const buttons=()=>Array.from(d.querySelectorAll('#sei-organizador button'));const click=name=>buttons().find(b=>b.textContent===name).click();
  assert.ok(d.querySelector('#sei-organizador'));assert.equal(d.querySelector('#native').textContent,'Original');
  d.querySelector('#chkInfraItem200').checked=true;click('Assunto');assert.equal(d.querySelector('#chkInfraItem200').checked,false);assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,true);
  click('Geral');assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,false);
  click('Assunto');d.querySelector('#tblProtocolosBlocos').insertAdjacentHTML('beforeend',row('300'));await tick();assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,true);
- f.disconnect();click('Atualizar');await tick();assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,false);assert.match(d.querySelector('[role=status]').textContent,/Sem sincronização/);assert.equal(buttons().find(b=>b.textContent==='+ Criar assunto').disabled,true);
+ f.disconnect();click('Atualizar');await tick();assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,false);assert.ok(Array.from(d.querySelectorAll('[role=status]')).some(e=>/Sem sincronização/.test(e.textContent)));assert.equal(buttons().find(b=>b.textContent==='+ Criar assunto').disabled,true);
  assert.ok(f.calls.every(c=>Object.keys(c).every(k=>['type','unit','block'].includes(k))));
  }finally{f.dom.window.close();}
 });
@@ -69,8 +96,8 @@ test('copiar usa somente número do link, preserva controles e não duplica em m
  d.querySelector('table').insertAdjacentHTML('beforeend',row('300'));await tick();assert.equal(d.querySelectorAll('.so-copy-number').length,3);Array.from(d.querySelectorAll('button')).find(b=>b.textContent==='Atualizar').click();await tick();assert.equal(d.querySelectorAll('.so-copy-number').length,3);assert.equal(d.querySelectorAll('.so-copy-feedback').length,3);assert.equal(link.textContent.trim(),'SEI-123456/123456/2026');
  }finally{f.dom.window.close();}
 });
-test('status na coluna anotações: manual, alvo correto, sync, sem assunto e offline',async()=>{
- const f=fixture();try{await tick();const w=f.dom.window,d=w.document;const target=d.querySelector('#chkInfraItem200').closest('tr');target.insertAdjacentHTML('beforeend','<td>Seq</td><td>Tipo</td><td data-label="Anotações"><span id="note">Anotação preservada</span></td><td><a id="native-note" href="#">Anotações</a></td>');
+test('status na coluna própria: manual, alvo correto, sync, sem assunto e offline',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document;const target=d.querySelector('#chkInfraItem200').closest('tr');target.querySelector('[data-label="Anotações"]').innerHTML='<span id="note">Anotação preservada</span>';target.querySelector('[data-label="Ações"] a').id='native-note';
  let state={version:2,tabs:[{id:'a',name:'Assunto'}],assignments:{100:['a']},statuses:{}};w.chrome.runtime.sendMessage=async msg=>{f.calls.push(msg);if(msg.body){const a=msg.body.action;assert.equal(a.type,'status');assert.deepEqual(Array.from(a.processIds),['200']);state={...state,version:3,statuses:{200:a.status}};}return {data:state};};
  const click=name=>Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent===name).click();click('Atualizar');await tick();let marker=target.querySelector('.so-status-marker');assert.ok(marker.textContent.includes('Sem status'));marker.click();const option=Array.from(d.querySelectorAll('[role=menuitemradio]')).find(b=>b.textContent.includes('Urgente'));assert.ok(option);option.click();await tick();assert.match(marker.textContent,/Urgente/);assert.equal(d.querySelector('#note').textContent,'Anotação preservada');assert.ok(d.querySelector('#native-note'));click('Sem assunto');assert.equal(target.hidden,false);assert.equal(target.querySelectorAll('.so-status-marker').length,1);
  state={...state,version:4,statuses:{200:'follow'}};click('Atualizar');await tick();assert.match(marker.textContent,/Acompanhar/);w.chrome.runtime.sendMessage=async()=>({error:'Falha simulada'});click('Atualizar');await tick();assert.match(marker.textContent,/Status indisponível/);assert.equal(marker.disabled,true);assert.equal(target.hidden,false);
