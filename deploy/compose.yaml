@@ -5,6 +5,7 @@ services:
       dockerfile: deploy/Dockerfile
     environment:
       SEI_UNIT_ID: ${SEI_UNIT_ID:?Configure a unidade autorizada}
+      SEI_ALLOW_PUBLIC_ACCESS: "true"
     ports:
       - "127.0.0.1:8787:8787"
     volumes:

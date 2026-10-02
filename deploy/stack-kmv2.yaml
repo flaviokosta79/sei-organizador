@@ -1,0 +1,60 @@
+version: "3.8"
+services:
+  organizador:
+    image: ${SEI_IMAGE:?Informe a imagem validada com digest}
+    environment:
+      SEI_UNIT_ID: ${SEI_UNIT_ID:?Configure a unidade autorizada}
+      HOST: 0.0.0.0
+      PORT: "8787"
+      DATA_FILE: /data/organizador.sqlite
+      SEI_ALLOW_PUBLIC_ACCESS: "true"
+    volumes:
+      - organizador:/data
+    networks:
+      - proxy
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == kvm2.server
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          memory: 64M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      labels:
+        traefik.enable: "${SEI_PROXY_ENABLED:-false}"
+        traefik.swarm.network: portainer_default
+        traefik.http.routers.sei-organizador.rule: "Host(`${SEI_DOMAIN:-ext.5cpa.com.br}`)"
+        traefik.http.routers.sei-organizador.entrypoints: websecure
+        traefik.http.routers.sei-organizador.tls.certresolver: letsencryptresolver
+        traefik.http.routers.sei-organizador.middlewares: sei-organizador-limite
+        traefik.http.services.sei-organizador.loadbalancer.server.port: "8787"
+        traefik.http.middlewares.sei-organizador-limite.ratelimit.average: "20"
+        traefik.http.middlewares.sei-organizador-limite.ratelimit.burst: "40"
+volumes:
+  organizador:
+    external: true
+    name: sei_organizador_data
+networks:
+  proxy:
+    external: true
+    name: portainer_default

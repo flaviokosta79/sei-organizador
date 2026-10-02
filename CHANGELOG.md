@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.4 — 2026-10-02
+
+- Descrição e Palavras-chave para pesquisa ficam lado a lado na página do bloco interno.
+- Campos nativos, rótulos, valores, eventos e associação ao formulário preservados.
+- Layout volta a uma coluna em telas estreitas; estrutura original restaurada ao sair.
+
+## 0.1.3 — 2026-10-02
+
+- Botão Desfazer removido de registros já desfeitos ou bloqueados, em vez de permanecer cinza.
+- Registro original preservado no histórico com indicação Desfeita após reversão.
+- Histórico da VPS confirmou reversão de status concluída; correção somente na interface.
+
+## 0.1.2 — 2026-10-02
+
+- Botão Desfazer posicionado depois do texto de cada registro, à direita, com espaçamento.
+
+## 0.1.1 — 2026-10-02
+
+- Instalação sem configuração: serviço HTTPS e unidade fixos, sem token individual.
+- Coluna Assunto somente em Geral; Status permanece nas demais abas.
+- Retirada dos botões Atualizar e Limpar filtros; sincronização automática mantida.
+- Desfazer junto ao registro próprio no histórico, com confirmação e validação no servidor.
+- Reversão seletiva preserva alterações posteriores independentes e bloqueia conflitos, dependências e repetição.
+- Nome completo registrado aparece ao passar o mouse sobre o login no histórico.
+- API atualizada na VPS, persistência e HTTPS validados; 34 testes passaram.
+- Versionamento obrigatório a cada atualização entregue da extensão.
+
 ## 0.1.0 — 2026-10-01
 
 - Serviço Node.js/SQLite por unidade e bloco, versões, histórico e desfazer.

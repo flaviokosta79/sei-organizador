@@ -13,7 +13,7 @@ globalThis.seiResolveHistory=(items,state)=>items.map((h,index)=>{
 globalThis.seiHistoryText=(h,numbers={})=>{
  const a=h.action||{},folder=a.tabName||'Aba desconhecida';
  const processes=(a.processIds||[]).map(id=>a.processNumbers?.[id]||numbers[id]||`Identificador interno ${id}`).join(', ');
- const descriptions={create:`criou a pasta ${folder}`,rename:`renomeou a pasta ${folder} para ${a.newTabName||a.name||'Nome desconhecido'}`,delete:`excluiu a pasta ${folder}`,assign:`atribuiu processo(s) ${processes} na pasta ${folder}`,unassign:`retirou processo(s) ${processes} da pasta ${folder}`,undo:'desfez a última alteração'};
+ const descriptions={create:`criou a pasta ${folder}`,rename:`renomeou a pasta ${folder} para ${a.newTabName||a.name||'Nome desconhecido'}`,delete:`excluiu a pasta ${folder}`,assign:`atribuiu processo(s) ${processes} na pasta ${folder}`,unassign:`retirou processo(s) ${processes} da pasta ${folder}`,undo:a.targetAction?`desfez: ${seiHistoryText({...h,action:a.targetAction},numbers).split(' · ').slice(2).join(' · ')}`:'desfez a última alteração'};
  descriptions.status=`alterou status do processo ${processes}: ${seiStatusLabels[a.previousStatus]||'Status desconhecido'} → ${seiStatusLabels[a.status]||'Status desconhecido'}`;
  return `${new Date(h.time).toLocaleString('pt-BR')} · ${h.actor?.login||'Usuário não identificado'} · ${descriptions[a.type]||'Alteração desconhecida'}`;
 };

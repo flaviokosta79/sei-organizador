@@ -14,7 +14,7 @@ test('status persistente independente, allowlist, conflitos, histórico e desfaz
  assert.throws(()=>s.mutate('1','2',2,actor,{type:'status',status:'automatic',processIds:['10']}));
  r=s.mutate('1','2',2,actor,{type:'assign',tabId,processIds:['10']});assert.equal(r.statuses[10],'urgent');
  r=s.mutate('1','2',3,actor,{type:'status',status:'none',processIds:['10']});assert.equal(r.statuses[10],undefined);assert.match(seiHistoryText(s.history('1','2')[0]),/Urgente → Sem status/);
- r=s.mutate('1','2',4,actor,{type:'undo'});assert.equal(r.statuses[10],'urgent');s.close();s=createStore(path);assert.equal(s.read('1','2').statuses[10],'urgent');assert.deepEqual(s.read('1','3').statuses,{});
- s.mutate('1','4',0,actor,{type:'create',name:'Antiga'});const legacy=new DatabaseSync(path);legacy.prepare('UPDATE history SET before=? WHERE block=?').run(JSON.stringify({tabs:[],assignments:{}}),'4');legacy.close();assert.deepEqual(s.mutate('1','4',1,actor,{type:'undo'}).statuses,{});
+ r=s.mutate('1','2',4,actor,{type:'undo',historyId:s.history('1','2')[0].id});assert.equal(r.statuses[10],'urgent');s.close();s=createStore(path);assert.equal(s.read('1','2').statuses[10],'urgent');assert.deepEqual(s.read('1','3').statuses,{});
+ s.mutate('1','4',0,actor,{type:'create',name:'Antiga'});const legacy=new DatabaseSync(path);legacy.prepare('UPDATE history SET before=? WHERE block=?').run(JSON.stringify({tabs:[],assignments:{}}),'4');legacy.close();assert.deepEqual(s.mutate('1','4',1,actor,{type:'undo',historyId:s.history('1','4')[0].id}).statuses,{});
  }finally{s.close();rmSync(dir,{recursive:true,force:true});}
 });

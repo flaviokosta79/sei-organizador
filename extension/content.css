@@ -1,5 +1,13 @@
 #sei-organizador{margin:18px 0;padding:14px 16px;background:#f4f7f5;border:1px solid #c8d5cd;border-left:4px solid #356a50;color:#243b2e;font:14px Verdana,sans-serif}#sei-organizador [role=tablist]{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #c8d5cd;padding-bottom:8px}#sei-organizador button{cursor:pointer;border:1px solid #bccbc1;background:white;color:#243b2e;border-radius:3px;padding:7px 10px;margin:3px}#sei-organizador [aria-selected=true]{background:#356a50;color:white;border-color:#356a50}#sei-organizador button:disabled{opacity:.5;cursor:default}#sei-organizador button:focus-visible,#sei-organizador select:focus-visible{outline:3px solid #bb8a30;outline-offset:2px}#sei-organizador select{padding:7px;max-width:220px}#sei-organizador [role=status]{margin:8px 0 0;font-size:12px}#tblProtocolosBlocos tr[hidden]{display:none!important}
 #so-history-panel .so-history-entry{padding:9px 12px;border-left:4px solid;border-radius:2px;line-height:1.6}
+#so-history-panel .so-undo-record{margin-left:10px}
+#so-history-panel .so-history-user{cursor:help;text-decoration:underline dotted;text-underline-offset:3px}
+.so-block-page .so-block-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:16px;margin:8px 0 10px}
+.so-block-page .so-block-fields>.so-block-field{position:static!important;height:auto!important;min-width:0}
+.so-block-page .so-block-field>label{position:static!important;display:block!important;width:auto!important;height:auto!important;margin:0 0 4px!important}
+.so-block-page .so-block-field>input{position:static!important;display:block!important;width:100%!important;max-width:100%;box-sizing:border-box}
+.so-block-page .so-block-field>br{display:none}
+@media(max-width:760px){.so-block-page .so-block-fields{grid-template-columns:minmax(0,1fr);gap:8px}}
 #so-history-panel .so-history-create{color:#205735;background:#edf7ef;border-color:#33834d}
 #so-history-panel .so-history-delete{color:#8e2525;background:#fff0f0;border-color:#ba3a3a}
 #so-history-panel .so-history-assign{color:#194e82;background:#edf4ff;border-color:#357ab9}
