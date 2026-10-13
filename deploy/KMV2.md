@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções exibem somente informação, sem campos.
-A versão da extensão é 0.1.4. Cada atualização entregue da extensão deve incrementar a versão.
+A versão da extensão é 0.1.6. A API implantada ainda não recebeu os snapshots compactos da 0.1.6; a extensão funciona com a API atual. Cada atualização entregue da extensão deve incrementar a versão.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem

@@ -8,7 +8,7 @@ const row=id=>`<tr id="trPos0"><td><input type="checkbox" id="chkInfraItem${id}"
 function fixture(action='rel_bloco_protocolo_listar',origin='bloco_interno_listar',heading='Processos do Bloco Interno fictício',nativeFields=''){
  const dom=new JSDOM(`<h1>${heading}</h1><a id="lnkUsuarioSistema" title="Pessoa Teste (teste/SEPM)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista">${nativeFields}<div id="divInfraAreaPaginacaoSuperior"></div><div id="divInfraAreaTabela"><table id="tblProtocolosBlocos"><tr><th></th><th>Seq.</th><th>Processo</th><th>Tipo</th><th>Anotações</th><th>Ações</th></tr>${row('100')}${row('200')}</table></div><button id="native" type="button">Original</button></form>`,{url:`https://sei.rj.gov.br/sei/controlador.php?acao=${action}&acao_origem=${origin}&id_bloco=2`,runScripts:'outside-only'});
  Object.defineProperty(dom.window.document,'hidden',{value:false,configurable:true});let sync;const nativeInterval=dom.window.setInterval.bind(dom.window);dom.window.setInterval=(callback,delay,...args)=>{if(delay===10000)sync=callback;return nativeInterval(callback,delay,...args);};let offline=false;const calls=[];dom.window.chrome={runtime:{sendMessage:async msg=>{calls.push(msg);if(msg.history)return {data:['create','delete','assign','unassign','rename','undo'].map(type=>({version:1,time:'2026-10-01T12:00:00Z',actor:{login:'teste'},action:{type,tabName:'Assunto',processIds:['100']}}))};return offline?{error:'Falha simulada'}:{data:{version:1,tabs:[{id:'a',name:'Assunto'}],assignments:{'100':['a']}}};}}};
- dom.window.SEI_ORGANIZADOR_CONFIG={serviceUrl:'https://ext.5cpa.com.br',unitId:'1'};dom.window.eval(readFileSync(new URL('../extension/history.js',import.meta.url),'utf8'));dom.window.eval(readFileSync(new URL('../extension/theme.js',import.meta.url),'utf8'));dom.window.eval(source);return {dom,calls,sync:()=>sync(),disconnect:()=>{offline=true;}};
+ dom.window.SEI_ORGANIZADOR_CONFIG={serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'SEPM'};dom.window.eval(readFileSync(new URL('../extension/history.js',import.meta.url),'utf8'));dom.window.eval(readFileSync(new URL('../extension/theme.js',import.meta.url),'utf8'));dom.window.eval(source);return {dom,calls,sync:()=>sync(),disconnect:()=>{offline=true;}};
 }
 test('Descrição e pesquisa compartilham linha preservando campos nativos e restauração ao sair',async()=>{
  const fields='<label id="lblDescricao" for="txtDescricao">Descrição:</label><br id="description-break"><input id="txtDescricao" value="Bloco de teste" disabled><div id="divInfraAreaDados" style="height:5em"><label id="lblPalavrasPesquisa" for="txtPalavrasPesquisaRelBlocoProtocolo">Palavras-chave para pesquisa:</label><input id="txtPalavrasPesquisaRelBlocoProtocolo" value="consulta"></div>';
@@ -184,4 +184,15 @@ test('mensagens de erro persistem após sincronizar e sucesso usa estilo própri
  offline=true;f.sync();await tick();assert.match(message().textContent,/^Sem sincronização/);assert.equal(message().dataset.kind,'sync');
  offline=false;f.sync();await tick();assert.equal(message().textContent,'');assert.equal(message().dataset.kind,undefined);
  }finally{f.dom.window.close();}
+});
+test('órgão vem da configuração e outro órgão não recebe a interface',async()=>{
+ const other=new JSDOM(`<h1>Processos do Bloco Interno</h1><a id="lnkUsuarioSistema" title="Pessoa Teste (teste/OUTRO)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista"><table id="tblProtocolosBlocos"><tr><th></th><th>Seq.</th><th>Processo</th><th>Tipo</th><th>Anotações</th><th>Ações</th></tr>${row('100')}</table></form>`,{url:'https://sei.rj.gov.br/sei/controlador.php?acao=rel_bloco_protocolo_listar&id_bloco=2',runScripts:'outside-only'});
+ const calls=[];other.window.chrome={runtime:{sendMessage:async m=>{calls.push(m);return {data:{version:0,tabs:[],assignments:{},statuses:{}}};}}};
+ other.window.eval(readFileSync(new URL('../extension/history.js',import.meta.url),'utf8'));other.window.eval(readFileSync(new URL('../extension/theme.js',import.meta.url),'utf8'));
+ try{
+  other.window.SEI_ORGANIZADOR_CONFIG={serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'SEPM'};other.window.eval(source);await tick();
+  assert.equal(other.window.document.querySelector('#sei-organizador'),null);assert.equal(calls.length,0);
+  other.window.SEI_ORGANIZADOR_CONFIG={serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'OUTRO'};other.window.seiOrganizerLifecycle.reconcile();await tick();
+  assert.ok(other.window.document.querySelector('#sei-organizador'));assert.ok(calls.length>0);
+ }finally{other.window.close();}
 });

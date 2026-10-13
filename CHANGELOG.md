@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.6 — 2026-10-13
+
+- Histórico do servidor guarda a lista de abas e somente os processos alterados, em vez do estado completo do bloco a cada operação.
+- Diferenças de cada registro calculadas uma vez por consulta; índice por unidade, bloco e registro.
+- Registros antigos com estado completo continuam compatíveis; teste de equivalência compara o desfazer com o algoritmo anterior.
+- Órgão atendido passa para extension/config.js junto com serviço e unidade.
+- Verificações de página, unidade e bloco feitas uma única vez; variável sem uso removida.
+- CSS consolidado em uma regra por seletor e sem estilos de elementos inexistentes; estilos calculados idênticos aos da 0.1.5 em 24 cenários.
+- Código da extensão formatado com Prettier 3.9.8; npm run format e verificação de formatação em npm run check.
+- 40 testes passaram. Servidor exige reimplantação para os snapshots compactos; sem migração de banco nem novas permissões.
+
 ## 0.1.5 — 2026-10-13
 
 - Mensagens de erro permanecem visíveis após a sincronização automática, até a próxima ação do usuário.

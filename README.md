@@ -1,4 +1,4 @@
-# SEI Organizador — 0.1.5
+# SEI Organizador — 0.1.6
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -8,7 +8,7 @@ Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ po
 2. Abra a lista de processos de um bloco interno do SEI na unidade atendida pela extensão.
 3. Após atualizar, recarregue a extensão no Chrome e depois a página do bloco.
 
-O serviço HTTPS `https://ext.5cpa.com.br` e a unidade estão fixos em `extension/config.js`. Não há campos de endereço, unidade ou token para preencher. Valores antigos salvos no navegador são ignorados. A extensão só inicializa nas listas internas reconhecidas e na unidade definida.
+O serviço HTTPS `https://ext.5cpa.com.br`, a unidade e o órgão estão fixos em `extension/config.js`. Não há campos de endereço, unidade ou token para preencher. Valores antigos salvos no navegador são ignorados. A extensão só inicializa nas listas internas reconhecidas e na unidade definida.
 
 ```powershell
 git clone --recurse-submodules https://github.com/flaviokosta79/sei-organizador.git
@@ -43,7 +43,7 @@ Registros já desfeitos, sem efeito ou que representam um desfazer não oferecem
 
 ## Dados e identificação
 
-Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e snapshots anterior/posterior. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O worker faz as chamadas sem cookies e sem referrer.
+Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e snapshots anterior/posterior. Desde a 0.1.6, cada registro guarda a lista de abas e somente os processos que a operação alterou; registros antigos com o estado completo continuam válidos para desfazer. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O worker faz as chamadas sem cookies e sem referrer.
 
 O autor vem do título do ícone do usuário no SEI: nome, login e órgão. A API não autentica essa identidade; comparar login e órgão é uma regra funcional para o uso normal da extensão, não uma garantia contra chamadas que declarem outra identidade. O usuário autorizou API pública sem token e instalação sem configuração. O servidor restringe a unidade, valida dados e tamanho das requisições e usa transações com controle de versão. A administração da VPS e do Portainer permanece restrita.
 
@@ -75,10 +75,10 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.1.5.zip -Force
+Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.1.6.zip -Force
 ```
 
-Resultado da entrega: **37 testes passaram**, além da verificação de sintaxe. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.
+Resultado da entrega: **40 testes passaram**, além da verificação de sintaxe e de formatação. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 

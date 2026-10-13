@@ -1,11 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import {sameActor,undoPlan,applyUndo} from './undo.js';
+import {sameActor,undoPlan,applyUndo,snapshots} from './undo.js';
 export function createStore(path) {
   mkdirSync(dirname(path), {recursive:true});
   const db = new DatabaseSync(path);
-  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER);');
+  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
   const read=(unit,block)=>{const r=db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?').get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
   function mutate(unit,block,version,actor,action) {
     db.exec('BEGIN IMMEDIATE');
@@ -40,8 +40,8 @@ export function createStore(path) {
       if(action.type==='create')recorded.tabName=next.tabs.at(-1).name;
       if(action.type==='rename')recorded.newTabName=next.tabs.find(t=>t.id===action.tabId).name;
       if(action.processIds){recorded.processNumbers={};for(const id of action.processIds){const n=action.processNumbers?.[id];if(typeof n==='string'&&/^(?:SEI-)?\d{1,12}[./-]\d{1,12}\/\d{4}$/.test(n))recorded.processNumbers[id]=n;}}
-      const v=old.version+1;const before=JSON.stringify({tabs:old.tabs,assignments:old.assignments,statuses:old.statuses});const after=JSON.stringify(next);
-      db.prepare('INSERT INTO blocks VALUES(?,?,?,?) ON CONFLICT(unit,block) DO UPDATE SET version=excluded.version,state=excluded.state').run(unit,block,v,after);
+      const v=old.version+1;const snapshot=snapshots(old,next);const before=JSON.stringify(snapshot.before);const after=JSON.stringify(snapshot.after);
+      db.prepare('INSERT INTO blocks VALUES(?,?,?,?) ON CONFLICT(unit,block) DO UPDATE SET version=excluded.version,state=excluded.state').run(unit,block,v,JSON.stringify(next));
       db.prepare('INSERT INTO history(unit,block,time,actor,action,before,after,version) VALUES(?,?,?,?,?,?,?,?)').run(unit,block,new Date().toISOString(),JSON.stringify(actor),JSON.stringify(recorded),before,after,v);
       db.exec('COMMIT'); return {version:v,...next};
     }catch(e){db.exec('ROLLBACK');throw e;}
