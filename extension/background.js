@@ -10,6 +10,9 @@ chrome.runtime.onMessage.addListener((msg,sender,reply)=>{
     const url=new URL(`/v1/units/${unitId}/blocks/${msg.block}${msg.history?'/history':''}`,base);
     const headers=msg.body?{'Content-Type':'application/json'}:{};
     const response=await fetch(url,{method:msg.body?'POST':'GET',credentials:'omit',referrerPolicy:'no-referrer',headers,body:msg.body?JSON.stringify(msg.body):undefined,signal:AbortSignal.timeout(10000)});
-    const data=await response.json();if(!response.ok)throw new Error(data.error||'Serviço indisponível');return data;
+    // Proxies may answer with HTML (e.g. 502); never show a parser error to the user.
+    let data=null;try{data=await response.json();}catch{}
+    if(!response.ok)throw new Error(typeof data?.error==='string'&&data.error?data.error:`Serviço indisponível (HTTP ${response.status}). Tente novamente em instantes.`);
+    if(!data||typeof data!=='object')throw new Error('Resposta inválida do serviço. Tente novamente em instantes.');return data;
   })().then(data=>reply({data}),e=>reply({error:e.message}));return true;
 });

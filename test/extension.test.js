@@ -170,3 +170,18 @@ test('foreground do identificador SEI branco com contraste e fallback claro',asy
 
 
 
+test('mensagens de erro persistem após sincronizar e sucesso usa estilo próprio',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document,message=()=>d.querySelector('#sei-organizador>p[role=status]');
+ let state={version:1,tabs:[{id:'a',name:'Assunto'}],assignments:{},statuses:{}},post=null,offline=false;
+ w.chrome.runtime.sendMessage=async msg=>{if(offline)return {error:'Falha simulada'};if(msg.history)return {data:[]};if(msg.body)return post(msg);return {data:state};};
+ w.prompt=()=>'Novo assunto';const create=()=>Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent==='+ Criar assunto').click();
+ f.sync();await tick();
+ post=async()=>({error:'Estado atualizado por outro colega. Recarregue e tente novamente.'});create();await tick();await tick();
+ assert.match(message().textContent,/outro colega/);assert.equal(message().dataset.kind,'error');
+ f.sync();await tick();assert.match(message().textContent,/outro colega/);assert.equal(message().dataset.kind,'error');
+ post=async()=>{state={...state,version:2,tabs:[...state.tabs,{id:'b',name:'Novo assunto'}]};return {data:state};};create();await tick();await tick();
+ assert.equal(message().textContent,'Alteração salva.');assert.equal(message().dataset.kind,'success');
+ offline=true;f.sync();await tick();assert.match(message().textContent,/^Sem sincronização/);assert.equal(message().dataset.kind,'sync');
+ offline=false;f.sync();await tick();assert.equal(message().textContent,'');assert.equal(message().dataset.kind,undefined);
+ }finally{f.dom.window.close();}
+});

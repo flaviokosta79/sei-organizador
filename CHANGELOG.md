@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5 — 2026-10-13
+
+- Mensagens de erro permanecem visíveis após a sincronização automática, até a próxima ação do usuário.
+- Somente o aviso de falha de sincronização é limpo quando a conexão volta.
+- Confirmações de sucesso aparecem em verde e somem após alguns segundos.
+- Respostas do serviço que não são JSON, como erro 502 do proxy, mostram mensagem amigável com o código HTTP.
+- Dependência de teste jsdom corrigida para 30.1.2; a 30.1.4 não existe no registro e impedia npm ci.
+- Dois testes de regressão; 37 testes passaram. Sem mudança na API, no banco ou nas permissões.
+
 ## 0.1.4 — 2026-10-02
 
 - Descrição e Palavras-chave para pesquisa ficam lado a lado na página do bloco interno.

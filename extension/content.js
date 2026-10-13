@@ -43,6 +43,10 @@
   const anchor=document.querySelector('#divInfraAreaPaginacaoSuperior')||document.querySelector('#divInfraAreaTabela')||table;anchor.before(root);
   let state={version:0,tabs:[],assignments:{}},active=null,statusFilter='all',ready=false,busy=false,lastVersion=-1;
   const toolbar=document.createElement('div'),tabs=document.createElement('div'),status=document.createElement('p'),history=document.createElement('div');tabs.setAttribute('role','tablist');status.setAttribute('role','status');root.append(tabs,toolbar,status,history);
+  // Errors stay until the next user action; only sync failures are cleared by a successful sync.
+  let statusTimer=null;
+  function setStatus(text,kind='error'){clearTimeout(statusTimer);statusTimer=null;status.textContent=text;if(text)status.dataset.kind=kind;else delete status.dataset.kind;if(text&&kind==='success')statusTimer=setTimeout(()=>{if(!disposed&&status.dataset.kind==='success')setStatus('');},4000);}
+  cleanups.push(()=>clearTimeout(statusTimer));
   const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='infraButton';b.textContent=label;b.onclick=fn;return b;};
   let historyOpen=false,historyGeneration=0,historyRequest=null;
   history.id='so-history-panel';history.hidden=true;history.setAttribute('role','region');history.setAttribute('aria-label','Histórico de alterações');
@@ -176,7 +180,7 @@
     const historyButton=button('Histórico',()=>historyOpen?closeHistory():showHistory());historyButton.setAttribute('aria-controls',history.id);toolbar.append(historyButton);for(const b of toolbar.querySelectorAll('button,select'))b.disabled=!ready||busy;select.disabled=!statusKnown()||busy;historyButton.disabled=!historyOpen&&(!ready||busy);updateHistoryToggle();for(const b of history.querySelectorAll('.so-undo-record'))b.disabled=busy||!ready||b.dataset.undoable!=='true';filter();}
   const ownRecord=h=>!!actor.login.trim()&&actor.login.trim().toLowerCase()===(h.actor?.login||'').trim().toLowerCase()&&actor.org.trim().toLowerCase()===(h.actor?.org||'').trim().toLowerCase();
   async function undoSelected(selected){
-    if(!ready||busy)return;busy=true;render();
+    if(!ready||busy)return;busy=true;setStatus('');render();
     try{
       const latestState=await api(),items=await api({history:true});if(disposed)return;
       const latest=items.find(h=>h.id===selected.id);if(!latest)throw new Error('A alteração não está mais disponível no histórico.');
@@ -187,13 +191,13 @@
       state=latestState;
       const description=seiHistoryText(seiResolveHistory([latest],state)[0],Object.fromEntries(rows().map(r=>[r.id,r.number])));
       if(!confirm(`Desfazer esta alteração compartilhada do bloco?\n\n${description}\nAutor: ${latest.actor?.name||latest.actor?.login||'Usuário não identificado'}\n\nIsso afeta todos os colegas. Confirmar?`))return;
-      const next=await api({body:{version:latestState.version,actor,action:{type:'undo',historyId:latest.id}}});if(disposed)return;state=next;status.textContent='Alteração desfeita.';
-    }catch(e){if(!disposed)status.textContent='Não foi possível desfazer: '+e.message;}
+      const next=await api({body:{version:latestState.version,actor,action:{type:'undo',historyId:latest.id}}});if(disposed)return;state=next;setStatus('Alteração desfeita.','success');
+    }catch(e){if(!disposed)setStatus('Não foi possível desfazer: '+e.message);}
     finally{busy=false;if(!disposed){render();if(historyOpen)await showHistory();}}
   }
   async function api(extra={}){if(disposed)throw new Error('Página substituída');const result=await chrome.runtime.sendMessage({type:'api',unit,block,...extra});if(result.error)throw new Error(result.error);return result.data;}
-  async function refresh(){if(busy)return;try{const next=await api();if(disposed||busy)return;if(next.version>=state.version)state=next;ready=true;if(!statusKnown())statusFilter='all';lastVersion=state.version;render();status.textContent='';}catch(e){if(disposed)return;closeMenu();ready=false;active=null;statusFilter='all';render();status.textContent='Sem sincronização: '+e.message+' · Geral preservado.';}}
-  async function change(action){if(!ready||busy)return;busy=true;render();try{const next=await api({body:{version:state.version,actor,action}});if(disposed)return;state=next;lastVersion=state.version;status.textContent='Alteração salva.';}catch(e){status.textContent=e.message;}finally{busy=false;render();}await refresh();}
+  async function refresh(){if(busy)return;try{const next=await api();if(disposed||busy)return;if(next.version>=state.version)state=next;ready=true;if(!statusKnown())statusFilter='all';lastVersion=state.version;render();if(status.dataset.kind==='sync')setStatus('');}catch(e){if(disposed)return;closeMenu();ready=false;active=null;statusFilter='all';render();setStatus('Sem sincronização: '+e.message+' · Geral preservado.','sync');}}
+  async function change(action){if(!ready||busy)return;busy=true;setStatus('');render();try{const next=await api({body:{version:state.version,actor,action}});if(disposed)return;state=next;lastVersion=state.version;setStatus('Alteração salva.','success');}catch(e){if(!disposed)setStatus(e.message);}finally{busy=false;render();}await refresh();}
   async function showHistory(){
     historyOpen=true;const generation=++historyGeneration;updateHistoryToggle();history.replaceChildren();const loading=document.createElement('p');loading.textContent='Carregando histórico…';history.append(loading);
     if(!historyRequest)historyRequest=api({history:true}).finally(()=>{historyRequest=null;});

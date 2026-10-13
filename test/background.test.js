@@ -19,3 +19,17 @@ test('worker usa servico e unidade fixos, sem token, cookies ou configuracao man
  const denied=await new Promise(resolve=>listener({type:'api',unit:'9',block:'2'},{tab:{url:'https://sei.rj.gov.br/sei/controlador.php'}},resolve));
  assert.equal(denied.error,'Unidade ou bloco inválido');assert.equal(requests.length,2);
 });
+
+test('worker traduz respostas que não são JSON em mensagem amigável',async()=>{
+ let listener,next;
+ runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{
+  URL,AbortSignal,importScripts:()=>{},SEI_ORGANIZADOR_CONFIG:{serviceUrl:'https://ext.5cpa.com.br',unitId:'1'},
+  chrome:{runtime:{onMessage:{addListener:f=>listener=f}}},fetch:async()=>next
+ });
+ const call=()=>new Promise(resolve=>listener({type:'api',unit:'1',block:'2'},{tab:{url:'https://sei.rj.gov.br/sei/controlador.php'}},resolve));
+ const html={json:async()=>{throw new SyntaxError("Unexpected token '<'");}};
+ next={ok:false,status:502,...html};assert.equal((await call()).error,'Serviço indisponível (HTTP 502). Tente novamente em instantes.');
+ next={ok:true,status:200,...html};assert.equal((await call()).error,'Resposta inválida do serviço. Tente novamente em instantes.');
+ next={ok:false,status:409,json:async()=>({error:'Estado atualizado por outro colega.'})};assert.equal((await call()).error,'Estado atualizado por outro colega.');
+ next={ok:true,status:200,json:async()=>({version:3})};assert.deepEqual((await call()).data,{version:3});
+});

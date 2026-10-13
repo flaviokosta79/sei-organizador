@@ -46,6 +46,7 @@
 #sei-organizador .so-filter-notice button{padding:2px 5px;margin:0 0 0 5px;font-size:11px;background:transparent;border:0;text-decoration:underline}
 #sei-organizador>p[role=status]:empty{display:none}
 #sei-organizador>p[role=status]{color:#8e2525;background:#fff0f0;padding:5px;margin:4px 0 0}
+#sei-organizador>p[role=status][data-kind=success]{color:#205735;background:#edf7ef}
 @media(max-width:600px){#sei-organizador .so-topbar{gap:6px;align-items:flex-start}#sei-organizador .so-brand{max-width:95px;white-space:normal;line-height:1.4}#sei-organizador .so-filter-notice{margin-left:2px}}
 #sei-organizador{margin:8px 0;padding:5px 8px;border:0;border-top:1px solid #cbd6cf;border-bottom:1px solid #cbd6cf;background:#f8faf9;border-radius:0}
 #sei-organizador .so-topbar{gap:14px;align-items:center}
