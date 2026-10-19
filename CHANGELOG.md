@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-10-19
+
+- Alerta de tempo parado no topo do card: unidade aberta há mais tempo e quantas outras passam de 3 dias, em amarelo (3 a 6 dias) ou vermelho (7 dias ou mais).
+- Borda lateral do card na cor do alerta; o alerta continua visível com o card oculto, e a dica lista as datas de cada unidade.
+- 54 testes passaram. Sem mudança no servidor nem nas permissões.
+
 ## 0.3.0 — 2026-10-19
 
 - Aviso de pendência antes de enviar: documentos internos da unidade sem nenhuma assinatura, lidos da árvore do processo.

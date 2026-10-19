@@ -186,3 +186,14 @@ test('enviar processo: aviso acima da lista e confirmação antes do envio nativ
 test('enviar processo sem pendência, em lote ou com árvore de outro processo não interfere',async()=>{
  for(const options of [{source:tree},{protocols:'900,901'},{processId:'901',protocols:'901'}]){const f=sendFrame(options);await f.done;assert.equal(f.banner(),undefined);assert.equal(f.listeners.length,0);}
 });
+test('alerta de tempo parado no topo do card, visível mesmo oculto',async()=>{
+ const f=frame();await f.done;await settle();const root=f.badge(),alert=root.querySelector('.idle');
+ assert.equal(alert.textContent,'⏱ Parado há 8 dias em SEPM/24° BPM');assert.equal(alert.dataset.level,'alert');assert.equal(root.querySelector('section').dataset.idle,'alert');
+ assert.equal(alert.nextElementSibling.tagName,'UL');root.querySelector('.toggle').click();assert.equal(root.querySelector('ul').hidden,true);assert.equal(alert.hidden,false);
+ const days=n=>stamp(new Date(Date.now()-n*86400000));
+ const rows=[hrow(days(4),'SEPM/5°CPA','a','Processo recebido na unidade',true),hrow(days(3.5),'SEPM/EMG','b','Processo recebido na unidade',true),hrow(days(1),'SEPM/3°CPA','c','Processo recebido na unidade',true),...historyRows.slice(2)];
+ const warn=frame({rows});await warn.done;await settle();const w=warn.badge().querySelector('.idle');
+ assert.equal(w.dataset.level,'warn');assert.match(w.textContent,/^⏱ Parado há 4 dias nesta unidadee mais 1 unidade parada há 3 dias ou mais$/);assert.match(w.title,/SEPM\/EMG: desde/);
+ const fresh=frame({rows:[hrow(days(0.1),'SEPM/3°CPA','c','Processo recebido na unidade',true),...historyRows.slice(2)]});await fresh.done;await settle();
+ assert.equal(fresh.badge().querySelector('.idle'),null);assert.equal(fresh.badge().querySelector('section').dataset.idle,undefined);
+});

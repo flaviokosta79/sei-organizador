@@ -124,6 +124,12 @@
     .age[data-level='warn'] { background: #fff1c2; color: #6b4b00; }
     .age[data-level='alert'] { background: #ffd9d9; color: #8a0010; font-weight: 700; }
     .unit { display: flex; justify-content: space-between; gap: 6px; }
+    section[data-idle='warn'] { border-left: 4px solid #d19b00; }
+    section[data-idle='alert'] { border-left: 4px solid #c8102e; }
+    .idle { margin: 5px 0 0; padding: 3px 6px; border-radius: 3px; font-weight: 700; }
+    .idle[data-level='warn'] { background: #fff1c2; color: #6b4b00; }
+    .idle[data-level='alert'] { background: #ffd9d9; color: #8a0010; }
+    .idle small { display: block; font-weight: 400; }
     .organizer { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; margin-top: 2px; }
     select { max-width: 100%; padding: 0 2px; border: 1px solid #a9b8c7; border-radius: 3px; background: #fff; }
     details { flex-basis: 100%; }
@@ -256,6 +262,27 @@
     for (const o of elsewhere) li.append(unitRow(o.unit, o.name, o.since));
   }
   if (!summary.open.length) line('Situação', span('Processo sem unidade aberta (concluído)', 'muted'));
+  // Idle alert sits between header and details, so it stays visible when the card is collapsed.
+  const stalled = summary.open
+    .map((o) => ({ ...o, age: D.age(o.since) }))
+    .filter((o) => o.age.level !== 'ok')
+    .sort((a, b) => a.since - b.since);
+  if (stalled.length) {
+    const worst = stalled[0],
+      alert = ui.createElement('div');
+    alert.className = 'idle';
+    alert.dataset.level = worst.age.level;
+    alert.setAttribute('role', 'status');
+    alert.title = stalled.map((o) => `${o.unit}: desde ${D.formatTime(o.since)}`).join('\n');
+    alert.append(`⏱ Parado há ${worst.age.text} ${worst.own ? 'nesta unidade' : `em ${worst.unit}`}`);
+    if (stalled.length > 1) {
+      const more = ui.createElement('small');
+      more.textContent = `e mais ${stalled.length - 1} ${stalled.length === 2 ? 'unidade parada' : 'unidades paradas'} há 3 dias ou mais`;
+      alert.append(more);
+    }
+    root.insertBefore(alert, list);
+    root.dataset.idle = worst.age.level;
+  }
   if (history.partial)
     line('Aviso', span('Andamento com várias páginas; considerados só os registros carregados.', 'muted'));
 
