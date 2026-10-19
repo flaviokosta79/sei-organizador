@@ -1,4 +1,4 @@
-# SEI Organizador — 0.4.0
+# SEI Organizador — 0.4.2
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -41,7 +41,7 @@ Ao abrir um documento gerado pela unidade atendida, aparece um card na árvore d
 - **Blocos**: blocos internos em que o processo está (os de assinatura aparecem na linha da assinatura), com descrição e estado quando constam da lista de blocos. Blocos de outras unidades são ignorados.
 - **Organizador**: em cada bloco interno, assunto e status compartilhados. É possível alterar o status e os assuntos ali mesmo, com as mesmas regras de versão e histórico da lista do bloco.
 
-Documentos de outras unidades, anexos externos e outras unidades atuais não exibem o card. **Ocultar/Mostrar** é lembrado no navegador. O andamento e as listas de blocos são consultados no próprio SEI, com a sessão do usuário, e ficam em cache na aba por 1 e 2 minutos. Quando o andamento tem mais de uma página, valem só os registros carregados. Os blocos vêm dos registros "inserido no bloco"/"retirado do bloco" do andamento.
+Enquanto o andamento, os blocos e o Organizador carregam, uma barra animada sob o cabeçalho e linhas pulsantes indicam a espera (estáticas com "reduzir movimento" do sistema). Documentos de outras unidades, anexos externos e outras unidades atuais não exibem o card. **Ocultar/Mostrar** é lembrado no navegador. O andamento e as listas de blocos são consultados no próprio SEI, com a sessão do usuário, e ficam em cache na aba por 1 e 2 minutos. Quando o andamento tem mais de uma página, valem só os registros carregados. Os blocos vêm dos registros "inserido no bloco"/"retirado do bloco" do andamento.
 
 ## Pendência antes de enviar
 
@@ -96,7 +96,7 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.4.0.zip -Force
+Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.4.2.zip -Force
 ```
 
 Resultado da entrega: **40 testes passaram**, além da verificação de sintaxe e de formatação. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.

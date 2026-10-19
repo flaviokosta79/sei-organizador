@@ -72,14 +72,14 @@ test('tempo parado por faixa e lista de blocos',()=>{
  assert.equal(data.parseBlockList(new JSDOM('<p>login</p>').window.document),null);
 });
 
-function frame({documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,organizer,rows=historyRows,body=footer,signatureList=[],treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
+function frame({documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,organizer,rows=historyRows,body=footer,signatureList=[],gate=null,treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
  const docDom=new JSDOM(`<title>SEI/ERJ - 555 - CI</title><p class="Texto">Conteúdo nativo</p>${body}`,{url:`${base}controlador.php?acao=documento_visualizar&id_documento=${documentId}&infra_unidade_atual=${unitParam}&infra_hash=d`});
  const topDom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/${org})"></a><a id="lnkInfraUnidade">SEPM/5°CPA</a><a href="controlador.php?acao=bloco_interno_listar&infra_hash=i">Internos</a><a href="controlador.php?acao=bloco_assinatura_listar&infra_hash=a">Assinatura</a><iframe id="ifrArvore"></iframe>`,{url:`${base}controlador.php?acao=procedimento_trabalhar&id_procedimento=900`});
  const topDoc=topDom.window.document,getById=topDoc.getElementById.bind(topDoc);topDoc.getElementById=id=>id==='ifrArvore'?{contentDocument:treeDom.window.document}:getById(id);
  const requests=[],messages=[];let state=organizer||{version:3,tabs:[{id:'t1',name:'Restituições'},{id:'t2',name:'Pessoal'}],assignments:{'900':['t1']},statuses:{'900':'attention'}};
  const page=html=>new Response(Buffer.from(html,'latin1'),{headers:{'content-type':'text/html; charset=iso-8859-1'}});
  const fetch=async(url,init={})=>{requests.push({url:url.toString(),init});const u=new URL(url);const acao=u.searchParams.get('acao');
-  if(acao==='procedimento_consultar_historico')return historyStatus!==200?new Response('erro',{status:historyStatus}):page(init.method==='POST'?historyPage(rows,'resumido'):historyPage(rows.slice(0,1),historyToggle));
+  if(acao==='procedimento_consultar_historico'){if(gate)await gate;}if(acao==='procedimento_consultar_historico')return historyStatus!==200?new Response('erro',{status:historyStatus}):page(init.method==='POST'?historyPage(rows,'resumido'):historyPage(rows.slice(0,1),historyToggle));
   if(acao==='bloco_interno_listar')return page(blockList([['1343','Restituições SEPM']]));
   if(acao==='bloco_assinatura_listar')return page(blockList(signatureList));
   return new Response('',{status:404});};
@@ -203,4 +203,15 @@ test('documento aberto não se repete nas pendências, que seguem listando os de
  const twoPending=pendingTree.replace('NosAcoes[6]','NosAcoes[7]').replace('"A905"','"A999"').replace('"A999","905"','"A999","999"');
  const f=frame({documentId:'905',treeDom:treeOf(twoPending)});await f.done;await settle();
  assert.match(f.badge().textContent,/Pendências antes de enviar⚠ Despacho 777 sem assinatura/);assert.doesNotMatch(f.badge().textContent,/Despacho 999 sem assinatura/);
+});
+test('animação de carregamento enquanto o andamento não chega, removida ao concluir ou falhar',async()=>{
+ let release;const gate=new Promise(r=>release=r);
+ const f=frame({gate});await settle();const root=f.badge(),section=root.querySelector('section');
+ assert.equal(section.getAttribute('aria-busy'),'true');assert.equal(root.querySelector('header').nextElementSibling.className,'progress');
+ assert.equal(root.querySelectorAll('.skeleton').length,3);assert.match(root.textContent,/AndamentoCarregando…/);
+ assert.match(root.querySelector('style').textContent,/prefers-reduced-motion: reduce/);
+ release();await f.done;await settle();
+ assert.equal(section.hasAttribute('aria-busy'),false);assert.equal(root.querySelector('.progress'),null);assert.equal(root.querySelectorAll('.skeleton').length,0);assert.match(root.textContent,/Último envio/);
+ const failed=frame({historyStatus:500});await failed.done;await settle();
+ assert.equal(failed.badge().querySelector('.progress'),null);assert.equal(failed.badge().querySelector('section').hasAttribute('aria-busy'),false);assert.match(failed.badge().textContent,/Não foi possível consultar/);
 });

@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções exibem somente informação, sem campos.
-A versão da extensão é 0.1.6. A API implantada ainda não recebeu os snapshots compactos da 0.1.6; a extensão funciona com a API atual. Cada atualização entregue da extensão deve incrementar a versão.
+A versão da extensão é 0.4.0. A API implantada corresponde ao commit 07a6e2a (0.4.0): status Assinar e snapshots compactos da 0.1.6. Cada atualização entregue da extensão deve incrementar a versão.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,10 +14,21 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:fe0e4c88d715ef4b08ae67a2a228f2c4522df898b9777420e35941bd9bf63242.
+Imagem da stack: flaviokosta/sei-organizador@sha256:0ce6922cda50b3d2ebbd592d16e7fea50f3d17ed87686975f682b2836e91e47f (tag 0.4.0, commit 07a6e2a).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:fe0e4c88d715ef4b08ae67a2a228f2c4522df898b9777420e35941bd9bf63242.
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.4.0 — 2026-10-19
+
+Imagem gerada no próprio KVM2 pela API Docker do Portainer, com contexto `git archive 07a6e2a package.json server deploy/Dockerfile`, e publicada no Docker Hub. A stack 18 foi atualizada pelo Portainer trocando somente SEI_IMAGE; arquivo da stack, demais variáveis e volume foram preservados.
+
+Backup consistente antes da troca, pela API de backup do SQLite, com quick_check ok, 1 bloco e 180 registros: /data/backups/before-0.4.0-20261019.sqlite no volume sei_organizador_data. Cópia local em artifacts/backups/before-0.4.0-20261019.sqlite.tar. Configuração anterior da stack em artifacts/stack-before-0.4.0.json.
+
+Validação: container temporário sem volume com saúde 200, outra unidade 403, status Assinar e Arquivar aceitos, status inválido 400 e usuário node; removido depois. Na KMV2: atualização completed, uma tarefa healthy, 1 bloco e 180 registros preservados, HTTPS /healthz 200, leitura do bloco 1343 200, outra unidade 403 e status inválido 400 sem alterar a versão. Nenhum dado sintético gravado em produção.
+
+Rollback: reaplicar pelo Portainer o SEI_IMAGE anterior (fe0e4c88…). O banco atual é compatível com a imagem anterior; status Assinar gravados depois apareceriam como desconhecidos nela.
 
 ## Gestão no Portainer
 

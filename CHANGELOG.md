@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.2 — 2026-10-19
+
+- Animação de carregamento no card: barra animada sob o cabeçalho e linhas pulsantes no lugar do andamento até o andamento, os blocos e o Organizador responderem; removida ao concluir ou falhar.
+- Respeita a preferência de reduzir movimento do sistema, com indicação estática; card marcado como ocupado (aria-busy) durante a espera.
+- Contorno do card em azul mais forte.
+- 57 testes passaram. Sem mudança no servidor nem nas permissões.
+
+## 0.4.1 — 2026-10-19
+
+- Card do processo em azul pastel, com cabeçalho destacado e faixa lateral azul, para chamar atenção na árvore sem atrapalhar a leitura.
+- Amarelo e vermelho continuam reservados ao alerta de tempo parado, que substitui a faixa lateral quando aparece.
+- 56 testes passaram. Sem mudança no servidor nem nas permissões.
+
 ## 0.4.0 — 2026-10-19
 
 - Novo status Assinar (✍), entre Urgente e Arquivar, no bloco interno, no filtro e no card do processo.

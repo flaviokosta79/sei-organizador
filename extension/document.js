@@ -108,34 +108,51 @@
   style.textContent = `
     :host { all: initial; display: block; margin: 8px 0 10px; }
     @media print { :host { display: none !important; } }
-    section { font: 12px/1.4 Arial, Helvetica, sans-serif; color: #1f2933; background: #f5f8fb;
-      border: 1px solid #c9d5e1; border-radius: 4px; padding: 6px 8px; overflow-wrap: anywhere; }
-    header { display: flex; align-items: flex-start; gap: 6px; }
-    h2 { font: 700 12px Arial, Helvetica, sans-serif; margin: 0; flex: 1; color: #155f9b; }
-    h2 small { display: block; font-weight: 400; color: #52606d; margin-top: 1px; }
+    /* Pastel blue sets the card apart from the white tree; yellow and red stay reserved for the idle alert. */
+    section { font: 12px/1.4 Arial, Helvetica, sans-serif; color: #1f2933; background: #eaf3fd;
+      border: 1px solid #5f93d3; border-left: 4px solid #2f6fbf; border-radius: 4px; padding: 0 8px 6px;
+      overflow-wrap: anywhere; box-shadow: 0 1px 2px #1d4f8f14; }
+    header { display: flex; align-items: flex-start; gap: 6px; margin: 0 -8px; padding: 5px 8px;
+      background: #d6e7fa; border-radius: 0 3px 0 0; }
+    h2 { font: 700 12px Arial, Helvetica, sans-serif; margin: 0; flex: 1; color: #1d4f8f; }
+    h2 small { display: block; font-weight: 400; color: #46566a; margin-top: 1px; }
     button, select { font: 11px Arial, Helvetica, sans-serif; }
-    .toggle { flex: 0 0 auto; border: 1px solid #a9b8c7; background: #fff; border-radius: 3px; padding: 1px 6px; cursor: pointer; }
-    ul { list-style: none; margin: 4px 0 0; padding: 0; }
-    li { padding: 4px 0 0; margin: 4px 0 0; border-top: 1px solid #e1e8ef; }
-    li > b { display: block; font-size: 11px; font-weight: 700; color: #52606d; }
+    .toggle { flex: 0 0 auto; border: 1px solid #9dbbe0; background: #fff; color: #1d4f8f; border-radius: 3px; padding: 1px 6px; cursor: pointer; }
+    .toggle:hover { background: #f3f8fe; }
+    ul { list-style: none; margin: 2px 0 0; padding: 0; }
+    li { padding: 4px 0 0; margin: 4px 0 0; border-top: 1px solid #cfe0f4; }
+    li:first-child { border-top: 0; }
+    li > b { display: block; font-size: 11px; font-weight: 700; color: #46566a; }
     .item { display: block; }
-    .muted { color: #52606d; }
+    .muted { color: #46566a; }
     .ok { color: #1c6b37; } .pending { color: #9a3a00; } .error { color: #b00020; }
-    .age { display: inline-block; border-radius: 9px; padding: 0 6px; background: #e3eaf1; white-space: nowrap; }
+    .age { display: inline-block; border-radius: 9px; padding: 0 6px; background: #d6e7fa; color: #1d4f8f; white-space: nowrap; }
     .age[data-level='warn'] { background: #fff1c2; color: #6b4b00; }
     .age[data-level='alert'] { background: #ffd9d9; color: #8a0010; font-weight: 700; }
     .unit { display: flex; justify-content: space-between; gap: 6px; }
     section[data-idle='warn'] { border-left: 4px solid #d19b00; }
     section[data-idle='alert'] { border-left: 4px solid #c8102e; }
-    .idle { margin: 5px 0 0; padding: 3px 6px; border-radius: 3px; font-weight: 700; }
+    .idle { margin: 6px 0 0; padding: 3px 6px; border-radius: 3px; font-weight: 700; }
     .idle[data-level='warn'] { background: #fff1c2; color: #6b4b00; }
     .idle[data-level='alert'] { background: #ffd9d9; color: #8a0010; }
     .idle small { display: block; font-weight: 400; }
     .organizer { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; margin-top: 2px; }
-    select { max-width: 100%; padding: 0 2px; border: 1px solid #a9b8c7; border-radius: 3px; background: #fff; }
+    select { max-width: 100%; padding: 0 2px; border: 1px solid #9dbbe0; border-radius: 3px; background: #fff; }
     details { flex-basis: 100%; }
-    summary { cursor: pointer; color: #155f9b; }
+    summary { cursor: pointer; color: #1d4f8f; }
     label { display: block; margin: 2px 0 0 4px; }
+    .progress { position: relative; height: 3px; margin: 0 -8px; overflow: hidden; background: #c3daf5; }
+    .progress::after { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
+      background: #2f6fbf; border-radius: 2px; animation: so-progress 1.1s ease-in-out infinite; }
+    @keyframes so-progress { to { left: 100%; } }
+    .skeleton { display: block; height: 9px; margin: 5px 0 0; border-radius: 5px;
+      background: linear-gradient(90deg, #bcd4f1 0%, #e1ecfa 50%, #bcd4f1 100%); background-size: 200% 100%;
+      animation: so-shimmer 1.3s linear infinite; }
+    @keyframes so-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .progress::after { animation: none; left: 0; width: 100%; opacity: .5; }
+      .skeleton { animation: none; }
+    }
     [hidden] { display: none !important; }
   `;
   const root = ui.createElement('section');
@@ -208,182 +225,203 @@
   else if (info.signers.length) for (const s of info.signers) signatureLine.append(span('✔ ' + s, 'item ok'));
   else signatureLine.append(span('✎ Não assinado', 'item pending'));
   const signed = () => !signatureLine.querySelector('.pending');
-  const loading = line('Andamento', span('Carregando…', 'muted'));
-
-  let history;
+  // Until andamento, block lists and organizer state arrive: animated bar under the header and skeleton lines.
+  const progress = ui.createElement('div');
+  progress.className = 'progress';
+  header.after(progress);
+  root.setAttribute('aria-busy', 'true');
+  const loading = line(
+    'Andamento',
+    span('Carregando…', 'muted'),
+    ...['86%', '64%', '74%'].map((width) => {
+      const bar = span('', 'skeleton');
+      bar.style.width = width;
+      return bar;
+    }),
+  );
   try {
-    history = await loadHistory();
-  } catch (e) {
-    loading.replaceChildren(
-      Object.assign(ui.createElement('b'), { textContent: 'Andamento' }),
-      span(`Não foi possível consultar: ${e.message}`, 'error'),
-    );
-    return;
-  }
-  loading.remove();
-  const summary = D.summarize(history.rows, info.protocol, unit);
-  if (!info.unit && summary.generatedUnit && D.sigla(summary.generatedUnit) !== D.sigla(unit)) {
-    // Not the unit's document after all: keep only the process-level warning, if any.
-    if (!pending.length) host.remove();
-    else {
-      subtitle.textContent = `Processo ${tree.process.number}`;
-      for (const li of Array.from(list.children).slice(1)) li.remove();
-    }
-    return;
-  }
-  if (!signatures.length && !info.signers.length && summary.signed.length) {
-    const s = summary.signed[0];
-    signatureLine.replaceChildren(
-      signatureLine.firstChild,
-      span(`✔ ${person(s.name, s.user)} · ${D.formatTime(s.time)}`, 'item ok'),
-    );
+    await fill();
+  } finally {
+    progress.remove();
+    root.removeAttribute('aria-busy');
   }
 
-  const send = summary.lastSend;
-  if (send)
-    line(
-      'Último envio',
-      span(D.formatTime(send.time), 'item'),
-      ...send.destinations.map((d) => span('→ ' + d.unit, 'item', d.name)),
-      span('por ' + person(send.name, send.user), 'item muted'),
-      ...(send.afterDocument ? [] : [span('Anterior a este documento', 'item pending')]),
-    );
-  else line('Último envio', span(`Processo ainda não enviado por ${unit}`, 'muted'));
-
-  const here = summary.open.find((o) => o.own);
-  const unitRow = (text, title, since) => {
-    const row = span('', 'unit');
-    row.append(span(text, '', title), ageBadge(since));
-    return row;
-  };
-  if (here) line('Nesta unidade', unitRow('Aberto, sem movimentação', '', here.since));
-  const elsewhere = summary.open.filter((o) => !o.own);
-  if (elsewhere.length) {
-    const li = line('Aberto em');
-    for (const o of elsewhere) li.append(unitRow(o.unit, o.name, o.since));
-  }
-  if (!summary.open.length) line('Situação', span('Processo sem unidade aberta (concluído)', 'muted'));
-  // Idle alert sits between header and details, so it stays visible when the card is collapsed.
-  const stalled = summary.open
-    .map((o) => ({ ...o, age: D.age(o.since) }))
-    .filter((o) => o.age.level !== 'ok')
-    .sort((a, b) => a.since - b.since);
-  if (stalled.length) {
-    const worst = stalled[0],
-      alert = ui.createElement('div');
-    alert.className = 'idle';
-    alert.dataset.level = worst.age.level;
-    alert.setAttribute('role', 'status');
-    alert.title = stalled.map((o) => `${o.unit}: desde ${D.formatTime(o.since)}`).join('\n');
-    alert.append(`⏱ Parado há ${worst.age.text} ${worst.own ? 'nesta unidade' : `em ${worst.unit}`}`);
-    if (stalled.length > 1) {
-      const more = ui.createElement('small');
-      more.textContent = `e mais ${stalled.length - 1} ${stalled.length === 2 ? 'unidade parada' : 'unidades paradas'} há 3 dias ou mais`;
-      alert.append(more);
-    }
-    root.insertBefore(alert, list);
-    root.dataset.idle = worst.age.level;
-  }
-  if (history.partial)
-    line('Aviso', span('Andamento com várias páginas; considerados só os registros carregados.', 'muted'));
-
-  async function describeBlocks(kind, found, label) {
-    if (!found.length) return [];
-    let listed = null;
+  async function fill() {
+    let history;
     try {
-      listed = await loadBlocks(kind);
-    } catch {}
-    return found
-      .filter((b) => !listed || listed.partial || listed.blocks.has(b.id))
-      .map((b) => {
-        const extra = listed?.blocks.get(b.id);
-        const parts = [`${label} nº ${b.id}`];
-        if (extra?.description) parts.push(`“${extra.description}”`);
-        if (extra?.state) parts.push(extra.state);
-        if (extra?.available) parts.push(`disponibilizado para ${extra.available}`);
-        if (!listed) parts.push('conforme andamento');
-        const short = `bloco nº ${b.id}${extra?.description ? ` (${extra.description})` : ''}`;
-        return { ...b, text: parts.join(' · '), short };
-      });
-  }
-  const [signatureBlocks, internalBlocks] = await Promise.all([
-    describeBlocks('assinatura', summary.documentBlocks, 'Bloco de assinatura'),
-    describeBlocks('interno', summary.processBlocks, 'Bloco interno'),
-  ]);
-  // Signature blocks belong with the signature status instead of a separate section.
-  if (signatureBlocks.length && !signed())
-    signatureLine.replaceChildren(
-      signatureLine.firstChild,
-      ...signatureBlocks.map((b) => span(`✎ Aguardando assinatura · ${b.short}`, 'item pending', b.text)),
-    );
-  else for (const b of signatureBlocks) signatureLine.append(span(`No ${b.short}`, 'item muted', b.text));
-  if (!signatureBlocks.length && !internalBlocks.length) line('Blocos', span(`Fora de blocos de ${unit}`, 'muted'));
-
-  const icons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', sign: '✍', archive: '📁' };
-  for (const block of internalBlocks) {
-    const li = line('Bloco interno', span(block.text.replace(/^Bloco interno /, ''), 'item'));
-    const box = ui.createElement('div');
-    box.className = 'organizer';
-    li.append(box);
-    const process = tree.process.id;
-    const renderOrganizer = (state, message = '') => {
-      box.replaceChildren();
-      const subjects = state.tabs.filter((t) => (state.assignments[process] || []).includes(t.id)).map((t) => t.name);
-      box.append(span(`Assunto: ${subjects.length ? subjects.join(', ') : 'Sem assunto'}`));
-      const select = ui.createElement('select');
-      select.setAttribute('aria-label', `Status manual no bloco ${block.id}`);
-      for (const [value, label] of Object.entries(seiStatusLabels)) {
-        const option = ui.createElement('option');
-        option.value = value;
-        option.textContent = `${icons[value]} ${label}`;
-        select.append(option);
-      }
-      select.value = state.statuses?.[process] || 'none';
-      select.addEventListener('change', () =>
-        change(state, { type: 'status', status: select.value, processIds: [process] }),
-      );
-      box.append(select);
-      if (state.tabs.length) {
-        const details = ui.createElement('details'),
-          title = ui.createElement('summary');
-        title.textContent = 'Alterar assuntos';
-        details.append(title);
-        for (const tab of state.tabs) {
-          const label = ui.createElement('label'),
-            check = ui.createElement('input');
-          check.type = 'checkbox';
-          check.checked = (state.assignments[process] || []).includes(tab.id);
-          check.addEventListener('change', () =>
-            change(state, { type: check.checked ? 'assign' : 'unassign', tabId: tab.id, processIds: [process] }),
-          );
-          label.append(check, ' ' + tab.name);
-          details.append(label);
-        }
-        box.append(details);
-      }
-      if (message) box.append(span(message, message === 'Alteração salva.' ? 'ok' : 'error'));
-    };
-    const change = async (state, action) => {
-      for (const control of box.querySelectorAll('select,input')) control.disabled = true;
-      try {
-        const next = await api(block.id, {
-          version: state.version,
-          actor,
-          action: { ...action, processNumbers: { [process]: tree.process.number } },
-        });
-        renderOrganizer(next, 'Alteração salva.');
-      } catch (e) {
-        let latest = state;
-        try {
-          latest = await api(block.id);
-        } catch {}
-        renderOrganizer(latest, e.message);
-      }
-    };
-    try {
-      renderOrganizer(await api(block.id));
+      history = await loadHistory();
     } catch (e) {
-      box.replaceChildren(span(`Organizador indisponível: ${e.message}`, 'error'));
+      loading.replaceChildren(
+        Object.assign(ui.createElement('b'), { textContent: 'Andamento' }),
+        span(`Não foi possível consultar: ${e.message}`, 'error'),
+      );
+      return;
+    }
+    loading.remove();
+    const summary = D.summarize(history.rows, info.protocol, unit);
+    if (!info.unit && summary.generatedUnit && D.sigla(summary.generatedUnit) !== D.sigla(unit)) {
+      // Not the unit's document after all: keep only the process-level warning, if any.
+      if (!pending.length) host.remove();
+      else {
+        subtitle.textContent = `Processo ${tree.process.number}`;
+        for (const li of Array.from(list.children).slice(1)) li.remove();
+      }
+      return;
+    }
+    if (!signatures.length && !info.signers.length && summary.signed.length) {
+      const s = summary.signed[0];
+      signatureLine.replaceChildren(
+        signatureLine.firstChild,
+        span(`✔ ${person(s.name, s.user)} · ${D.formatTime(s.time)}`, 'item ok'),
+      );
+    }
+
+    const send = summary.lastSend;
+    if (send)
+      line(
+        'Último envio',
+        span(D.formatTime(send.time), 'item'),
+        ...send.destinations.map((d) => span('→ ' + d.unit, 'item', d.name)),
+        span('por ' + person(send.name, send.user), 'item muted'),
+        ...(send.afterDocument ? [] : [span('Anterior a este documento', 'item pending')]),
+      );
+    else line('Último envio', span(`Processo ainda não enviado por ${unit}`, 'muted'));
+
+    const here = summary.open.find((o) => o.own);
+    const unitRow = (text, title, since) => {
+      const row = span('', 'unit');
+      row.append(span(text, '', title), ageBadge(since));
+      return row;
+    };
+    if (here) line('Nesta unidade', unitRow('Aberto, sem movimentação', '', here.since));
+    const elsewhere = summary.open.filter((o) => !o.own);
+    if (elsewhere.length) {
+      const li = line('Aberto em');
+      for (const o of elsewhere) li.append(unitRow(o.unit, o.name, o.since));
+    }
+    if (!summary.open.length) line('Situação', span('Processo sem unidade aberta (concluído)', 'muted'));
+    // Idle alert sits between header and details, so it stays visible when the card is collapsed.
+    const stalled = summary.open
+      .map((o) => ({ ...o, age: D.age(o.since) }))
+      .filter((o) => o.age.level !== 'ok')
+      .sort((a, b) => a.since - b.since);
+    if (stalled.length) {
+      const worst = stalled[0],
+        alert = ui.createElement('div');
+      alert.className = 'idle';
+      alert.dataset.level = worst.age.level;
+      alert.setAttribute('role', 'status');
+      alert.title = stalled.map((o) => `${o.unit}: desde ${D.formatTime(o.since)}`).join('\n');
+      alert.append(`⏱ Parado há ${worst.age.text} ${worst.own ? 'nesta unidade' : `em ${worst.unit}`}`);
+      if (stalled.length > 1) {
+        const more = ui.createElement('small');
+        more.textContent = `e mais ${stalled.length - 1} ${stalled.length === 2 ? 'unidade parada' : 'unidades paradas'} há 3 dias ou mais`;
+        alert.append(more);
+      }
+      root.insertBefore(alert, list);
+      root.dataset.idle = worst.age.level;
+    }
+    if (history.partial)
+      line('Aviso', span('Andamento com várias páginas; considerados só os registros carregados.', 'muted'));
+
+    async function describeBlocks(kind, found, label) {
+      if (!found.length) return [];
+      let listed = null;
+      try {
+        listed = await loadBlocks(kind);
+      } catch {}
+      return found
+        .filter((b) => !listed || listed.partial || listed.blocks.has(b.id))
+        .map((b) => {
+          const extra = listed?.blocks.get(b.id);
+          const parts = [`${label} nº ${b.id}`];
+          if (extra?.description) parts.push(`“${extra.description}”`);
+          if (extra?.state) parts.push(extra.state);
+          if (extra?.available) parts.push(`disponibilizado para ${extra.available}`);
+          if (!listed) parts.push('conforme andamento');
+          const short = `bloco nº ${b.id}${extra?.description ? ` (${extra.description})` : ''}`;
+          return { ...b, text: parts.join(' · '), short };
+        });
+    }
+    const [signatureBlocks, internalBlocks] = await Promise.all([
+      describeBlocks('assinatura', summary.documentBlocks, 'Bloco de assinatura'),
+      describeBlocks('interno', summary.processBlocks, 'Bloco interno'),
+    ]);
+    // Signature blocks belong with the signature status instead of a separate section.
+    if (signatureBlocks.length && !signed())
+      signatureLine.replaceChildren(
+        signatureLine.firstChild,
+        ...signatureBlocks.map((b) => span(`✎ Aguardando assinatura · ${b.short}`, 'item pending', b.text)),
+      );
+    else for (const b of signatureBlocks) signatureLine.append(span(`No ${b.short}`, 'item muted', b.text));
+    if (!signatureBlocks.length && !internalBlocks.length) line('Blocos', span(`Fora de blocos de ${unit}`, 'muted'));
+
+    const icons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', sign: '✍', archive: '📁' };
+    for (const block of internalBlocks) {
+      const li = line('Bloco interno', span(block.text.replace(/^Bloco interno /, ''), 'item'));
+      const box = ui.createElement('div');
+      box.className = 'organizer';
+      li.append(box);
+      const process = tree.process.id;
+      const renderOrganizer = (state, message = '') => {
+        box.replaceChildren();
+        const subjects = state.tabs.filter((t) => (state.assignments[process] || []).includes(t.id)).map((t) => t.name);
+        box.append(span(`Assunto: ${subjects.length ? subjects.join(', ') : 'Sem assunto'}`));
+        const select = ui.createElement('select');
+        select.setAttribute('aria-label', `Status manual no bloco ${block.id}`);
+        for (const [value, label] of Object.entries(seiStatusLabels)) {
+          const option = ui.createElement('option');
+          option.value = value;
+          option.textContent = `${icons[value]} ${label}`;
+          select.append(option);
+        }
+        select.value = state.statuses?.[process] || 'none';
+        select.addEventListener('change', () =>
+          change(state, { type: 'status', status: select.value, processIds: [process] }),
+        );
+        box.append(select);
+        if (state.tabs.length) {
+          const details = ui.createElement('details'),
+            title = ui.createElement('summary');
+          title.textContent = 'Alterar assuntos';
+          details.append(title);
+          for (const tab of state.tabs) {
+            const label = ui.createElement('label'),
+              check = ui.createElement('input');
+            check.type = 'checkbox';
+            check.checked = (state.assignments[process] || []).includes(tab.id);
+            check.addEventListener('change', () =>
+              change(state, { type: check.checked ? 'assign' : 'unassign', tabId: tab.id, processIds: [process] }),
+            );
+            label.append(check, ' ' + tab.name);
+            details.append(label);
+          }
+          box.append(details);
+        }
+        if (message) box.append(span(message, message === 'Alteração salva.' ? 'ok' : 'error'));
+      };
+      const change = async (state, action) => {
+        for (const control of box.querySelectorAll('select,input')) control.disabled = true;
+        try {
+          const next = await api(block.id, {
+            version: state.version,
+            actor,
+            action: { ...action, processNumbers: { [process]: tree.process.number } },
+          });
+          renderOrganizer(next, 'Alteração salva.');
+        } catch (e) {
+          let latest = state;
+          try {
+            latest = await api(block.id);
+          } catch {}
+          renderOrganizer(latest, e.message);
+        }
+      };
+      try {
+        renderOrganizer(await api(block.id));
+      } catch (e) {
+        box.replaceChildren(span(`Organizador indisponível: ${e.message}`, 'error'));
+      }
     }
   }
 })();
