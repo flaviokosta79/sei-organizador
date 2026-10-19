@@ -197,3 +197,10 @@ test('alerta de tempo parado no topo do card, visível mesmo oculto',async()=>{
  const fresh=frame({rows:[hrow(days(0.1),'SEPM/3°CPA','c','Processo recebido na unidade',true),...historyRows.slice(2)]});await fresh.done;await settle();
  assert.equal(fresh.badge().querySelector('.idle'),null);assert.equal(fresh.badge().querySelector('section').dataset.idle,undefined);
 });
+test('documento aberto não se repete nas pendências, que seguem listando os demais',async()=>{
+ const open=frame({documentId:'903',body:'<p>Minuta</p>',treeDom:treeOf(pendingTree)});await open.done;await settle();
+ assert.doesNotMatch(open.badge().textContent,/Pendências/);assert.match(open.badge().textContent,/Assinatura✎ Não assinado/);
+ const twoPending=pendingTree.replace('NosAcoes[6]','NosAcoes[7]').replace('"A905"','"A999"').replace('"A999","905"','"A999","999"');
+ const f=frame({documentId:'905',treeDom:treeOf(twoPending)});await f.done;await settle();
+ assert.match(f.badge().textContent,/Pendências antes de enviar⚠ Despacho 777 sem assinatura/);assert.doesNotMatch(f.badge().textContent,/Despacho 999 sem assinatura/);
+});

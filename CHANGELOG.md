@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-10-19
+
+- Documento aberto deixa de se repetir em Pendências antes de enviar; sua situação continua na linha Assinatura, e a linha some quando não há outros pendentes.
+- Os demais documentos sem assinatura e a tela Enviar Processo continuam listando todas as pendências.
+- 55 testes passaram. Sem mudança no servidor nem nas permissões.
+
 ## 0.3.1 — 2026-10-19
 
 - Alerta de tempo parado no topo do card: unidade aberta há mais tempo e quantas outras passam de 3 dias, em amarelo (3 a 6 dias) ou vermelho (7 dias ou mais).

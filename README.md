@@ -1,4 +1,4 @@
-# SEI Organizador — 0.3.1
+# SEI Organizador — 0.3.2
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -47,7 +47,7 @@ Documentos de outras unidades, anexos externos e outras unidades atuais não exi
 
 Documento pendente é um documento interno gerado pela unidade e ainda sem nenhuma assinatura, segundo a árvore do processo. Documentos externos e anexos não contam.
 
-- **No card da árvore**: a linha **Pendências antes de enviar** lista esses documentos com o documento aberto. Aparece também ao abrir documentos de outras unidades, num card reduzido só com a pendência.
+- **No card da árvore**: a linha **Pendências antes de enviar** lista esses documentos, exceto o documento aberto, cuja situação já aparece na linha Assinatura. Aparece também ao abrir documentos de outras unidades, num card reduzido só com a pendência.
 - **Na tela Enviar Processo** aberta pela árvore: uma faixa amarela acima da lista de processos. Ao clicar em Enviar, por clique, Enter ou Alt+E, a extensão pede confirmação. Cancelar mantém a tela; confirmar segue o envio nativo do SEI sem alteração. Depois de confirmar, não pergunta de novo na mesma tela.
 
 O aviso nunca bloqueia o envio. Sem pendência, nada aparece. Envios em lote pelo Controle de Processos não são verificados. Assinaturas parciais contam como assinadas, porque o SEI não informa quem ainda precisa assinar. Documentos em pastas da árvore ainda não abertas não entram na verificação.
@@ -96,7 +96,7 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.3.1.zip -Force
+Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.3.2.zip -Force
 ```
 
 Resultado da entrega: **40 testes passaram**, além da verificação de sintaxe e de formatação. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.

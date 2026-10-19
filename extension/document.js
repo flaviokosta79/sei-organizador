@@ -22,7 +22,8 @@
     signers: [],
   };
   // Unsigned documents of the unit are a process-level warning, shown whatever document is open.
-  const pending = tree.pending(unit);
+  // The open document is left out: its own signature line already says it is unsigned.
+  const pending = tree.pending(unit).filter((d) => d.id !== documentId);
   const own = !!info.protocol && !(info.unit && D.sigla(info.unit) !== D.sigla(unit));
   if (!own && !pending.length) return;
   // Signature footer is read before the badge exists, so our own text never matches.
