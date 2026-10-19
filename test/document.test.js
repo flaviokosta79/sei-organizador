@@ -139,3 +139,50 @@ test('documento sem assinatura em bloco mostra aguardando assinatura na própria
  const signed=frame({rows,signatureList:[['14','COMANDANTE 5º CPA']]});await signed.done;await settle();assert.match(signed.badge().textContent,/Pessoa Um \(Coronel\) · 19\/10\/2026.*No bloco nº 14 \(COMANDANTE 5º CPA\)/);
  assert.equal(signed.badge().querySelector('.organizer select').parentElement.className,'organizer');
 });
+
+const pendingTree=tree.replace('</script>',`Nos[3] = new infraArvoreNo("DOCUMENTO","903","900","#","ifrConteudoVisualizacao","Despacho 777","Despacho 777","svg/documento_interno.svg?25","i","i",true,false,null,null,"n","777");
+Nos[4] = new infraArvoreNo("DOCUMENTO","904","900","#","ifrConteudoVisualizacao","Anexo (888)","Anexo (888)","svg/documento_pdf.svg?25","i","i",true,false,null,null,"n","888");
+Nos[5] = new infraArvoreNo("DOCUMENTO","905","900","#","ifrConteudoVisualizacao","Despacho 999","Despacho 999","svg/documento_interno.svg?25","i","i",true,false,null,null,"n","999");
+NosAcoes[3] = new infraArvoreAcao("UNIDADE_GERADORA","UG903","903","#",null,"Unidade Teste",null,true,"SEPM/5°CPA");
+NosAcoes[4] = new infraArvoreAcao("UNIDADE_GERADORA","UG904","904","#",null,"Unidade Teste",null,true,"SEPM/5°CPA");
+NosAcoes[5] = new infraArvoreAcao("UNIDADE_GERADORA","UG905","905","#",null,"Unidade Teste",null,true,"SEPM/5°CPA");
+NosAcoes[6] = new infraArvoreAcao("ASSINATURA","A905","905","#","ifrVisualizacao","Assinado por:","svg/a.svg",true);
+</script>`);
+const treeOf=source=>new JSDOM(source,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`});
+test('pendências: só documentos internos da unidade sem nenhuma assinatura',()=>{
+ const t=data.parseTree(new JSDOM(pendingTree).window.document.scripts[0].textContent);
+ assert.deepEqual(plain(t.pending('SEPM/5ºCPA')),[{id:'903',protocol:'777',title:'Despacho 777'}]);
+ assert.deepEqual(plain(t.pending('SEPM/9° BPM')),[]);
+});
+test('card mostra pendências em qualquer documento do processo',async()=>{
+ const other=frame({documentId:'902',treeDom:treeOf(pendingTree)});await other.done;await settle();const root=other.badge();
+ assert.match(root.querySelector('h2').textContent,/Processo SEI-350024\/000001\/2026/);
+ assert.equal(root.querySelectorAll('li').length,1);assert.match(root.textContent,/Pendências antes de enviar⚠ Despacho 777 sem assinatura/);
+ assert.equal(other.requests.length,0);assert.equal(other.messages.length,0);
+ const own=frame({treeDom:treeOf(pendingTree)});await own.done;await settle();const items=own.badge().querySelectorAll('li');
+ assert.match(items[0].textContent,/^Pendências antes de enviar⚠ Despacho 777 sem assinatura$/);assert.match(items[1].textContent,/^Assinatura✔ Pessoa Um/);
+});
+
+function sendFrame({protocols='900',processId='900',source=pendingTree,answer=false}={}){
+ const dom=new JSDOM(`<form id="frmAtividadeListar"><div id="divInfraBarraComandosSuperior" class="infraBarraComandos"><button type="submit" id="sbmEnviar">Enviar</button></div><div id="divProcedimentos">Processos</div><input type="hidden" id="hdnIdProtocolos" value="${protocols}"></form>`,{url:`${base}controlador.php?acao=procedimento_enviar&acao_origem=arvore_visualizar&id_procedimento=${processId}&arvore=1&infra_unidade_atual=1`});
+ const topDom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/SEPM)"></a><a id="lnkInfraUnidade">SEPM/5°CPA</a>`,{url:`${base}controlador.php?acao=procedimento_trabalhar`});
+ const treeDom=treeOf(source),topDoc=topDom.window.document;const getById=topDoc.getElementById.bind(topDoc);topDoc.getElementById=id=>id==='ifrArvore'?{contentDocument:treeDom.window.document}:getById(id);
+ const listeners=[],questions=[];const fakeWindow={top:{document:topDoc},addEventListener:(type,fn,capture)=>listeners.push({type,fn,capture})};
+ const context={window:fakeWindow,document:dom.window.document,location:dom.window.location,URL,setTimeout,console,confirm:q=>{questions.push(q);return answer;},SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'},seiDocumentData:data};
+ const done=runInNewContext(read('send.js'),context);
+ const click=target=>{const e={target,prevented:false,stopped:false,preventDefault(){this.prevented=true;},stopImmediatePropagation(){this.stopped=true;}};for(const l of listeners)if(l.type==='click')l.fn(e);return e;};
+ return {done,doc:dom.window.document,listeners,questions,click,banner:()=>dom.window.document.querySelector('#sei-organizador-envio')?.shadowRoot,set answer(v){answer=v;}};
+}
+test('enviar processo: aviso acima da lista e confirmação antes do envio nativo',async()=>{
+ const f=sendFrame();await f.done;const banner=f.banner();assert.ok(banner);
+ assert.equal(f.doc.querySelector('#divProcedimentos').previousElementSibling.id,'sei-organizador-envio');
+ assert.match(banner.textContent,/Documento de SEPM\/5°CPA sem assinatura neste processo:Despacho 777/);assert.doesNotMatch(banner.textContent,/Anexo|999/);
+ assert.equal(f.listeners.length,1);assert.equal(f.listeners[0].capture,true);
+ const other=f.click(f.doc.querySelector('#divProcedimentos'));assert.equal(f.questions.length,0);assert.equal(other.prevented,false);
+ const cancel=f.click(f.doc.querySelector('#sbmEnviar'));assert.equal(f.questions.length,1);assert.match(f.questions[0],/• Despacho 777/);assert.equal(cancel.prevented,true);assert.equal(cancel.stopped,true);
+ f.answer=true;const ok=f.click(f.doc.querySelector('#sbmEnviar'));assert.equal(ok.prevented,false);assert.equal(f.questions.length,2);
+ const again=f.click(f.doc.querySelector('#sbmEnviar'));assert.equal(again.prevented,false);assert.equal(f.questions.length,2);
+});
+test('enviar processo sem pendência, em lote ou com árvore de outro processo não interfere',async()=>{
+ for(const options of [{source:tree},{protocols:'900,901'},{processId:'901',protocols:'901'}]){const f=sendFrame(options);await f.done;assert.equal(f.banner(),undefined);assert.equal(f.listeners.length,0);}
+});

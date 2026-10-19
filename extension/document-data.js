@@ -56,6 +56,7 @@ globalThis.seiDocumentData = (() => {
       id: a[1],
       parent: a[2],
       title: a[5],
+      icon: a[7],
       protocol: a[15],
     }));
     const actions = calls(source, 'infraArvoreAcao').map((a) => ({
@@ -84,7 +85,55 @@ globalThis.seiDocumentData = (() => {
           signers,
         };
       },
+      // Internal documents of the unit without any signature; external documents never carry one.
+      pending(unit) {
+        return nodes
+          .filter(
+            (n) =>
+              n.type === 'DOCUMENTO' &&
+              /documento_interno/.test(n.icon || '') &&
+              sigla(actions.find((a) => a.type === 'UNIDADE_GERADORA' && a.target === n.id)?.sigla) === sigla(unit) &&
+              !actions.some((a) => a.type === 'ASSINATURA' && a.target === n.id),
+          )
+          .map((n) => ({ id: n.id, protocol: n.protocol, title: n.title }));
+      },
     };
+  }
+  // Waits for the process tree frame (it may load after the frame asking for it) and reads it.
+  async function loadTree(top) {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, 250));
+      let treeDocument;
+      try {
+        treeDocument = top.getElementById('ifrArvore')?.contentDocument;
+      } catch {
+        return null;
+      }
+      const anchor = treeDocument?.querySelector('a[onclick*="procedimento_consultar_historico"]');
+      const historyLink = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
+      if (!historyLink) continue;
+      const tree = parseTree(
+        Array.from(treeDocument.scripts)
+          .map((s) => s.textContent)
+          .join('\n'),
+      );
+      return tree.process ? { treeDocument, tree, historyLink } : null;
+    }
+    return null;
+  }
+  // Same identity rules as the block list: configured unit and organization, from the top SEI frame.
+  function seiContext(win, url, config) {
+    if (url.searchParams.get('infra_unidade_atual') !== config?.unitId || win === win.top) return null;
+    let top;
+    try {
+      top = win.top.document;
+    } catch {
+      return null;
+    }
+    const match = (top.querySelector('a#lnkUsuarioSistema')?.title || '').match(/^(.+)\s+\(([^/()]+)\/([^()]+)\)$/);
+    const unit = top.querySelector('#lnkInfraUnidade')?.textContent.trim();
+    if (!match || match[3] !== config.org || !unit) return null;
+    return { top, unit, actor: { name: match[1].trim(), login: match[2], org: match[3] } };
   }
   function parseSignatures(text) {
     const result = [],
@@ -225,6 +274,8 @@ globalThis.seiDocumentData = (() => {
     parseDate,
     calls,
     parseTree,
+    loadTree,
+    seiContext,
     parseSignatures,
     parseHistory,
     summarize,

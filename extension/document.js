@@ -5,46 +5,13 @@
     D = globalThis.seiDocumentData;
   const url = new URL(location.href);
   const documentId = url.searchParams.get('id_documento');
-  if (
-    url.searchParams.get('acao') !== 'documento_visualizar' ||
-    !/^\d+$/.test(documentId || '') ||
-    url.searchParams.get('infra_unidade_atual') !== config?.unitId ||
-    window === window.top
-  )
-    return;
-  let top, treeDocument;
-  try {
-    top = window.top.document;
-  } catch {
-    return;
-  }
-  const user = top.querySelector('a#lnkUsuarioSistema'),
-    match = (user?.title || '').match(/^(.+)\s+\(([^/()]+)\/([^()]+)\)$/);
-  if (!match || match[3] !== config.org) return;
-  const actor = { name: match[1].trim(), login: match[2], org: match[3] };
-  const unit = top.querySelector('#lnkInfraUnidade')?.textContent.trim();
-  if (!unit) return;
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  // The tree frame may still be loading when the document frame arrives.
-  let tree = null,
-    historyLink = null;
-  for (let attempt = 0; attempt < 20 && !historyLink; attempt++) {
-    if (attempt) await wait(250);
-    try {
-      treeDocument = top.getElementById('ifrArvore')?.contentDocument;
-    } catch {
-      return;
-    }
-    const anchor = treeDocument?.querySelector('a[onclick*="procedimento_consultar_historico"]');
-    historyLink = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
-    if (historyLink)
-      tree = D.parseTree(
-        Array.from(treeDocument.scripts)
-          .map((s) => s.textContent)
-          .join('\n'),
-      );
-  }
-  if (!historyLink || !tree?.process) return;
+  if (url.searchParams.get('acao') !== 'documento_visualizar' || !/^\d+$/.test(documentId || '')) return;
+  const context = D.seiContext(window, url, config);
+  if (!context) return;
+  const { top, unit, actor } = context;
+  const loaded = await D.loadTree(top);
+  if (!loaded) return;
+  const { treeDocument, tree, historyLink } = loaded;
   // One card per tree: the document opened last replaces it, even when it does not show its own.
   treeDocument.querySelector('#sei-organizador-documento')?.remove();
   const info = tree.document(documentId) || {
@@ -54,7 +21,10 @@
     unit: null,
     signers: [],
   };
-  if (!info.protocol || (info.unit && D.sigla(info.unit) !== D.sigla(unit))) return;
+  // Unsigned documents of the unit are a process-level warning, shown whatever document is open.
+  const pending = tree.pending(unit);
+  const own = !!info.protocol && !(info.unit && D.sigla(info.unit) !== D.sigla(unit));
+  if (!own && !pending.length) return;
   // Signature footer is read before the badge exists, so our own text never matches.
   const signatures = D.parseSignatures(document.body.textContent);
 
@@ -168,7 +138,7 @@
     toggle = ui.createElement('button'),
     list = ui.createElement('ul');
   const subtitle = ui.createElement('small');
-  subtitle.textContent = info.title;
+  subtitle.textContent = own ? info.title : `Processo ${tree.process.number}`;
   heading.append('SEI Organizador', subtitle);
   toggle.type = 'button';
   toggle.className = 'toggle';
@@ -218,6 +188,9 @@
     return s;
   };
   const person = (name, login) => (name && login ? `${name} (${login})` : name || login || 'usuário não identificado');
+  if (pending.length)
+    line('Pendências antes de enviar', ...pending.map((d) => span(`⚠ ${d.title} sem assinatura`, 'item pending')));
+  if (!own) return;
 
   const signatureLine = line('Assinatura');
   if (signatures.length)
@@ -243,7 +216,12 @@
   loading.remove();
   const summary = D.summarize(history.rows, info.protocol, unit);
   if (!info.unit && summary.generatedUnit && D.sigla(summary.generatedUnit) !== D.sigla(unit)) {
-    host.remove();
+    // Not the unit's document after all: keep only the process-level warning, if any.
+    if (!pending.length) host.remove();
+    else {
+      subtitle.textContent = `Processo ${tree.process.number}`;
+      for (const li of Array.from(list.children).slice(1)) li.remove();
+    }
     return;
   }
   if (!signatures.length && !info.signers.length && summary.signed.length) {

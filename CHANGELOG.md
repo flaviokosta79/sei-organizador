@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-10-19
+
+- Aviso de pendência antes de enviar: documentos internos da unidade sem nenhuma assinatura, lidos da árvore do processo.
+- Card da árvore com a linha Pendências antes de enviar; em documentos de outras unidades, card reduzido só com a pendência.
+- Tela Enviar Processo, aberta pela árvore: faixa de aviso acima da lista e confirmação ao clicar em Enviar, sem bloquear nem alterar o envio nativo.
+- Envio em lote, processos sem pendência e árvore de outro processo ficam sem aviso.
+- Contexto do SEI e leitura da árvore compartilhados entre o card e a tela de envio; novo send.js no mesmo content script.
+- 53 testes passaram. Sem mudança no servidor nem nas permissões.
+
 ## 0.2.2 — 2026-10-19
 
 - Seletor de status compacto, na mesma linha do assunto, em vez de ocupar a largura do card.
