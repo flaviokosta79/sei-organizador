@@ -416,7 +416,7 @@
         link.after(b, feedback);
       }
     }
-    const statusIcons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', archive: '📁' };
+    const statusIcons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', sign: '✍', archive: '📁' };
     function statusKnown() {
       return ready && state.statuses && typeof state.statuses === 'object';
     }

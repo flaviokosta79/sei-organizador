@@ -18,3 +18,11 @@ test('status persistente independente, allowlist, conflitos, histórico e desfaz
  s.mutate('1','4',0,actor,{type:'create',name:'Antiga'});const legacy=new DatabaseSync(path);legacy.prepare('UPDATE history SET before=? WHERE block=?').run(JSON.stringify({tabs:[],assignments:{}}),'4');legacy.close();assert.deepEqual(s.mutate('1','4',1,actor,{type:'undo',historyId:s.history('1','4')[0].id}).statuses,{});
  }finally{s.close();rmSync(dir,{recursive:true,force:true});}
 });
+test('status Assinar aceito e Para arquivar exibido como Arquivar sem migração',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'sei-status-')),s=createStore(join(dir,'db.sqlite'));
+ try{const actor={login:'teste'};let r=s.mutate('1','2',0,actor,{type:'status',status:'archive',processIds:['10']});
+  r=s.mutate('1','2',1,actor,{type:'status',status:'sign',processIds:['10']});assert.equal(r.statuses[10],'sign');
+  assert.match(seiHistoryText(s.history('1','2')[0]),/Arquivar → Assinar/);
+  assert.deepEqual(Object.entries(seiStatusLabels),[['none','Sem status'],['attention','Atenção'],['follow','Acompanhar'],['urgent','Urgente'],['sign','Assinar'],['archive','Arquivar']]);
+ }finally{s.close();rmSync(dir,{recursive:true,force:true});}
+});

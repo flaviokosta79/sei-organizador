@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-10-19
+
+- Novo status Assinar (✍), entre Urgente e Arquivar, no bloco interno, no filtro e no card do processo.
+- Para arquivar passa a se chamar Arquivar; a chave gravada não mudou, então marcações existentes continuam valendo sem migração.
+- Servidor aceita o novo status; exige reimplantação da API antes de usar Assinar. Até lá, escolher Assinar mostra erro e não grava.
+- 56 testes passaram. Sem mudança no banco nem nas permissões.
+
 ## 0.3.2 — 2026-10-19
 
 - Documento aberto deixa de se repetir em Pendências antes de enviar; sua situação continua na linha Assinatura, e a linha some quando não há outros pendentes.

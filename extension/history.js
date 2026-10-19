@@ -3,7 +3,8 @@ globalThis.seiStatusLabels = {
   attention: 'Atenção',
   follow: 'Acompanhar',
   urgent: 'Urgente',
-  archive: 'Para arquivar',
+  sign: 'Assinar',
+  archive: 'Arquivar',
 };
 globalThis.seiResolveHistory = (items, state) =>
   items.map((h, index) => {

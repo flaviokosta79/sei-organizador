@@ -21,7 +21,7 @@ export function createStore(path) {
           if(!tab||!Array.isArray(action.processIds)||action.processIds.length>1000||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id))) throw new Error('Seleção inválida');
           for(const id of action.processIds){const a=new Set(next.assignments[id]||[]);action.type==='assign'?a.add(tab.id):a.delete(tab.id);if(a.size)next.assignments[id]=[...a];else delete next.assignments[id];} break;
         case 'status':
-          if(!Array.isArray(action.processIds)||action.processIds.length!==1||typeof action.processIds[0]!=='string'||!/^\d{1,30}$/.test(action.processIds[0])||!['none','attention','follow','urgent','archive'].includes(action.status))throw new Error('Status inválido');
+          if(!Array.isArray(action.processIds)||action.processIds.length!==1||typeof action.processIds[0]!=='string'||!/^\d{1,30}$/.test(action.processIds[0])||!['none','attention','follow','urgent','sign','archive'].includes(action.status))throw new Error('Status inválido');
           if(action.status==='none')delete next.statuses[action.processIds[0]];else next.statuses[action.processIds[0]]=action.status;break;
         case 'undo': {
           if(!Number.isSafeInteger(action.historyId))throw Object.assign(new Error('Selecione uma alteração no histórico.'),{status:400});

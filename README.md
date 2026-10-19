@@ -1,4 +1,4 @@
-# SEI Organizador — 0.3.2
+# SEI Organizador — 0.4.0
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -23,7 +23,7 @@ Para clone existente, execute `git submodule update --init`. `referencias/sei` �
 - **Geral** reúne os processos carregados na página. Classificar por assunto mantém o processo em Geral. O filtro de status também se aplica a Geral e pode esconder linhas.
 - Um processo pode ter vários assuntos. **Sem assunto** reúne os processos sem vínculo válido. Contagens consideram somente os processos carregados pela página e pela pesquisa atuais.
 - A coluna **Assunto** aparece somente em Geral. Clique no assunto, use o clique direito na linha ou a tecla de menu para atribuir ou retirar vínculos. O menu da linha também funciona nas demais abas.
-- **Status** aparece em todas as abas: Sem status, Atenção, Acompanhar, Urgente e Para arquivar. É manual, independente dos assuntos e das anotações nativas.
+- **Status** aparece em todas as abas: Sem status, Atenção, Acompanhar, Urgente, Assinar e Arquivar. Processos marcados antes como "Para arquivar" aparecem como Arquivar, sem migração. É manual, independente dos assuntos e das anotações nativas.
 - A barra oferece Criar assunto, o filtro de status e Histórico/Fechar histórico. Renomear e Excluir aba aparecem quando uma pasta está ativa. Os botões Atualizar e Limpar filtros foram retirados; para voltar à visão completa, selecione Geral e Todos os status.
 - A sincronização acontece ao abrir e a cada dez segundos enquanto a página está visível, além de ocorrer após uma alteração. Falhas retornam a Geral e desabilitam gravações até reconectar; status não sincronizado não é apresentado como Sem status.
 - Trocar de aba ou filtrar desmarca as seleções que ficaram escondidas, preservando as ações nativas do SEI sobre os processos visíveis.
@@ -96,7 +96,7 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.3.2.zip -Force
+Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.4.0.zip -Force
 ```
 
 Resultado da entrega: **40 testes passaram**, além da verificação de sintaxe e de formatação. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.

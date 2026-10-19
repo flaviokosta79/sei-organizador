@@ -319,7 +319,7 @@
   else for (const b of signatureBlocks) signatureLine.append(span(`No ${b.short}`, 'item muted', b.text));
   if (!signatureBlocks.length && !internalBlocks.length) line('Blocos', span(`Fora de blocos de ${unit}`, 'muted'));
 
-  const icons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', archive: '📁' };
+  const icons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', sign: '✍', archive: '📁' };
   for (const block of internalBlocks) {
     const li = line('Bloco interno', span(block.text.replace(/^Bloco interno /, ''), 'item'));
     const box = ui.createElement('div');

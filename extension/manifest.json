@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SEI Organizador",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Abas compartilhadas por assunto em blocos internos e situação dos documentos no SEI.",
   "background": {
     "service_worker": "background.js"
