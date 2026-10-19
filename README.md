@@ -1,4 +1,4 @@
-# SEI Organizador — 0.1.6
+# SEI Organizador — 0.2.2
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -31,6 +31,18 @@ Para clone existente, execute `git submodule update --init`. `referencias/sei` �
 - A tabela usa colunas compactas, rolagem horizontal e cabeçalho original fixo sob a barra. O controle de copiar usa o número completo do link do processo. O tema acompanha o SEI, com contraste claro/escuro.
 - A interface se recupera quando a lista chega depois do script, a barra é removida ou a tabela é substituída, e ao retornar pelo histórico do navegador. Não se aplica ao Controle de Processos nem a blocos de outros tipos.
 
+## Situação do documento
+
+Ao abrir um documento gerado pela unidade atendida, aparece um card na árvore do processo, logo abaixo de **Consultar Andamento**. O documento fica livre, sem nada sobreposto. O card acompanha o documento aberto: some ao abrir outro documento ou ao sair dele, e não entra na impressão. As informações ficam empilhadas para caber na coluna estreita da árvore:
+
+- **Assinatura**: quem assinou, cargo, data e hora, lidos do rodapé. Na falta do rodapé, usa a árvore ou o andamento. Sem assinatura, indica **Não assinado** ou, se o documento estiver em bloco de assinatura, **Aguardando assinatura · bloco nº N (descrição)** na mesma linha.
+- **Último envio**: data e hora, unidades de destino e quem enviou, a partir do último "Processo remetido pela unidade" do andamento. Avisa quando esse envio é anterior ao documento.
+- **Tempo parado**: para cada unidade com o processo aberto, o tempo desde o último andamento ali. Fica amarelo a partir de 3 dias e vermelho a partir de 7. Também mostra quando o processo está aberto na própria unidade.
+- **Blocos**: blocos internos em que o processo está (os de assinatura aparecem na linha da assinatura), com descrição e estado quando constam da lista de blocos. Blocos de outras unidades são ignorados.
+- **Organizador**: em cada bloco interno, assunto e status compartilhados. É possível alterar o status e os assuntos ali mesmo, com as mesmas regras de versão e histórico da lista do bloco.
+
+Documentos de outras unidades, anexos externos e outras unidades atuais não exibem o card. **Ocultar/Mostrar** é lembrado no navegador. O andamento e as listas de blocos são consultados no próprio SEI, com a sessão do usuário, e ficam em cache na aba por 1 e 2 minutos. Quando o andamento tem mais de uma página, valem só os registros carregados. Os blocos vêm dos registros "inserido no bloco"/"retirado do bloco" do andamento.
+
 ## Histórico e desfazer
 
 O painel mostra as últimas 100 operações; o SQLite conserva todo o histórico. As cores distinguem criação, exclusão, atribuição, retirada, renomeação, status e desfazer, com descrição textual independente da cor. Passe o mouse sobre o login para ver o nome completo e o órgão registrados. Registros antigos sem nome completo informam que ele não está disponível.
@@ -43,7 +55,7 @@ Registros já desfeitos, sem efeito ou que representam um desfazer não oferecem
 
 ## Dados e identificação
 
-Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e snapshots anterior/posterior. Desde a 0.1.6, cada registro guarda a lista de abas e somente os processos que a operação alterou; registros antigos com o estado completo continuam válidos para desfazer. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O worker faz as chamadas sem cookies e sem referrer.
+Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e snapshots anterior/posterior. Desde a 0.1.6, cada registro guarda a lista de abas e somente os processos que a operação alterou; registros antigos com o estado completo continuam válidos para desfazer. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O card do documento lê o andamento e os blocos diretamente no SEI e não envia esses dados à API; à API vão apenas o bloco interno e o processo, como na lista do bloco. O worker faz as chamadas sem cookies e sem referrer.
 
 O autor vem do título do ícone do usuário no SEI: nome, login e órgão. A API não autentica essa identidade; comparar login e órgão é uma regra funcional para o uso normal da extensão, não uma garantia contra chamadas que declarem outra identidade. O usuário autorizou API pública sem token e instalação sem configuração. O servidor restringe a unidade, valida dados e tamanho das requisições e usa transações com controle de versão. A administração da VPS e do Portainer permanece restrita.
 
@@ -75,7 +87,7 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.1.6.zip -Force
+Compress-Archive -Path extension -DestinationPath artifacts/sei-organizador-extension-0.2.2.zip -Force
 ```
 
 Resultado da entrega: **40 testes passaram**, além da verificação de sintaxe e de formatação. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.

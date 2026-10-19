@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.2 — 2026-10-19
+
+- Seletor de status compacto, na mesma linha do assunto, em vez de ocupar a largura do card.
+- Bloco de assinatura incorporado à linha da assinatura: "Aguardando assinatura · bloco nº N (descrição)" quando não assinado; documento assinado mostra o bloco discretamente abaixo.
+- Rótulos sem dois-pontos e sem caixa alta, com visual mais leve.
+- 49 testes passaram. Sem mudança no servidor nem nas permissões.
+
+## 0.2.1 — 2026-10-19
+
+- Card de situação movido do topo do documento para a árvore do processo, abaixo de Consultar Andamento; o documento fica sem sobreposição.
+- Layout vertical para a coluna estreita: rótulo acima do valor, um signatário e um destino por linha, unidades abertas com o tempo parado alinhado à direita.
+- O card acompanha o documento aberto: é substituído ao abrir outro documento e removido ao sair dele, inclusive quando o novo documento é de outra unidade.
+- 48 testes passaram. Sem mudança no servidor nem nas permissões.
+
+## 0.2.0 — 2026-10-19
+
+- Quadro de situação no topo dos documentos gerados pela unidade: assinaturas (nome, cargo, data e hora), último envio (destinos, horário e quem enviou) e aviso quando o envio é anterior ao documento.
+- Tempo parado em cada unidade com o processo aberto, em amarelo a partir de 3 dias e vermelho a partir de 7.
+- Blocos de assinatura do documento e blocos internos do processo, conforme o andamento da unidade e a lista de blocos do SEI.
+- Assunto e status do Organizador por bloco interno, com alteração no próprio quadro.
+- Andamento e listas consultados no SEI com a sessão do usuário, decodificados em ISO-8859-1, com cache curto na aba; nada disso é enviado à API.
+- O quadro não aparece em documentos de outras unidades nem na impressão; Ocultar/Mostrar fica lembrado.
+- Novo content script em todos os quadros do SEI (document-data.js e document.js); sem novas permissões.
+- 47 testes passaram. Servidor sem mudança; não exige reimplantação.
+
 ## 0.1.6 — 2026-10-13
 
 - Histórico do servidor guarda a lista de abas e somente os processos alterados, em vez do estado completo do bloco a cada operação.

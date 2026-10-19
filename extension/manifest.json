@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SEI Organizador",
-  "version": "0.1.6",
-  "description": "Abas compartilhadas por assunto em blocos internos do SEI.",
+  "version": "0.2.2",
+  "description": "Abas compartilhadas por assunto em blocos internos e situação dos documentos no SEI.",
   "background": {
     "service_worker": "background.js"
   },
@@ -20,6 +20,18 @@
       ],
       "css": [
         "content.css"
+      ]
+    },
+    {
+      "matches": [
+        "https://sei.rj.gov.br/sei/controlador.php*"
+      ],
+      "all_frames": true,
+      "js": [
+        "config.js",
+        "history.js",
+        "document-data.js",
+        "document.js"
       ]
     }
   ],
