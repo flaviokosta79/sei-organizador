@@ -126,6 +126,21 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
   }
   function render(view) {
     body.replaceChildren();
+    if (globalThis.seiWorkScope) {
+      node('h3', 'Bloco de trabalho', body);
+      node(
+        'p',
+        seiWorkScope.block
+          ? `Organizador restrito ao bloco ${seiWorkScope.block}.`
+          : 'Abra um bloco interno para iniciar.',
+        body,
+      );
+      const choose = node('button', 'Escolher bloco nas opções da extensão', body);
+      choose.type = 'button';
+      choose.addEventListener('click', () =>
+        chrome.runtime.sendMessage({ type: 'scope:open-options', identity: seiWorkScope.identity }),
+      );
+    }
     node('h3', 'Sons dos alertas', body);
     node('p', view.sound ? 'Som ativado' : 'Som silenciado', body);
     node(

@@ -27,7 +27,8 @@
       (org && org !== globalThis.SEI_ORGANIZADOR_CONFIG?.org)
     )
       return null;
-    return { table, form, user, unit, block, key: unit + ':' + block };
+    if (globalThis.seiWorkScope && !seiWorkScope.allows(block)) return null;
+    return { table, form, user, unit, block, key: unit + ':' + block + ':' + (user?.title || '') };
   }
   function reconcile() {
     queued = false;
@@ -65,6 +66,7 @@
   });
   window.addEventListener('popstate', schedule);
   window.addEventListener('hashchange', schedule);
+  window.addEventListener('sei-organizador:scope', schedule);
   globalThis.seiOrganizerLifecycle = { reconcile };
   reconcile();
   function mount(initial) {
@@ -874,7 +876,13 @@
     }
     async function api(extra = {}) {
       if (disposed) throw new Error('Página substituída');
-      const result = await chrome.runtime.sendMessage({ type: 'api', unit, block, ...extra });
+      const result = await chrome.runtime.sendMessage({
+        type: 'api',
+        identity: globalThis.seiWorkScope?.identity,
+        unit,
+        block,
+        ...extra,
+      });
       if (result.error) throw new Error(result.error);
       return result.data;
     }

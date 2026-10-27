@@ -36,6 +36,7 @@ globalThis.seiHistoryText = (h, numbers = {}) => {
     delete: `excluiu a pasta ${folder}`,
     assign: `atribuiu processo(s) ${processes} na pasta ${folder}`,
     unassign: `retirou processo(s) ${processes} da pasta ${folder}`,
+    departed: `limpou status e assuntos dos processos retirados do bloco: ${processes}`,
     undo: a.targetAction
       ? `desfez: ${seiHistoryText({ ...h, action: a.targetAction }, numbers)
           .split(' · ')

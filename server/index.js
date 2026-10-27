@@ -12,7 +12,27 @@ const server=http.createServer(async(req,res)=>{
   if(req.url==='/healthz'&&req.method==='GET')return send(200,{ok:true});
   if(!authorized(req.headers.authorization)){res.setHeader('WWW-Authenticate','Bearer');return send(401,{error:'Token de acesso ausente ou inválido'});}
   try{
-    const url=new URL(req.url,'http://localhost');const match=url.pathname.match(/^\/v1\/units\/(\d+)\/blocks\/(\d+)(\/history)?$/);
+    const url=new URL(req.url,'http://localhost');
+    const editing=url.pathname.match(/^\/v1\/units\/(\d+)\/(?:editing\/query|processes\/(\d{1,30})\/editing)$/);
+    if(editing){
+      if(editing[1]!==unit)return send(403,{error:'Unidade não permitida'});
+      if(req.method!=='POST')return send(405,{error:'Método inválido'});
+      if(!req.headers['content-type']?.startsWith('application/json'))return send(415,{error:'Use JSON'});
+      let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>65536)return send(413,{error:'Requisição grande demais'});}
+      const data=JSON.parse(body);return send(200,editing[2]?store.editing.update(unit,editing[2],data):store.editing.query(unit,data.processIds,data.block));
+    }
+    const shared=url.pathname.match(/^\/v1\/units\/(\d+)\/(?:blocks\/(\d{1,30})\/alerts|processes\/(\d{1,30})\/opened)$/);
+    if(shared){
+      if(shared[1]!==unit)return send(403,{error:'Unidade não permitida'});
+      if(req.method==='GET'&&shared[2])return send(200,store.alerts.read(unit,shared[2]));
+      if(req.method!=='POST')return send(405,{error:'Método inválido'});
+      if(!req.headers['content-type']?.startsWith('application/json'))return send(415,{error:'Use JSON'});
+      let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>524288)return send(413,{error:'Requisição grande demais'});}
+      const data=JSON.parse(body);
+      const a=data.actor||{};const actor={login:typeof a.login==='string'?a.login.slice(0,100):'',org:typeof a.org==='string'?a.org.slice(0,80):'',verified:false};
+      return send(200,shared[2]?store.alerts.snapshot(unit,shared[2],data):store.alerts.opened(unit,shared[3],actor,data.block));
+    }
+    const match=url.pathname.match(/^\/v1\/units\/(\d+)\/blocks\/(\d+)(\/history)?$/);
     if(!match)return send(404,{error:'Rota inexistente'});if(match[1]!==unit)return send(403,{error:'Unidade não permitida'});
     if(req.method==='GET')return send(200,match[3]?store.history(match[1],match[2]):store.read(match[1],match[2]));
     if(req.method!=='POST'||match[3])return send(405,{error:'Método inválido'});

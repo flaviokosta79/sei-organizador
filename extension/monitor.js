@@ -5,7 +5,7 @@
   const D = globalThis.seiBlockMonitor;
   let spacer,
     footerCleanup = () => {};
-  let latestView;
+  let latestView, openedProcess;
   const settings = seiOrganizerSettings({
     getIdentity: () => identity,
     getView: () => latestView,
@@ -39,6 +39,7 @@
       return null;
     const block = new URL(location.href).searchParams.get('id_bloco');
     if (!/^\d{1,30}$/.test(block || '')) return null;
+    if (globalThis.seiWorkScope && !seiWorkScope.allows(block)) return null;
     try {
       return {
         block,
@@ -159,7 +160,12 @@
     const hasError =
       !!view.soundError ||
       view.records.some(
-        (record) => record.error || record.signError || record.notificationError || record.signNotificationError,
+        (record) =>
+          record.error ||
+          record.sharedError ||
+          record.signError ||
+          record.notificationError ||
+          record.signNotificationError,
       );
     const newLabel = `${count} ${count === 1 ? 'novo processo' : 'novos processos'}`;
     summary.textContent = signing
@@ -184,6 +190,7 @@
       if (
         !record.pending.length &&
         !record.signPending?.length &&
+        !record.sharedError &&
         !record.error &&
         !record.signError &&
         !record.notificationError &&
@@ -228,6 +235,7 @@
         ack.addEventListener('click', () => action('monitor:ack', { block: record.block }));
       }
       if (record.signError) node('p', `Assinar sem atualização: ${record.signError}`, body).className = 'error';
+      if (record.sharedError) node('p', `Vistos sem sincronização: ${record.sharedError}`, body).className = 'error';
       if (record.signNotificationError) node('p', record.signNotificationError, body).className = 'error';
       if (record.error) node('p', `Sem atualização: ${record.error}`, body).className = 'error';
       else
@@ -280,6 +288,17 @@
     const reg = registration(),
       regKey = key(reg);
     try {
+      const page = new URL(location.href);
+      const process = page.searchParams.get('id_procedimento');
+      const openKey = `${key(identity)}:${process}`;
+      if (
+        page.searchParams.get('acao') === 'procedimento_trabalhar' &&
+        /^\d{1,30}$/.test(process || '') &&
+        openedProcess !== openKey
+      ) {
+        await call('monitor:opened', { process });
+        openedProcess = openKey;
+      }
       const view = await call('monitor:sync', { poll, registration: reg && regKey !== registered ? reg : undefined });
       if (reg) registered = regKey;
       render(view);
@@ -299,6 +318,7 @@
                 const api = async (history) => {
                   const response = await chrome.runtime.sendMessage({
                     type: 'api',
+                    identity: globalThis.seiWorkScope?.identity,
                     unit: identity.unit,
                     block: target.block,
                     history,
@@ -314,7 +334,14 @@
               }
             }
             if (stopped || key(D.context()) !== key(identity)) break;
-            render(await call('monitor:result', { ...result, block: target.block, lease: view.poll.id }));
+            render(
+              await call('monitor:result', {
+                ...result,
+                block: target.block,
+                sharedVersion: target.sharedVersion,
+                lease: view.poll.id,
+              }),
+            );
           }
         } finally {
           if (!stopped) await call('monitor:done', { lease: view.poll.id });
@@ -334,6 +361,10 @@
       if (panel) panel.querySelector('details').open = true;
       else sync();
     }
+  });
+  window.addEventListener('sei-organizador:scope', () => {
+    registered = '';
+    sync();
   });
   // A late SEI header/list is detected without reacting to our own panel updates.
   let scheduled;

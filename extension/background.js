@@ -1,7 +1,9 @@
 importScripts('config.js');
+importScripts('scope-background.js');
 importScripts('monitor-sounds.js');
 importScripts('monitor-sign.js');
 importScripts('monitor-background.js');
+importScripts('editing-background.js');
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type !== 'api') return;
   (async () => {
@@ -9,6 +11,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       throw new Error('Origem não permitida');
     const { serviceUrl, unitId } = globalThis.SEI_ORGANIZADOR_CONFIG;
     if (msg.unit !== unitId || !/^\d+$/.test(msg.block)) throw new Error('Unidade ou bloco inválido');
+    if (globalThis.seiWorkScopeStore) await seiWorkScopeStore.requireBlock(msg.identity, msg.block);
     const base = new URL(serviceUrl);
     if (base.username || base.password || base.search || base.hash) throw new Error('URL de serviço inválida');
     if (

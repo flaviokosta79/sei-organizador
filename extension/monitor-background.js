@@ -11,6 +11,45 @@
   };
   const identityKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const chiefKey = `${SEI_ORGANIZADOR_CONFIG.unitId}:${SEI_ORGANIZADOR_CONFIG.org}`;
+  const sharedEnabled = !!SEI_ORGANIZADOR_CONFIG.serviceUrl;
+  async function shared(path, body) {
+    const response = await fetch(
+      new URL(`/v1/units/${SEI_ORGANIZADOR_CONFIG.unitId}/${path}`, SEI_ORGANIZADOR_CONFIG.serviceUrl),
+      {
+        method: body ? 'POST' : 'GET',
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!response.ok) throw new Error(`Leitura compartilhada indisponível (HTTP ${response.status}).`);
+    const state = await response.json();
+    if (
+      path.endsWith('/alerts') &&
+      (!Number.isSafeInteger(state.version) ||
+        !(state.entries === null || (state.entries && typeof state.entries === 'object')))
+    )
+      throw new Error('Resposta compartilhada inválida.');
+    return state;
+  }
+  function applyShared(record, state) {
+    if (state.entries === null) return;
+    const numbers = record.numbers || Object.fromEntries(record.pending.map((p) => [p.id, p.number]));
+    const localPending = new Set(record.pending.map((p) => p.id));
+    record.pending = Object.entries(state.entries)
+      .filter(([id, entry]) => !entry.seen || (entry.baseline && localPending.has(id)))
+      .map(([id]) => ({ id, number: numbers[id] || id }));
+  }
+  async function flushOpened(data, identity) {
+    if (!sharedEnabled) return;
+    for (const [key, item] of Object.entries(data.local.openQueue || {})) {
+      if (item.owner !== identityKey(identity)) continue;
+      await shared(`processes/${item.id}/opened`, { actor: identity, block: item.block ?? data.workBlock });
+      delete data.local.openQueue[key];
+    }
+  }
   const chiefs = (data) => data.local.chiefs?.[chiefKey] || [];
   const eligible = (data, owner) => chiefs(data).some((login) => owner === `${chiefKey}:${login}`);
   const validUrl = (value, block) => {
@@ -42,6 +81,7 @@
     ]);
     const count = Object.entries(data.session.targets)
       .filter(([, target]) => target.owner === owner)
+      .filter(([, target]) => data.workBlock === undefined || target.block === data.workBlock)
       .reduce(
         (sum, [key]) =>
           sum +
@@ -81,6 +121,7 @@
     soundPlayedAt: data.local.soundPlayedAt || null,
     records: Object.entries(data.session.targets)
       .filter(([, t]) => t.owner === owner)
+      .filter(([, t]) => data.workBlock === undefined || t.block === data.workBlock)
       .map(([key, t]) => {
         const r = data.local.records[key];
         return {
@@ -93,6 +134,7 @@
             url: t.links?.[p.id] || t.url,
           })),
           signError: r?.signError || '',
+          sharedError: r?.sharedError || '',
           signNotificationError: r?.signNotificationError || '',
           checked: r?.checked,
           error: r?.error || '',
@@ -115,9 +157,19 @@
       throw new Error('Unidade ou usuário inválido');
     const owner = identityKey(identity),
       data = await load();
+    data.workBlock = globalThis.seiWorkScopeStore ? (await seiWorkScopeStore.get(identity)).block : undefined;
+    if (globalThis.seiWorkScopeStore) {
+      data.session.workBlocks ??= {};
+      if (data.session.workBlocks[owner] !== data.workBlock) {
+        delete data.session.leases[owner];
+        data.session.lastPoll[owner] = 0;
+        data.session.workBlocks[owner] = data.workBlock;
+      }
+    }
     if (msg.type === 'monitor:sync') {
       const registration = msg.registration;
       if (registration) {
+        if (globalThis.seiWorkScopeStore) await seiWorkScopeStore.requireBlock(identity, registration.block);
         if (!/^\d{1,30}$/.test(registration.block)) throw new Error('Bloco inválido');
         const key = `${owner}:${registration.block}`;
         if (
@@ -133,7 +185,31 @@
           url: validUrl(registration.url, registration.block),
         };
       }
-      const targets = Object.values(data.session.targets).filter((t) => t.owner === owner);
+      const targets = Object.values(data.session.targets).filter(
+        (t) => t.owner === owner && (data.workBlock === undefined || t.block === data.workBlock),
+      );
+      if (sharedEnabled) {
+        let queueError = '';
+        try {
+          await flushOpened(data, identity);
+        } catch (e) {
+          queueError = e.message;
+        }
+        for (const target of targets) {
+          const record = data.local.records[`${owner}:${target.block}`];
+          try {
+            const state = await shared(`blocks/${target.block}/alerts`);
+            target.sharedVersion = state.version;
+            if (record) {
+              applyShared(record, state);
+              record.sharedError = queueError;
+            }
+          } catch (e) {
+            if (record) record.sharedError = e.message;
+            delete target.sharedVersion;
+          }
+        }
+      }
       const lease = data.session.leases[owner],
         now = Date.now();
       let poll = null;
@@ -143,7 +219,10 @@
         (!lease || lease.until < now) &&
         (msg.force || now - (data.session.lastPoll[owner] || 0) >= 55000)
       ) {
-        poll = { id: crypto.randomUUID(), targets: targets.map(({ block, url }) => ({ block, url })) };
+        poll = {
+          id: crypto.randomUUID(),
+          targets: targets.map(({ block, url, sharedVersion }) => ({ block, url, sharedVersion })),
+        };
         data.session.leases[owner] = { id: poll.id, tab: sender.tab.id, until: now + 180000 };
         data.session.lastPoll[owner] = now;
       }
@@ -154,6 +233,7 @@
       const lease = data.session.leases[owner];
       if (lease?.id === msg.lease && lease.tab === sender.tab.id) delete data.session.leases[owner];
     } else if (msg.type === 'monitor:result') {
+      if (globalThis.seiWorkScopeStore) await seiWorkScopeStore.requireBlock(identity, msg.block);
       const lease = data.session.leases[owner],
         key = `${owner}:${msg.block}`,
         target = data.session.targets[key];
@@ -172,8 +252,8 @@
           throw new Error('Lista inválida');
         const ids = msg.items.map((p) => p.id);
         if (new Set(ids).size !== ids.length) throw new Error('Lista duplicada');
-        const previous = new Set(record.seen || []),
-          arrived = record.seen === null ? [] : msg.items.filter((p) => !previous.has(p.id));
+        const previous = new Set(record.seen || []);
+        let arrived = record.seen === null ? [] : msg.items.filter((p) => !previous.has(p.id));
         const present = new Set(ids);
         const pending = new Map(record.pending.filter((p) => present.has(p.id)).map((p) => [p.id, p]));
         for (const p of arrived) pending.set(p.id, { id: p.id, number: p.number });
@@ -181,6 +261,29 @@
         record.pending = [...pending.values()];
         record.checked = Date.now();
         record.error = '';
+        record.numbers = Object.fromEntries(msg.items.map((p) => [p.id, p.number]));
+        if (sharedEnabled) {
+          try {
+            if (!Number.isSafeInteger(msg.sharedVersion))
+              throw new Error('Consulta compartilhada não confirmada; aguardando próximo ciclo.');
+            const state = await shared(`blocks/${msg.block}/alerts`, {
+              version: msg.sharedVersion,
+              ids,
+              pendingIds: record.pending.map((p) => p.id),
+            });
+            applyShared(record, state);
+            const unseen = new Set(record.pending.map((p) => p.id));
+            arrived = arrived.filter((p) => unseen.has(p.id));
+            record.sharedError = '';
+          } catch (e) {
+            record.sharedError = e.message;
+            // Never notify from an obsolete snapshot or before shared acknowledgement is checked.
+            arrived = [];
+            try {
+              applyShared(record, await shared(`blocks/${msg.block}/alerts`));
+            } catch {}
+          }
+        }
         let signArrived = [];
         if (msg.organizer) {
           try {
@@ -199,7 +302,10 @@
             link.searchParams.get('id_procedimento') !== p.id
           )
             throw new Error('Link de processo inválido');
-          if ((pending.has(p.id) || signIds.has(p.id)) && Object.keys(target.links).length < 200)
+          if (
+            (record.pending.some((item) => item.id === p.id) || signIds.has(p.id)) &&
+            Object.keys(target.links).length < 200
+          )
             target.links[p.id] = link.href;
         }
         if (msg.url) target.url = validUrl(msg.url, msg.block);
@@ -257,10 +363,48 @@
             }
         }
       }
+    } else if (msg.type === 'monitor:opened') {
+      if (
+        !/^\d{1,30}$/.test(msg.process || '') ||
+        from.searchParams.get('acao') !== 'procedimento_trabalhar' ||
+        from.searchParams.get('id_procedimento') !== msg.process
+      )
+        throw new Error('Processo aberto inválido');
+      data.local.openQueue ??= {};
+      if (globalThis.seiWorkScopeStore && !data.workBlock) throw Error('Escolha um bloco de trabalho.');
+      data.local.openQueue[`${owner}:${data.workBlock || ''}:${msg.process}`] = {
+        owner,
+        id: msg.process,
+        block: data.workBlock,
+      };
+      await save(data, owner);
+      try {
+        await flushOpened(data, identity);
+      } catch {
+        return view(data, owner);
+      }
+      for (const [recordKey, record] of Object.entries(data.local.records))
+        if (data.workBlock === undefined || recordKey === `${owner}:${data.workBlock}`)
+          record.pending = record.pending.filter((p) => p.id !== msg.process);
     } else if (msg.type === 'monitor:ack') {
       for (const [key, target] of Object.entries(data.session.targets))
-        if (target.owner === owner && (!msg.block || msg.block === target.block)) {
+        if (
+          target.owner === owner &&
+          (data.workBlock === undefined || target.block === data.workBlock) &&
+          (!msg.block || msg.block === target.block)
+        ) {
           if (data.local.records[key]) {
+            if (sharedEnabled) {
+              data.local.openQueue ??= {};
+              for (const item of data.local.records[key].pending)
+                data.local.openQueue[`${owner}:${data.workBlock || ''}:${item.id}`] = {
+                  owner,
+                  id: item.id,
+                  block: data.workBlock,
+                };
+              await save(data, owner);
+              await flushOpened(data, identity);
+            }
             data.local.records[key].pending = [];
             data.local.records[key].signPending = [];
           }
@@ -300,7 +444,7 @@
       }
     } else throw new Error('Operação inválida');
     await save(data, owner);
-    if (['monitor:result', 'monitor:ack', 'monitor:sound', 'monitor:chiefs'].includes(msg.type)) {
+    if (['monitor:result', 'monitor:opened', 'monitor:ack', 'monitor:sound', 'monitor:chiefs'].includes(msg.type)) {
       const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
       await Promise.allSettled(
         tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'monitor:changed' }, { frameId: 0 })),
@@ -310,9 +454,15 @@
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (
-      !['monitor:sync', 'monitor:result', 'monitor:done', 'monitor:ack', 'monitor:sound', 'monitor:chiefs'].includes(
-        msg?.type,
-      )
+      ![
+        'monitor:sync',
+        'monitor:result',
+        'monitor:done',
+        'monitor:opened',
+        'monitor:ack',
+        'monitor:sound',
+        'monitor:chiefs',
+      ].includes(msg?.type)
     )
       return;
     serial(() => handle(msg, sender)).then(

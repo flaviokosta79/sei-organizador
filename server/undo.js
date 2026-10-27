@@ -29,6 +29,7 @@ function analyze(record){
 export function undoPlan(record,later){
   const {action,changes:patch}=analyze(record);
   if(action.type==='undo')return {reason:'Este registro já é uma operação de desfazer.'};
+  if(action.type==='departed')return {reason:'Limpeza automática de processo retirado do bloco; não pode ser desfeita.'};
   if(!patch.size)return {reason:'Esta operação não alterou os dados.'};
   // Same key always conflicts; a tab conflicts with any non-status change that references it.
   const byTab=new Map();

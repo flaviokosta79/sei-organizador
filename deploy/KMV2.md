@@ -4,8 +4,8 @@
 
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
-a lista de bloco interno do SEI. Opções exibem somente informação, sem campos.
-A extensão local está na versão 0.11.0, com o card reorganizado por prioridade e distinção entre chegada, inclusão no bloco e tempo sem movimentação. A API implantada permanece em 0.10.0: status em lote atômico, com histórico e desfazer, compatível com os dados existentes. A versão 0.11.0 altera somente a extensão e não exige reimplantação. Cada atualização entregue da extensão deve incrementar a versão.
+a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
+Extensão e API estão na versão 0.14.0: bloco de trabalho por usuário, presença e vistos isolados por bloco, com limpeza de status e assuntos após confirmação completa da retirada do processo.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,11 +14,47 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:3ce5095f443e903ed952fd72b84cc9a270a7651d1c25b6b0889247756409bec2 (tag 0.10.0).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:0ce6922cda50b3d2ebbd592d16e7fea50f3d17ed87686975f682b2836e91e47f.
+Imagem da stack: flaviokosta/sei-organizador@sha256:30d5e039377af375cd84c904fadf59a9b407d49a270c0a70ff22fbc375bfb28b (tag 0.14.0).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:f7997d386516d64f0090f45733aed1735d9c8cd4321e718ac58beb298f0aba19 (0.13.0).
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.14.0 — 2026-10-27
+
+Preferência de bloco local por unidade/órgão/login, sem configuração de endereço ou token. Primeiro bloco escolhido automaticamente; opções permitem trocar a preferência e aplicá-la nas páginas abertas. Avisos de edição aparecem na linha do processo na lista do bloco escolhido. API suporta edição e reconhecimento de vistos isolados por bloco em tabelas aditivas editing_scopes e process_block_views, compatíveis com rollback para a API anterior.
+
+Uma lista completa e não filtrada reconcilia classificações: status e vínculos de processos ausentes são removidos na mesma transação da confirmação do snapshot. Mantém pastas e outros blocos, registra departed no histórico e bloqueia desfazer essa operação automática. Não executar limpeza com páginas parciais, falhas ou versões antigas. A primeira lista completa também remove metadados antigos de processos já ausentes. Saída/reinclusão entre consultas sem ausência observada não pode ser identificada.
+
+Backup consistente em /data/backups/before-0.14.0-20261027.sqlite, VACUUM INTO e quick_check ok, com cópia local em artifacts/backups/before-0.14.0-20261027.tar. Arquivo e Env anteriores em artifacts/stack-before-0.14.0.json. Imagem validada sem rede e sem volume: limpeza isolada, histórico, vistos, edição, conflitos e lote/desfazer.
+
+Atualização pela API suportada da stack 18 do Portainer, apenas SEI_IMAGE alterado. Arquivo/editor, demais variáveis, administração exclusiva e volume sei_organizador_data preservados; usuário node, completed e healthy. Seis módulos do servidor conferidos por SHA-256. Banco com quick_check ok e 1 bloco preservado, histórico com 270 registros no backup e 271 na conferência. Evidências em artifacts/deployment-0.14.0.json e artifacts/database-verification-0.14.0.json.
+
+Rollback: reaplicar pelo Portainer arquivo e Env de artifacts/stack-before-0.14.0.json e usar a extensão anterior, preservando o volume. A API anterior ignora as tabelas adicionais. Retornar a imagem não restaura classificações já limpas; o histórico e o backup preservam evidência para uma eventual recuperação de dados. Não restaurar o banco inteiro para apenas voltar a imagem.
+
+146 testes passaram; sintaxe e formatação aprovadas. Opções, mudança entre dois blocos, restauração dos controles nativos e aviso de edição isolado conferidos no Chromium com fixtures. Conferência no SEI real pendente.
+
+## Atualização 0.13.0 — 2026-10-27
+
+Presença de edição em tabela aditiva editing_presence, com expiração de 90 segundos e atividade recente de 60 segundos. Consultas em lotes de até 1.000 processos, corpo de 64 KiB, limite de 1.000 sessões ativas por unidade e validação de metadados. Nenhum conteúdo de documento é recebido; sem novas permissões da extensão.
+
+Backup consistente em /data/backups/before-0.13.0-20261027.sqlite (VACUUM INTO, quick_check ok), cópia local em artifacts/backups/before-0.13.0-20261027.tar. Configuração anterior em artifacts/stack-before-0.13.0.json. Imagem validada em container isolado sem rede: presença/encerramento, vistos compartilhados, conflito de snapshot e status em lote/desfazer.
+
+Stack 18 atualizada pelo Portainer trocando somente SEI_IMAGE. Editor/arquivo da stack, administração exclusiva, outras variáveis e volume sei_organizador_data preservados; usuário node, atualização completed e container healthy. Seis módulos do servidor conferidos por SHA-256. SQLite com quick_check ok, 1 bloco e 270 registros de histórico antes/depois. Saúde HTTPS e consulta de edição 200; outra unidade 403. Evidências em artifacts/deployment-0.13.0.json, database-verification-0.13.0.json e editing-endpoints-0.13.0.json.
+
+Rollback: reaplicar pelo Portainer arquivo e Env de artifacts/stack-before-0.13.0.json, mantendo o volume e os dados. A API 0.12.0 ignora a tabela adicional. Usar a extensão anterior caso a API seja revertida. Não restaurar o backup para apenas voltar a imagem.
+
+136 testes passaram; sintaxe e formatação aprovadas. Fluxo com popup ligado à janela de origem, edição recente, avisos no bloco/card, fechamento e layout em 320/520 px conferidos no Chromium com dados fictícios. Editor real do SEI ainda precisa de conferência.
+
+## Atualização 0.12.0 — 2026-10-27
+
+Backup consistente via VACUUM INTO em /data/backups/before-0.12.0-20261027.sqlite, quick_check ok; cópia local em artifacts/backups/before-0.12.0-20261027.tar. Configuração anterior do Portainer em artifacts/stack-before-0.12.0.json. Novas tabelas alert_blocks e process_views são aditivas; assuntos, status, versões e histórico não foram migrados.
+
+Imagem validada em container isolado sem rede: entrada nova, abertura compartilhada, conflito de snapshot, status em lote e desfazer. Atualização pela API suportada da stack 18; apenas SEI_IMAGE alterado. Arquivo/editor, demais variáveis, administração exclusiva e volume sei_organizador_data preservados. Banco com quick_check ok e 1 bloco preservado; histórico com 268 registros no backup e 269 na verificação final, sem remoção de registros. Evidências em artifacts/deployment-0.12.0.json e artifacts/database-verification-0.12.0.json.
+
+Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.12.0.json, preservando o volume. A API anterior ignora as tabelas adicionais; não apagar tabelas nem restaurar o backup para apenas voltar a imagem. Usar também a extensão anterior se reverter a API, pois a 0.12.0 requer as novas rotas de reconhecimento.
+
+128 testes passaram, incluindo migração de avisos locais, dois navegadores, abertura offline e fila persistente, reinclusão e concorrência. Extensão sem novas permissões; serviço mantém unidade fixa, acesso sem token, validação e limites do Traefik.
 
 ## Atualização 0.10.0 — 2026-10-24
 
@@ -76,7 +112,7 @@ rollback. Não entregar apenas docker stack deploy externo. Não dar Docker sock
 
 ## Instalação e atualização da extensão
 
-Extrair artifacts/sei-organizador-extension-0.11.0.zip em uma pasta e carregar essa pasta
+Extrair artifacts/sei-organizador-extension-0.14.0.zip em uma pasta e carregar essa pasta
 em chrome://extensions (modo desenvolvedor), ou recarregar a extensão previamente
 carregada da pasta extension deste projeto. Aceitar a permissão de instalação
 para o serviço, se solicitada pelo Chrome, e recarregar a página do bloco no SEI.

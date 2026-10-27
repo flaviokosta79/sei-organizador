@@ -34,5 +34,25 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  const rejected=await apiFetch(base+'/v1/units/1/blocks/2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:6,actor:{login:'outro'},action:{type:'undo',historyId:history[0].id}})});
  assert.equal(rejected.status,403);assert.equal((await(await apiFetch(base+'/v1/units/1/blocks/2')).json()).version,6);
  await operate(6,{type:'undo',historyId:history[0].id});assert.deepEqual((await(await apiFetch(base+'/v1/units/1/blocks/2')).json()).statuses,{});
+ const shared=base+'/v1/units/1/blocks/2/alerts';
+ const sharedPost=body=>apiFetch(shared,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ assert.equal((await fetch(shared)).status,401);
+ assert.equal((await apiFetch(base+'/v1/units/2/blocks/2/alerts')).status,403);
+ assert.equal((await apiFetch(base+'/v1/units/2/processes/10/opened',{method:'POST'})).status,403);
+ assert.equal((await(await apiFetch(shared)).json()).entries,null);
+ assert.equal((await sharedPost({version:0,ids:['10'],pendingIds:['10']})).status,200);
+ assert.equal((await sharedPost({version:0,ids:[]})).status,409);
+ assert.equal((await sharedPost({version:1,ids:['x']})).status,400);
+ const open=await apiFetch(base+'/v1/units/1/processes/10/opened',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor:{login:'colega'}})});assert.equal(open.status,200);
+ assert.equal((await(await apiFetch(shared)).json()).entries['10'].seen,true);
+ assert.equal((await(await apiFetch(base+'/v1/units/1/blocks/2')).json()).version,7);
+ const editing=base+'/v1/units/1/processes/10/editing';
+ const editor={session:'11111111-1111-4111-8111-111111111111',document:'11',number:'555',actor:{name:'Colega',login:'colega',org:'SEPM'},activityAgeMs:1000};
+ const editingPost=body=>apiFetch(editing,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const query=()=>apiFetch(base+'/v1/units/1/editing/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({processIds:['10']})});
+ assert.equal((await fetch(editing)).status,401);assert.equal((await apiFetch(base+'/v1/units/2/processes/10/editing',{method:'POST'})).status,403);
+ assert.equal((await editingPost({...editor,activityAgeMs:-1})).status,400);assert.equal((await editingPost(editor)).status,200);
+ let editors=await(await query()).json();assert.equal(editors.entries.length,1);assert.equal(editors.entries[0].actor.login,'colega');assert.equal(editors.entries[0].number,'555');
+ assert.equal((await editingPost({...editor,stop:true})).status,200);editors=await(await query()).json();assert.equal(editors.entries.length,0);
  }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
 });

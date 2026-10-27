@@ -147,6 +147,13 @@ test('card prioriza controles e distingue chegada, atividade e alertas de outras
  }finally{f.leave();}
 });
 
+test('card não mostra fluxo de processo fora do bloco escolhido nas opções',async()=>{
+ const blocked=frame({action:'procedimento_visualizar',scope:{ready:Promise.resolve(),block:'999',allows:id=>id==='999'}});
+ await blocked.done;assert.equal(blocked.badge(),undefined);assert.equal(blocked.messages.length,0);blocked.leave();
+ const allowed=frame({action:'procedimento_visualizar',scope:{ready:Promise.resolve(),block:'1343',allows:id=>id==='1343'}});
+ try{await allowed.done;assert.ok(allowed.badge());assert.ok(allowed.messages.every(m=>m.block==='1343'));}finally{allowed.leave();}
+});
+
 test('tempo parado por faixa e lista de blocos',()=>{
  const now=new Date(2026,9,19,12,0);
  assert.deepEqual({...data.age(new Date(2026,9,19,11,15),now)},{text:'45 min',level:'ok'});
@@ -159,7 +166,7 @@ test('tempo parado por faixa e lista de blocos',()=>{
  assert.equal(data.parseBlockList(new JSDOM('<p>login</p>').window.document),null);
 });
 
-function frame({action='documento_visualizar',processId='900',documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,historyHTML=null,historyFetcher=null,apiHandler=null,organizer,rows=historyRows,body=footer,signatureList=[],gate=null,treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
+function frame({scope,action='documento_visualizar',processId='900',documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,historyHTML=null,historyFetcher=null,apiHandler=null,organizer,rows=historyRows,body=footer,signatureList=[],gate=null,treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
  const docDom=new JSDOM(action==='procedimento_visualizar'?treeDom.serialize():`<title>SEI/ERJ - 555 - CI</title><p class="Texto">Conteúdo nativo</p>${body}`,{pretendToBeVisual:true,url:`${base}controlador.php?acao=${action}&${action==='documento_visualizar'?`id_documento=${documentId}`:`id_procedimento=${processId}`}&infra_unidade_atual=${unitParam}&infra_hash=d`});
  if(action==='procedimento_visualizar')treeDom=docDom;
  const topDom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/${org})"></a><a id="lnkInfraUnidade">SEPM/5°CPA</a><a href="controlador.php?acao=bloco_interno_listar&infra_hash=i">Internos</a><a href="controlador.php?acao=bloco_assinatura_listar&infra_hash=a">Assinatura</a><iframe id="ifrArvore"></iframe>`,{url:`${base}controlador.php?acao=procedimento_trabalhar&id_procedimento=900`});
@@ -178,6 +185,7 @@ function frame({action='documento_visualizar',processId='900',documentId='901',u
  const context={window:fakeWindow,document:docDom.window.document,location:docDom.window.location,URL,URLSearchParams,AbortSignal,AbortController,TextDecoder,Response,DOMParser:docDom.window.DOMParser,fetch,chrome,sessionStorage:storage,localStorage:storage,setTimeout,console,
   setInterval:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearInterval:id=>timers.delete(id),
   SEI_ORGANIZADOR_CONFIG:{serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'SEPM'},seiDocumentData:data};
+ if(scope)context.seiWorkScope=scope;
  runInNewContext(read('history.js'),context);
  runInNewContext(read('history-pages.js'),context);
  const done=runInNewContext(read('document.js'),context);

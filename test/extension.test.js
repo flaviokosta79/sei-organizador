@@ -79,7 +79,8 @@ test('Geral, seleção oculta, linhas de outra página, privacidade e indisponib
  click('Geral');assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,false);
  click('Assunto');d.querySelector('#tblProtocolosBlocos').insertAdjacentHTML('beforeend',row('300'));await tick();assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,true);
  f.disconnect();f.sync();await tick();assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,false);assert.ok(Array.from(d.querySelectorAll('[role=status]')).some(e=>/Sem sincronização/.test(e.textContent)));assert.equal(buttons().find(b=>b.textContent==='+ Criar assunto').disabled,true);
- assert.ok(f.calls.every(c=>Object.keys(c).every(k=>['type','unit','block'].includes(k))));
+ assert.ok(f.calls.every(c=>Object.keys(c).every(k=>['type','unit','block','identity'].includes(k))));
+ assert.ok(f.calls.every(c=>Object.keys(c.identity||{}).every(k=>['unit','org','login','name'].includes(k))));
  }finally{f.dom.window.close();}
 });
 test('não injeta no Controle de Processos',()=>{const f=fixture('procedimento_controlar');try{assert.equal(f.dom.window.document.querySelector('#sei-organizador'),null);assert.equal(f.calls.length,0);}finally{f.dom.window.close();}});

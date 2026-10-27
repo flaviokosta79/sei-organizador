@@ -2,18 +2,29 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {sameActor,undoPlan,applyUndo,snapshots} from './undo.js';
+import {createAlerts} from './alerts.js';
+import {createEditing} from './editing.js';
 export function createStore(path) {
   mkdirSync(dirname(path), {recursive:true});
   const db = new DatabaseSync(path);
+  const alerts=createAlerts(db,{onSnapshot:(unit,block,ids)=>{
+    const current=read(unit,block),present=new Set(ids);
+    const removed=[...new Set([...Object.keys(current.assignments),...Object.keys(current.statuses)])].filter(id=>!present.has(id));
+    for(let i=0;i<removed.length;i+=1000)mutate(unit,block,read(unit,block).version,{name:'SEI Organizador',login:'organizador.sistema',org:'SEPM',verified:false},{type:'departed',processIds:removed.slice(i,i+1000)},true);
+  }});
+  const editing=createEditing(db);
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
   const read=(unit,block)=>{const r=db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?').get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
-  function mutate(unit,block,version,actor,action) {
-    db.exec('BEGIN IMMEDIATE');
+  function mutate(unit,block,version,actor,action,inTransaction=false) {
+    if(!inTransaction)db.exec('BEGIN IMMEDIATE');
     try {
       const old=read(unit,block); if(old.version!==version) throw Object.assign(new Error('Estado atualizado por outro colega. Recarregue e tente novamente.'),{status:409});
       const next=structuredClone(old); delete next.version;
       const tab=next.tabs.find(t=>t.id===action.tabId);
       switch(action.type) {
+        case 'departed':
+          if(!inTransaction||!Array.isArray(action.processIds)||!action.processIds.length||action.processIds.length>1000||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id)))throw new Error('Retirada não confirmada');
+          for(const id of action.processIds){delete next.assignments[id];delete next.statuses[id];}break;
         case 'create': if(next.tabs.length>=100) throw new Error('Limite de abas atingido'); next.tabs.push({id:crypto.randomUUID(),name:validName(action.name)}); break;
         case 'rename': if(!tab) throw new Error('Aba inexistente'); tab.name=validName(action.name); break;
         case 'delete': if(!tab) throw new Error('Aba inexistente'); next.tabs=next.tabs.filter(t=>t.id!==tab.id); for(const id of Object.keys(next.assignments)){next.assignments[id]=next.assignments[id].filter(t=>t!==tab.id);if(!next.assignments[id].length) delete next.assignments[id];} break;
@@ -46,9 +57,9 @@ export function createStore(path) {
       const v=old.version+1;const snapshot=snapshots(old,next);const before=JSON.stringify(snapshot.before);const after=JSON.stringify(snapshot.after);
       db.prepare('INSERT INTO blocks VALUES(?,?,?,?) ON CONFLICT(unit,block) DO UPDATE SET version=excluded.version,state=excluded.state').run(unit,block,v,JSON.stringify(next));
       db.prepare('INSERT INTO history(unit,block,time,actor,action,before,after,version) VALUES(?,?,?,?,?,?,?,?)').run(unit,block,new Date().toISOString(),JSON.stringify(actor),JSON.stringify(recorded),before,after,v);
-      db.exec('COMMIT'); return {version:v,...next};
-    }catch(e){db.exec('ROLLBACK');throw e;}
+      if(!inTransaction)db.exec('COMMIT'); return {version:v,...next};
+    }catch(e){if(!inTransaction)db.exec('ROLLBACK');throw e;}
   }
-  return {read,mutate,history:(u,b)=>{const items=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100').all(u,b);return items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});},close:()=>db.close()};
+  return {editing,alerts,read,mutate,history:(u,b)=>{const items=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100').all(u,b);return items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});},close:()=>db.close()};
 }
 function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw new Error('Nome deve conter 1 a 80 caracteres');return n.trim();}

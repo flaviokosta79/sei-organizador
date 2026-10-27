@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.14.0 — 2026-10-27
+
+- Opções permitem escolher o bloco de trabalho por unidade, órgão e login neste navegador. O primeiro bloco reconhecido é escolhido automaticamente; salvar outra escolha aplica a alteração às páginas abertas. Lista de blocos pode ser atualizada pela sessão do SEI, sem endereço ou token manual.
+- Organizador, card, alertas, vistos e avisos de edição ficam restritos ao bloco escolhido. Em outros blocos, a lista nativa é preservada com aviso e acesso às opções. Trocar a preferência não limpa classificações do bloco anterior. Edição aparece na linha do processo na página do bloco escolhido.
+- Consulta completa e não filtrada limpa status e vínculos com assuntos de processos ausentes somente naquele bloco. Mantém pastas, outros processos e outros blocos; registra a limpeza automática no histórico, sem desfazer. Operação atômica com o snapshot e proteção contra consultas substituídas, erros e listas incompletas. A primeira consulta completa também reconcilia classificações antigas ausentes.
+- 146 testes passaram; sintaxe e formatação aprovadas. Fluxo das opções, troca entre blocos e edição isolada conferidos no Chromium com dados fictícios. API implantada pela stack 18 do Portainer com backup, volume e histórico preservados, seis módulos conferidos por SHA-256, atualização completed e container healthy. Conferência no SEI real pendente.
+
+## 0.13.0 — 2026-10-27
+
+- Bloco interno e card mostram presença compartilhada de edição, com nome/login, documento e distinção entre editor aberto e edição recente. Múltiplos usuários aparecem separadamente; janelas do mesmo usuário/documento são reunidas.
+- Detecta editor_montar com campo editável, incluindo iframe, e identidade da própria página ou da janela de origem. Não registra a simples visualização de documentos. Faixa no editor informa presença confirmada ou falha de conexão.
+- Renovação/consulta a cada 20 segundos; atividade recente por 60 segundos. Encerramento ao sair e expiração no servidor após 90 segundos sem renovação, com retirada visual no próximo ciclo. Presenças não são enfileiradas offline e avisos expirados não permanecem como atuais.
+- Envia somente identificadores, nome/login e tempo de atividade; não envia texto digitado, valores, cookies ou links autenticados. Aviso informativo, sem bloquear o trabalho ou alterar classificação, vistos e histórico.
+- 136 testes passaram; sintaxe e formatação aprovadas. Fluxo de popup/edição/fechamento e layouts 320/520 px validados no Chromium com dados fictícios. API implantada pelo Portainer com backup, volume e 270 registros de histórico preservados; seis módulos conferidos por SHA-256, atualização completed e container healthy. Conferência no editor real do SEI pendente.
+
+## 0.12.0 — 2026-10-27
+
+- Abrir o processo na unidade registra reconhecimento compartilhado das novas entradas. Outros navegadores atualizados retiram o destaque Novo e o contador no próximo ciclo, normalmente em até um minuto. Aberturas fora da unidade e mensagens sem o processo correspondente à página são rejeitadas.
+- API mantém referências de entrada por bloco e reconhecimento por processo, com isolamento de unidade, limites e controle de concorrência. Saída/reinclusão detectada cria nova referência; aberturas antigas não reconhecem entradas posteriores à última observação de ausência.
+- Migração preserva avisos locais existentes mesmo se outro navegador iniciou uma referência silenciosa. Aberturas offline ficam em fila persistente para nova tentativa. Falhas de sincronização são indicadas no painel.
+- Marcar novas entradas como vistas pelo painel também compartilha o reconhecimento. Status manual, assuntos e histórico ficam intactos; pendências de assinatura continuam independentes e seu reconhecimento permanece local.
+- 128 testes passaram; sintaxe e formatação aprovadas. API implantada pela stack 18 do Portainer, com backup validado, volume e administração preservados, atualização completed e container healthy. Cinco módulos do servidor conferidos por SHA-256; saúde e rota compartilhada HTTPS 200, outra unidade 403. ZIP 0.12.0 conferido por SHA-256. Validação entre navegadores feita com fixtures; conferência no SEI real pendente.
+
 ## 0.11.0 — 2026-10-27
 
 - Card reorganizado em painéis: pendências e assinatura primeiro, controles do bloco antes do histórico, tipo do processo recolhido no final. Fundo suave, painéis claros, espaçamento e foco visível para leitura na coluna estreita.

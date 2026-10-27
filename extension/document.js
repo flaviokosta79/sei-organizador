@@ -12,6 +12,10 @@
   const context = D.seiContext(window, url, config);
   if (!context) return;
   const { top, unit, actor } = context;
+  if (globalThis.seiWorkScope) {
+    await seiWorkScope.ready;
+    if (!seiWorkScope.block) return;
+  }
   const loaded = await D.loadTree(top);
   if (!loaded) return;
   const { treeDocument, tree, historyLink } = loaded;
@@ -113,7 +117,13 @@
     return list;
   }
   async function api(block, body) {
-    const result = await chrome.runtime.sendMessage({ type: 'api', unit: config.unitId, block, body });
+    const result = await chrome.runtime.sendMessage({
+      type: 'api',
+      identity: globalThis.seiWorkScope?.identity,
+      unit: config.unitId,
+      block,
+      body,
+    });
     if (result?.error) throw new Error(result.error);
     return result.data;
   }
@@ -123,6 +133,7 @@
   if (!place) return;
   const host = ui.createElement('div');
   host.id = 'sei-organizador-documento';
+  host.dataset.process = tree.process.id;
   host.dataset.mode = own ? 'document' : 'process';
   const shadow = host.attachShadow({ mode: 'open' });
   const style = ui.createElement('style');
@@ -403,6 +414,10 @@
     historySignature = JSON.stringify(history);
     loading.remove();
     let summary = D.summarize(history.rows, own ? info.protocol : null, unit);
+    if (globalThis.seiWorkScope && !summary.processBlocks.some((block) => seiWorkScope.allows(block.id))) {
+      dispose();
+      return;
+    }
     if (own && !info.unit && summary.generatedUnit && D.sigla(summary.generatedUnit) !== D.sigla(unit)) {
       own = false;
       signatureLine.remove();
@@ -623,7 +638,11 @@
     }
     const [signatureBlocks, internalBlocks] = await Promise.all([
       describeBlocks('assinatura', summary.documentBlocks, 'Bloco de assinatura'),
-      describeBlocks('interno', summary.processBlocks, 'Bloco interno'),
+      describeBlocks(
+        'interno',
+        summary.processBlocks.filter((block) => !globalThis.seiWorkScope || seiWorkScope.allows(block.id)),
+        'Bloco interno',
+      ),
     ]);
     // Signature blocks belong with the signature status instead of a separate section.
     if (own && signatureBlocks.length && !signed())

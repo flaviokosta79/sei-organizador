@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {JSDOM} from 'jsdom';
+import {createStore} from '../server/store.js';
 const read=f=>readFileSync(new URL('../extension/'+f,import.meta.url),'utf8');
 const base='https://sei.rj.gov.br/sei/controlador.php';
 const blockUrl=`${base}?acao=rel_bloco_protocolo_listar&id_bloco=2&infra_unidade_atual=1&infra_hash=signed`;
@@ -20,7 +21,7 @@ function reader(fetch){
 const response=html=>new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}});
 const target={block:'2',url:blockUrl};
 const plain=v=>JSON.parse(JSON.stringify(v));
-function worker({local={},session={}}={}){
+function worker({local={},session={},sharedFetch,scopeStore}={}){
  const listeners={},notices=[],sounds=[],tabs=[],badges=[];
  const event=name=>({addListener:fn=>listeners[name]=fn});
  const area=data=>({get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))});
@@ -34,12 +35,64 @@ function worker({local={},session={}}={}){
   alarms:{onAlarm:event('alarm'),get:async()=>null,create:async()=>{}},
   tabs:{query:async()=>[{id:5,windowId:1}],sendMessage:async(id,msg)=>{tabs.push({id,msg});},create:async data=>tabs.push(data),update:async()=>{},onRemoved:event('removed'),onUpdated:event('updated')}
  };
- runInNewContext(read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'}});
+ runInNewContext(read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,AbortSignal,fetch:sharedFetch,seiWorkScopeStore:scopeStore,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',...(sharedFetch?{serviceUrl:'https://ext.5cpa.com.br'}:{})}});
  const send=(msg,{tabId=5,url=base,frameId=0}={})=>msg.type==='api'?Promise.resolve({data:msg.history?organizer.history:{version:organizer.version,statuses:organizer.statuses}}):new Promise(resolve=>listeners.message({identity,...msg},{tab:{id:tabId,url},frameId},resolve));
  const call=async(msg,options)=>{const result=await send(msg,options);if(result.error)throw Error(result.error);return result.data;};
  const poll=options=>call({type:'monitor:sync',poll:true,force:true,registration:{block:'2',url:blockUrl,name:'Teste'}},options);
  return {local,session,listeners,notices,sounds,tabs,badges,send,call,poll,set notifyFails(v){notifyFails=v;},set audioFails(v){audioFails=v;},set readyFailures(v){readyFailures=v;},get readyAttempts(){return readyAttempts;},set organizer(v){organizer=v;}};
 }
+
+test('dois navegadores compartilham vistos, rejeitam aberturas falsas e retomam fila offline',async()=>{
+ const store=createStore(':memory:');let offline=false;const requests=[];
+ const sharedFetch=async(url,options={})=>{
+  if(offline)throw Error('Offline');requests.push({url:String(url),options});const path=new URL(url).pathname;
+  const body=options.body?JSON.parse(options.body):null;
+  try{
+   const match=path.match(/blocks\/(\d+)\/alerts/);let data;
+   if(match)data=body?store.alerts.snapshot('1',match[1],body):store.alerts.read('1',match[1]);
+   else data=store.alerts.opened('1',path.match(/processes\/(\d+)\/opened/)[1],body.actor);
+   return {ok:true,json:async()=>data};
+  }catch(e){return {ok:false,status:e.status||400};}
+ };
+ const a=worker({sharedFetch}),b=worker({sharedFetch});
+ const snapshot=async(f,ids)=>{const poll=(await f.poll()).poll;try{return await f.call({type:'monitor:result',block:'2',lease:poll.id,sharedVersion:poll.targets[0].sharedVersion,items:ids.map(item)});}finally{await f.call({type:'monitor:done',lease:poll.id});}};
+ try{
+  await snapshot(a,['100']);await snapshot(b,['100']);
+  let view=await snapshot(a,['100','200']);assert.equal(view.records[0].pending[0].id,'200');
+  view=await snapshot(b,['100','200']);assert.equal(view.records[0].pending[0].id,'200');
+  await assert.rejects(b.call({type:'monitor:opened',process:'200'}),/Processo aberto inválido/);
+  await assert.rejects(b.call({type:'monitor:opened',process:'201'},{url:item('200').url}),/Processo aberto inválido/);
+  await b.call({type:'monitor:opened',process:'200'},{url:item('200').url});
+  view=await a.call({type:'monitor:sync'});assert.equal(view.records[0].pending.length,0);assert.equal(a.badges.at(-1),'');
+  await snapshot(a,['100','200','300']);offline=true;
+  await b.call({type:'monitor:opened',process:'300'},{url:item('300').url});assert.ok(Object.keys(b.local.seiBlockAlerts.openQueue).length);
+  view=await a.call({type:'monitor:sync'});assert.match(view.records[0].sharedError,/Offline/);assert.equal(view.records[0].pending[0].id,'300');
+  offline=false;await b.call({type:'monitor:sync'});assert.equal(Object.keys(b.local.seiBlockAlerts.openQueue).length,0);
+  view=await a.call({type:'monitor:sync'});assert.equal(view.records[0].pending.length,0);
+  for(const request of requests){assert.equal(request.options.credentials,'omit');assert.equal(request.url.includes('infra_hash'),false);assert.equal(request.options.body?.includes('infra_hash')||false,false);}
+ }finally{store.close();}
+});
+
+test('abrir processo no SEI envia reconhecimento, lista e sessão fora da unidade não enviam',async()=>{
+ for(const [url,markup,expected] of [[item('200').url,header,1],[blockUrl,header,0],[item('200').url,header.replace('infra_unidade_atual=1','infra_unidade_atual=2'),0]]){
+  const dom=new JSDOM(markup,{url,runScripts:'outside-only'}),w=dom.window,messages=[],listeners=[];
+  Object.assign(w,{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'},AbortSignal,AbortController,TextDecoder});
+  w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:async msg=>{messages.push(msg);return {data:{sound:true,records:[]}};}}};
+  try{
+   for(const file of ['monitor-data.js','monitor-sounds.js','monitor-settings.js','monitor.js'])w.eval(read(file));
+   await new Promise(r=>setTimeout(r,30));listeners[0]?.({type:'monitor:tick'});await new Promise(r=>setTimeout(r,30));
+   const opened=messages.filter(m=>m.type==='monitor:opened');assert.equal(opened.length,expected);if(expected)assert.equal(opened[0].process,'200');
+  }finally{w.close();}
+ }
+});
+
+test('monitor mostra e consulta somente o bloco de trabalho e troca sem conservar a consulta antiga',async()=>{
+ let block='2';const scopeStore={get:async()=>({block}),requireBlock:async(identity,id)=>{if(id!==block)throw Error('Outro bloco');}};
+ const f=worker({scopeStore});let view=await f.poll();assert.equal(view.records.length,1);assert.equal(view.poll.targets[0].block,'2');
+ await assert.rejects(f.call({type:'monitor:sync',registration:{block:'3',url:blockUrl.replace('id_bloco=2','id_bloco=3')}}),/Outro bloco/);
+ block='3';view=await f.call({type:'monitor:sync',poll:true,registration:{block:'3',url:blockUrl.replace('id_bloco=2','id_bloco=3')}});
+ assert.equal(view.records.length,1);assert.equal(view.records[0].block,'3');assert.equal(view.poll.targets.length,1);assert.equal(view.poll.targets[0].block,'3');
+});
 
 test('monitor lê todas as páginas sem pesquisa e limpa seleção sem executar ações nativas',async()=>{
  const calls=[];const f=reader(async(url,init)=>{calls.push({url:String(url),init});if(!init.body)return response(html(['999'],{total:1,search:'filtrado'}));const p=Number(init.body.get('hdnInfraPaginaAtual'));return response(html(p?['300']:['100','200'],{page:p,total:3}));});
