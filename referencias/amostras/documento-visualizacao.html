@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-br" >
+<head >
+<link rel="shortcut icon" sizes="any" href="favicon/favicon.ico"/>         
+<link rel="icon" type="image/svg+xml" href="favicon/favicon.svg"/>         
+<link rel="apple-touch-icon" href="favicon/apple-touch-icon.png"/>
+<link rel="manifest" href="favicon/site.webmanifest"/>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/>
+<meta name="robots" content="noindex"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+<title>SEI-RJ - Visualizar Árvore</title>
+<script type="text/javascript" src="/ruxitagentjs_ICA7NQVfghqrux_10347260902154543.js" data-dtconfig="rid=RID_-2031349982|rpid=968888337|domain=sei.rj.gov.br|reportUrl=https://bf66253twh.bf.dynatrace.com/bf|app=034f23a109b984eb|cors=1|srtbv=4|owasp=1|featureHash=ICA7NQVfghqrux|msl=153600|rdnt=1|uxrgce=1|cuc=vim3kbst|srms=2,1,0,0%2Ftextarea%2Cinput%2Cselect%2Coption;0%2Fdatalist;0%2Fform%20button;0%2F%5Bdata-dtrum-input%5D;0%2F.data-dtrum-input;0%2F%5Bcontenteditable%5D%3Anot%28%5Bcontenteditable%3D%22false%22%5D%29;0%2F%5Brole%3D%22textbox%22%5D%2C%5Brole%3D%22checkbox%22%5D%2C%5Brole%3D%22radio%22%5D%2C%5Brole%3D%22option%22%5D%2C%5Brole%3D%22combobox%22%5D%2C%5Brole%3D%22slider%22%5D%2C%5Brole%3D%22searchbox%22%5D%2C%5Brole%3D%22switch%22%5D%2C%5Brole%3D%22spinbutton%22%5D;1%2F%5Edata%28%28%5C-.%2B%24%29%7C%24%29|mel=100000|expw=1|md=mdcc1=a#lnkUsuarioSistema@title,mdcc2=dacao,mdcc3=a#selOrgao option:checked|lastModification=1792090744744|tp=500,50,0|srbbv=3|agentUri=/ruxitagentjs_ICA7NQVfghqrux_10347260902154543.js"></script><link href="/infra_css/infra-tooltip.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/infra-barra-progresso.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/infra-impressao-global.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="print"/>
+<link href="/infra_css/infra-ajax.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/calendario/v2/infra-calendario.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/arvore/infra-arvore.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/mapa/infra-mapa.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/jquery/jquery-ui-1.13.2/jquery-ui.min.css?1.13.2" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/jquery/jquery-ui-1.13.2/jquery-ui.structure.min.css?1.13.2" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/jquery/jquery-ui-1.13.2/jquery-ui.theme.min.css?1.13.2" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/multiple-select/multiple-select.min.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_js/modal/jquery.modalLink-1.0.0.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/bootstrap/bootstrap-5.3.1.min.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/bootstrap/menu-bootstrap.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/infra-global-esquema-3.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/esquemas/azul_celeste/infra-esquema-3.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="/infra_css/bootstrap/bootstrap-migracao-4-5.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<link href="css/infra-local-esquema-3.css?5.0.4-2.45.1" rel="stylesheet" type="text/css" media="all"/>
+<style></style><style type="text/css" >
+<!--/*--><![CDATA[/*><!--*/
+
+html, body {
+overflow:visible;
+}
+
+body{
+text-align:left;
+margin:0;
+}
+
+#divExibirOcultarBotoes img{
+    width:14px !important;
+}
+
+#collapseControle{
+    margin-top:16px;
+}
+
+#divInfraBarraLocalizacao {display:none;}
+
+#divArvoreAguarde {margin:0;display:block;text-align:center;display:none;}
+#imgArvoreAguarde {position:relative;top:50%;}
+
+#divArvoreConteudoIfr {
+  overflow:hidden;
+  background-color:white;
+  margin-top:10px;
+  padding:10px 10px 0px 10px;
+  border-radius: 5px;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, .3), 0 0.0625rem 0.125rem rgba(0, 0, 0, .2);
+}
+
+#frmVisualizar {display:none;}
+
+#divInfraAreaGlobal {width:100% !important;}
+
+#divInfraAreaTelaD{
+  background-color:#e0e0e0;
+
+  display: flex!important;
+  flex-direction: column!important;
+  flex-grow: 1!important;
+  padding-bottom:10px;
+}
+
+#divArvoreInformacao {
+  overflow-y:auto;
+}
+
+#divArvoreInformacao, #divArvoreInformacao a {
+  font-size:.875rem;
+}
+
+#divArvoreAcoesMovel {
+}
+#divArvoreAcoesMovel a {display:none;height: 32px;}
+#divArvoreNavegacao {display:contents;margin-top:10px;}
+#divArvoreNavegacao span {font-size:.825rem;font-weight:bold;line-height:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;margin-top:10px;}
+#divArvoreNavegacao button{margin-left:10px;}
+
+/*]]>*/-->
+</style>
+<script type="text/javascript">var INFRA_PATH_CSS="/infra_css",INFRA_PATH_IMAGENS="/infra_css/imagens",INFRA_PATH_JS="/infra_js",INFRA_PATH_SVG="/infra_css/svg",INFRA_LUPA_TIPO_JANELA=2,INFRA_BARRA_TIPO_JANELA=2,INFRA_TIPO_ALERTA=1;</script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/jquery/jquery-3.7.0.min.js?3.7.0"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/jquery/jquery-ui-1.13.2/jquery-ui.min.js?1.13.2"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/multiple-select/multiple-select.min.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/ddslick/jquery.ddslick.min.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/modal/jquery.modalLink-1.0.0.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraPaginaEsquema3.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraBotaoMenu.js?5.0.4-2.45.1"></script>    
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraUtil.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraCookie.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraUpload.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraTabelaDinamica.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraLupas.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraSelectEditavel.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraAjax.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/InfraTooltip.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/calendario/v2/InfraCalendario.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/arvore/InfraArvore.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="/infra_js/maskedpwd/MaskedPassword.min.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/bootstrap/bootstrap-5.3.1.min.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/bootstrap/bootstrap-migracao-4-5.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/bootstrap/infra-menu-bootstrap.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/touch/jquery.ui.touch-punch.min.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="utf-8" src="/infra_js/hotkeys/jquery.hotkeys.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="js/sei.js?5.0.4-2.45.1"></script>
+<script type="text/javascript" charset="iso-8859-1" src="js/arvore_visualizar.js?5.0.4-2.45.1"></script>
+
+<script type="text/javascript" charset="iso-8859-1" >
+<!--//--><![CDATA[//><!--
+
+
+var objLupaBloco = null;
+var objAjaxVerificacaoAssinatura = null;
+var noSelecionado = null;
+var nomeJanelaProcesso = '100021665_150184527';
+var nomeJanelaDocumento = '100021665_150285381';
+var linkMontarArvoreProcesso = 'controlador.php?acao=procedimento_visualizar&acao_origem=arvore_visualizar&id_procedimento=150184527&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=6515456d05750244d68d4e5926ea6429f1e3aadb2ec78189630e5819230c8208';
+var linkMontarArvoreProcessoDocumento = 'controlador.php?acao=procedimento_visualizar&acao_origem=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&id_procedimento_anexado=&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=7b09777d42ff19bcac11aefcff90f402bcee284dbd1be9268b72764a02bef916';
+var linkMontarArvoreProcessarHtml = 'controlador.php?acao=arvore_processar_html&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=5e81d619ebbd2e7f6af6b59fb536cdb8d265d1edcbe90c0b5d34a01bc7c0698d';
+var linkExcluirProcesso = 'controlador.php?acao=procedimento_excluir&acao_origem=arvore_visualizar&id_procedimento=150184527&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=bb4e304f7b3c51ee1cb8d452b5502d8c3503e5e2c6ea8154e37e471471928fda';
+var linkRemoverSobrestamentoProcesso = 'controlador.php?acao=procedimento_remover_sobrestamento&acao_origem=arvore_visualizar&id_procedimento=150184527&atualizar_arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=b07794ded533fbfdea780cba52889ecfcdd179a558a4b048a8a0053be9f7d818';
+var linkReabrirProcesso = 'controlador.php?acao=procedimento_reabrir&acao_origem=arvore_visualizar&id_procedimento=150184527&atualizar_arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=6a9a9a5c54bc8675b25f677a94cb3f5e77ad85b2883818f4b22afb170ccfa22d';
+var linkExcluirDocumento = 'controlador.php?acao=documento_excluir&acao_origem=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&atualizar_arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=86ba7dfa8370ad81226ac76aa075eb326725b19765b4b4267b71e108073c6a3a';
+var linkCienciaProcesso = 'controlador.php?acao=procedimento_ciencia&acao_origem=arvore_visualizar&id_procedimento=150184527&atualizar_arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=ba8a285c9258321426dc287816ca129493d39c6460a2439ba621d5150801d389';
+var linkCienciaDocumento = 'controlador.php?acao=documento_ciencia&acao_origem=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&atualizar_arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=77452471e069583810beb57bc1d8c51cc3f0a3337af8dff7a7a9869bff75a57b';
+var linkCienciaProcessoAnexado = 'controlador.php?acao=procedimento_anexado_ciencia&atualizar_arvore=1&acao_origem=arvore_visualizar&id_procedimento=150184527&id_procedimento_anexado=&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=0063fa527dffa84151468b47daea36607183789fbf1a036ca1de49d376bd7705';
+var linkAssinarDocumento = 'controlador.php?acao=documento_assinar&acao_origem=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=56a09717a7aad97a364c26c1ff2f04de218182cdd82575094fb71b8ee55e2705';
+var linkProcedimentoEnviarEmail = 'controlador.php?acao=procedimento_enviar_email&acao_origem=arvore_visualizar&acao_retorno=arvore_visualizar&id_procedimento=150184527&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=2a65d7b62edc010e2291bd2c14eaaf6313f917ebff748a2a63849787a579db8d';
+var linkDocumentoEnviarEmail = 'controlador.php?acao=documento_enviar_email&acao_origem=arvore_visualizar&acao_retorno=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=0150bd4edb21227c4e6a4ca92c9d2445fbb3c2dfd88061a4537faa06e4f054d1';
+var linkEncaminharEmail = 'controlador.php?acao=email_encaminhar&acao_origem=arvore_visualizar&acao_retorno=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=f14f818362bb63f3069d9fbbdcc91c7fa6d34a5da692761eb289f5ada28ab216';
+var linkResponderFormulario = 'controlador.php?acao=responder_formulario&acao_origem=arvore_visualizar&acao_retorno=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=06d9cbf13c68656777bc5a3e96784821b3b7b1222dc6467335b1561f23eb0594';
+var linkRenunciarCredencial = 'controlador.php?acao=procedimento_credencial_renunciar&id_procedimento=150184527&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=d906a23a27bbb195301f1a8522117c01a9c2a3314c643cfb254bcb3b7edda3b1';
+var linkEditarConteudo = 'controlador.php?acao=editor_montar&acao_origem=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=bd52abc4d147297668d28a5606b44e0c4cb522f0d094e0095da7cb2552304c97';
+var linkAlterarFormulario = 'controlador.php?acao=formulario_alterar&acao_origem=arvore_visualizar&acao_retorno=arvore_visualizar&id_procedimento=150184527&id_documento=150285381&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=1af2f748b3d1773503a3227b57c406a562cff0c9452476f5eb10310968cb93bd';
+var linkBotoesAcesso = 'controlador_ajax.php?acao_ajax=arvore_registrar_acesso_botao&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=48042a9e4dfb698a5de41c10c5d9c408a6df9d5ea4adf545aadc4a2730dc3c81';
+
+var HTML = "";
+
+var BOTOES_EXIBIR = [];
+var BOTOES_IGNORAR = ['30cd9300','7894c09a','9b42256f'];
+
+function inicializar(){
+  HTML = "";
+
+  exibirVoltarAcoes(true);
+  inicializarBotaoEditarComentario();
+
+  
+  //exclusão/renúncia volta para o controle de processos
+  
+  objAjaxVerificacaoAssinatura = new infraAjaxComplementar(null,'controlador_ajax.php?acao_ajax=documento_verificar_assinatura&id_documento=150285381&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=9d7e02ea422d34d9c4fa933ac83f74a58073e0a009e5eeecbcf12068d37811f6');
+  objAjaxVerificacaoAssinatura.async = false;
+  objAjaxVerificacaoAssinatura.bolAssinado = false;
+  objAjaxVerificacaoAssinatura.processarResultado = function(arr){
+   if (arr!=null) {
+     this.bolAssinado = false;
+     if (arr['SinAssinado']!=undefined && arr['SinAssinado']=='S') {
+       this.bolAssinado = true;
+     }
+   }
+  };
+  
+  //monta visualização de acordo com o nó selecionado na árvore
+  var objArvore = parent.parent.document.getElementById('ifrArvore').contentWindow['objArvore'];
+
+  if (objArvore != null){
+
+    noSelecionado = objArvore.getNoSelecionado();
+
+    if (noSelecionado != null){
+      if (noSelecionado.bolAgrupador && !parent.infraIsBreakpointBootstrap("lg")){
+        if (noSelecionado.bolAberto){
+          $("#ancFecharArvore").css("display", "inline");
+        }else{
+          $("#ancAbrirArvore").css("display", "inline");
+        }
+
+        document.getElementById('divArvoreNavegacao').innerHTML = '<span>' + noSelecionado.title + '</span>';
+        document.getElementById('divArvoreConteudoIfr').style = 'display: none !important;';
+
+      }else {
+        document.getElementById('divArvoreNavegacao').innerHTML = '<span>' + noSelecionado.label + '</span>';
+
+        if (noSelecionado.acoes != undefined) {
+          exibirBotoesAcoes(noSelecionado);
+          $("#hdnCrcAcoes").val(seiCrc32(noSelecionado.acoes));
+          $(document).ready(function () {
+            alterarTargetAcoes(noSelecionado,linkBotoesAcesso);
+          });
+        }
+      }
+
+      if (noSelecionado.src!=undefined && noSelecionado.src!=''){
+
+        //se for um link carrega no iframe
+        if (noSelecionado.html != undefined && noSelecionado.html != ''){
+
+          var innerHtml = '<div class="h-100 w-100 d-flex flex-column">';
+
+          if (noSelecionado.assinatura == undefined || noSelecionado.assinatura == ''){
+             innerHtml += '<div id="divArvoreInformacao"  >' + noSelecionado.html + '</div>';
+           }else{
+             innerHtml += '<div id="divArvoreInformacao"   >' + noSelecionado.html + '<div id="divAssinaturas" style="float:right">' + noSelecionado.assinatura + '</div></div>';
+           }
+
+           innerHtml += '<iframe onload="parent.ocultarAguarde();parent.detectarExcecao();" id="ifrArvoreHtml" src="' + noSelecionado.src + '" class="w-100 flex-grow-1" style="display: flex;" frameborder="0"  ></iframe>';
+
+                    innerHtml += "</div>";
+
+          HTML = innerHtml;
+          document.getElementById('ifrVisualizacao').src = linkMontarArvoreProcessarHtml;
+          exibirAguarde("ifrVisualizacao");
+
+        }else{
+
+          if (noSelecionado.tipo.indexOf('FEDERACAO') == -1 && noSelecionado.tipo.indexOf('FED_TRAMITACAO') == -1) {
+            $("#ifrVisualizacao").addClass("ifrVisualizacaoContraste")
+          }
+
+          document.getElementById('ifrVisualizacao').src =  noSelecionado.src
+          exibirAguarde("ifrVisualizacao");
+        }
+
+        if (noSelecionado.src.indexOf('documento_download_anexo')!=-1){
+          ocultarAguarde();
+        }
+
+      }else if (noSelecionado.html != undefined &&  noSelecionado.html != ''){
+         var innerHtml = '<div class="h-100 w-100 d-flex flex-column">';
+
+           if (noSelecionado.assinatura == undefined || noSelecionado.assinatura == ''){
+             innerHtml += '<div id="divArvoreInformacao"  >' + noSelecionado.html + '</div>';
+           }else{
+             innerHtml += '<div id="divArvoreInformacao"  >' + noSelecionado.html + '<div id="divAssinaturas" style="float:right">' + noSelecionado.assinatura + '</div></div>';
+           }
+
+                innerHtml += "</div>";
+
+        HTML = innerHtml;
+
+        document.getElementById('ifrVisualizacao').src = linkMontarArvoreProcessarHtml;
+
+        exibirAguarde("ifrVisualizacao");
+
+      }
+    }else{
+      atualizarArvore(linkMontarArvoreProcesso);
+      return;
+    }
+  }
+
+  
+  objLupaBloco = new infraLupaText('txtBloco','hdnIdBloco','controlador.php?acao=bloco_selecionar_processo&tipo_selecao=1&id_object=objLupaBloco&id_procedimento=150184527&id_documento=150285381&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=a781a2fafd3d4096480410d0bc54d59aacdf5aa8d874a9db31bb809b3d7a9bf2');
+  objLupaBloco.finalizarSelecao = function(){
+    document.getElementById('frmVisualizar').action = 'controlador.php?acao=rel_bloco_protocolo_cadastrar&acao_origem=arvore_visualizar&id_procedimento=150184527&arvore=1&infra_sistema=100000100&infra_unidade_atual=120000124&infra_hash=c19c6f1ffa22de26a51a2d9ca666f7687b1198e08b90ce917ae921a99a938922';
+    document.getElementById('frmVisualizar').submit();
+  }
+
+  exibirVoltarAcoes(false);
+  infraAdicionarEvento(window,'resize',redimensionar);
+}
+
+
+//--><!]]>
+</script>
+</head>
+<body onload="inicializar();"  >
+<button onclick="infraMoverParaTopo()" id="btnInfraTopo" class="infraButton infraCorBarraSistema" ><img src="/infra_css/svg/topo.svg?2.45.1" title="Voltar ao Topo" alt="Voltar ao Topo" tabindex="32767"></button>
+<div id="divInfraAreaGlobal" class="vh-100 vw-100 d-flex flex-column m-0 border-0" >
+<div id="divInfraAreaTela" style="min-height:0;"  class="w-100  flex-grow-1 d-flex flex-row  divInfraAreaTelaSimples">
+<div id="divInfraAreaTelaD"  class=" flex-grow-1 infraAreaTelaDExibeGrande infraAreaTelaDExibePequeno " >
+
+  <div id="divArvoreAcoesMovel" class="barraBotoesSEIMovel">
+    <a id="ancVoltarArvore" href="javascript:seiVoltarArvoreProcesso()" class="btn" style="display:none;" title="Voltar para a Árvore do Processo" tabindex="451">
+      <img src="/infra_css/svg/voltar.svg" width="32" height="32"/>
+    </a>
+
+    <a id="ancIcones" class="btn" data-toggle="collapse" sinFiltrarBotoes="N" style="display: none;" href="#collapseControle" role="button" aria-expanded="false" aria-controls="collapseControle" title="Exibir/Ocultar Botões" tabindex="452">
+      <img src="/infra_css/svg/menu_pontos.svg" width="32" height="32"/>
+    </a>
+
+    <a id="ancAnteriorArvore" href="javascript:parent.parent.document.getElementById('ifrArvore').contentWindow.navegarArvore('A')" class="btn" style="display:none;" title="Visualizar Anterior" tabindex="453">
+      <img src="/infra_css/svg/anterior.svg" width="32" height="32"/>
+    </a>
+
+    <a id="ancProximoArvore" href="javascript:parent.parent.document.getElementById('ifrArvore').contentWindow.navegarArvore('P')" class="btn" style="display:none;" title="Visualizar Próximo" tabindex="454">
+      <img src="/infra_css/svg/proximo.svg" width="32" height="32"/>
+    </a>
+
+    <a id="ancAbrirArvore" href="javascript:parent.parent.document.getElementById('ifrArvore').contentWindow.navegarAgrupador(noSelecionado.id)" class="btn" title="Abrir Item" tabindex="455">
+      <img src="svg/arvore_abrir.svg?25" width="32" height="32"/>
+    </a>
+
+    <a id="ancFecharArvore" href="javascript:parent.parent.document.getElementById('ifrArvore').contentWindow.navegarAgrupador(noSelecionado.id)" class="btn" title="Fechar Item" tabindex="456">
+      <img src="svg/arvore_fechar.svg?25" width="32" height="32"/>
+    </a>
+
+    <div id="divArvoreNavegacao" style="display:none;height: 32px;"></div>
+
+  </div>
+
+  <div class="collapse" id="collapseControle">
+    <div id="divArvoreAcoes" class="barraBotoesSEI"></div>
+  </div>
+
+  <div id="divArvoreConteudoIfr" tabindex="1000" class="d-flex flex-grow-1"><iframe id="ifrVisualizacao" onload="testarMudancaHrefIframeInterno();ocultarAguarde();testarDocumento('',linkBotoesAcesso);"  name="ifrVisualizacao"  class="ifrVisualizacao h-100 w-100"  src="about:blank" frameborder="0"></iframe></div>
+  <div id="divArvoreAguarde" style="position: absolute;height: 100%;width: 95%;"><img id="imgArvoreAguarde" class="mx-auto" src="/infra_css/svg/aguarde.svg" width="48" height="48" /></div>
+  <!-- Inclusão em Bloco -->
+  <form id="frmVisualizar" method="post" action="">
+    <input type="text" id="txtBloco" name="txtBloco" value=""/>
+    <input type="hidden" id="hdnIdBloco" name="hdnIdBloco" value=""/>
+    <input type="hidden" id="hdnCrcAcoes" name="hdnCrcAcoes" value=""/>
+  </form>
+</div>
+</div>
+</div>
+<input type="hidden" id="hdnInfraPrefixoCookie" name="hdnInfraPrefixoCookie" value="ERJ_SEI_oliveira_fdoc"/>
+<div id="infraDivImpressao" class="infraImpressao"></div>
+<div id="infraBs-xs" class="d-none d-xs-block"></div>
+<div id="infraBs-sm" class="d-none d-sm-block"></div>
+<div id="infraBs-md" class="d-none d-md-block"></div>
+<div id="infraBs-lg" class="d-none d-lg-block"></div>
+</body>
+</html>

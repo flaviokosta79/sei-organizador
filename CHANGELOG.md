@@ -1,5 +1,151 @@
 # Changelog
 
+## 0.11.0 — 2026-10-27
+
+- Card reorganizado em painéis: pendências e assinatura primeiro, controles do bloco antes do histórico, tipo do processo recolhido no final. Fundo suave, painéis claros, espaçamento e foco visível para leitura na coluna estreita.
+- Chegada apresenta envio e recebimento em sequência, com explicação do acesso que registra o recebimento. Inclusão e autor permanecem junto de cada bloco; seletor identificado como Status manual.
+- Nesta unidade mostra Processo aberto e esclarece que o tempo conta desde a última movimentação, não desde a chegada. Alerta de outra unidade recebe explicação explícita.
+- Sem novas consultas, permissões ou alterações na API; não exige reimplantação da VPS.
+- 122 testes passaram; sintaxe e formatação aprovadas. Prévia com dados fictícios conferida no Chromium em 320 e 520 px, sem rolagem horizontal. ZIP 0.11.0 atualizado. Conferência no SEI real pendente.
+
+## 0.10.3 — 2026-10-27
+
+- Cada bloco interno no card mostra a data/hora da inclusão do processo e quem incluiu, pelo registro Processo inserido no bloco do andamento. Informação disponível no resumo e ao selecionar documento.
+- Retirada e reinclusão usam a última inclusão registrada; blocos e unidades são tratados separadamente. Histórico incompleto é indicado junto da informação. Não confunde inclusão no bloco com recebimento na unidade.
+- Sem novas consultas, permissões ou alterações na API; não exige atualização da VPS.
+- 121 testes passaram; sintaxe e formatação aprovadas. ZIP 0.10.3 conferido por SHA-256. Testes cobrem retirada/reinclusão, múltiplos blocos, outra unidade, resumo/documento, sincronização e histórico parcial. Conferência visual no SEI real pendente.
+
+## 0.10.2 — 2026-10-27
+
+- Corrigida a duplicação do botão de copiar nos processos marcados como Novo. O botão fica associado ao link do processo, independentemente da posição do marcador inserido pelo monitor.
+- Controles duplicados são removidos; substituição do link recria o controle para copiar o número atual. Marcador, seleção e ações nativas são preservados.
+- Teste reproduz atualizações repetidas do marcador, remove duplicados e verifica a cópia após substituir o link. Sem alterações na API ou necessidade de atualizar a VPS.
+- 119 testes passaram; sintaxe e formatação aprovadas. Versões alinhadas e ZIP 0.10.2 conferido por SHA-256. Validação automatizada local; conferência visual no SEI real pendente.
+
+## 0.10.1 — 2026-10-27
+
+- Card mostra Chegada à unidade no resumo do processo e no documento: data/hora do envio, unidade de origem, autor da remessa e recebimento posterior quando disponível.
+- Distingue remetente de recebedor e usa a última entrada destinada à unidade atual pela data real. Nova remessa não reutiliza recebimento anterior; registros ausentes e histórico incompleto são indicados.
+- Usa o andamento já consultado pelo card, sem novas permissões ou alterações no servidor. API 0.10.0 permanece compatível; não exige reimplantação na VPS.
+- 118 testes passaram, com cobertura de remessas repetidas, ordem das datas, remetente/recebedor, registros ausentes e histórico parcial. Sintaxe e formatação aprovadas; ZIP 0.10.1 atualizado. Validação desta alteração no SEI real pendente.
+
+## Manutenção — 2026-10-27
+
+- Teste de última movimentação usa somente datas fixas e registros fora de ordem, sem depender do relógio do dia.
+- Documentação de instalação e empacotamento alinhada à versão 0.10.0 e ao manifesto na raiz do ZIP. Referência aos 35 testes identificada como validação histórica.
+- Conferência da VPS pelo Portainer: API 0.10.0 saudável, quatro arquivos do servidor idênticos aos locais por SHA-256, editor acessível, administração exclusiva e volume preservados. HTTPS de saúde e leitura 200; outra unidade 403. Sem necessidade de reimplantação.
+- Alterações somente em testes e documentação; versão e ZIP da extensão permanecem 0.10.0.
+- Validação desta manutenção: 115 testes passaram; sintaxe e formatação aprovadas.
+
+## 0.10.0 — 2026-10-24
+
+- Card consulta todas as páginas do andamento completo pelo mesmo leitor da tabela; uma leitura completa da tabela atualiza o card aberto. Cache curto por processo, unidade e usuário. Histórico incompleto não afirma que o processo está fora de blocos.
+- Último envio mostra data e quantidade de destinos em um acordeão recolhido. Pendências de assinatura abrem o documento pelo link original da árvore, quando disponível.
+- Eventos do resumo são escolhidos pela data/hora real. Andamento permite alternar entre Ordem do SEI e Mais recentes primeiro, com preferência por usuário e unidade; a ordem original é restaurada ao sair.
+- Status em lote para processos selecionados e visíveis, com confirmação. API aplica o conjunto atomicamente, registra os valores anteriores e permite desfazer pelo histórico. Aviso Assinar considera a mudança individual de cada processo do lote.
+- API 0.10.0 implantada pela stack 18 do Portainer, com backup SQLite validado e volume preservado. Instalação continua sem token ou configuração manual.
+- 115 testes passaram; sintaxe e formatação verificadas. Imagem implantada validada com status em lote e desfazer em banco isolado. Validação no SEI real ainda pendente.
+
+## 0.9.2 — 2026-10-24
+
+- Corrigida a contagem nativa com faixa, como 129 registros - 1 a 100, que impedia consultar as páginas restantes e podia apresentar leitura completa indevidamente.
+- Andamento exibe quantidade carregada em relação ao total e só confirma leitura completa após conferir ambos. Total desconhecido permanece explicitamente não confirmado.
+- Leitor compartilhado de contagem também usado no resumo e nas listas de blocos; detector de novas entradas aceita legendas com faixa. Legenda da tabela deixa de mostrar a faixa da primeira página após reunir o histórico completo e é restaurada ao sair.
+- 107 testes passaram, incluindo reprodução do caso 129/100, consulta da segunda página, filtros com 30/8 resultados e total não reconhecido. Sem alterações no servidor ou permissões.
+
+## 0.9.1 — 2026-10-24
+
+- Andamento com 30 resultados filtrados por página, controles Anterior/Próxima, página atual e contagem de resultados.
+- Consulta às páginas nativas restantes para reunir os registros antes de paginar o resultado do filtro, preservando completo/resumido e os valores do formulário visível.
+- Leitura validada por contagem, página, origem e repetições; falhas mantêm os registros iniciais e a paginação nativa com aviso de leitura incompleta. Importações e ocultação dos controles nativos são desfeitas ao sair.
+- 105 testes passaram, incluindo páginas de 30/30/5, preenchimento com registros da própria unidade vindos de outras páginas e falha de sessão. Sem novas permissões ou alterações no servidor.
+
+## 0.9.0 — 2026-10-24
+
+- Filtros na tela nativa de andamento para unidade e tipo de movimentação; início em Minha unidade + Envios e recebimentos, com Ver tudo e preferência por usuário/unidade.
+- Envios da própria unidade são identificados pela origem no texto do andamento, mesmo quando a linha pertence à unidade de destino. Recebimentos na própria unidade também entram no filtro.
+- Contagem dos registros carregados e aviso de outras páginas. Sem consultas adicionais, alterações de registros, formulários ou paginação; cores e controles nativos preservados.
+- Recuperação após troca da tabela/remoção da barra e restauração das linhas ao sair. Leitores do resumo continuam acessando todas as linhas, inclusive as filtradas visualmente.
+- 102 testes passaram, incluindo classificação de envios/recebimentos, persistência, estilos de ocultação, preservação do histórico e navegação. Sem novas permissões ou alterações no servidor. Validação automatizada local.
+
+## 0.8.4 — 2026-10-24
+
+- Última movimentação do resumo prioriza a unidade atual, com seletor Minha unidade / Todo o processo para consultar também o registro mais recente geral.
+- Escolha lembrada por usuário e unidade no navegador; alternância usa os registros carregados, sem novas consultas ao SEI.
+- Ausência de registro da própria unidade é informada explicitamente, inclusive em histórico parcial, sem apresentar o registro de outra unidade como local. Siglas com º/° e diferenças de caixa são normalizadas.
+- 98 testes passaram, incluindo alternância, preferência persistida, diferença entre registros local/geral e histórico parcial. Sem novas permissões ou alterações no servidor.
+
+## 0.8.3 — 2026-10-24
+
+- Card flutuante substituído por barra fixa no rodapé, em toda a largura, com a cor original do cabeçalho do SEI e contraste adaptado.
+- Resumo fino com contagens de novos processos e pendências de assinatura, estado sem novidades e indicador amarelo para avisos/falhas. Detalhes abrem para cima ao clicar, com rolagem e fechamento por Esc; novas entradas não expandem a barra automaticamente.
+- Espaço reservado no fluxo ou no layout flex do SEI para preservar a área dos iframes; acompanha a altura da barra e é removido ao sair. Botão nativo de voltar ao topo posicionado acima do rodapé. Sem barra nem reserva na impressão.
+- Configurações permanecem no botão Organizador do cabeçalho. Monitoramento, sons, logins e preferências preservados.
+- 96 testes passaram, incluindo cor do header, reserva/restauração de layout, expansão manual e tratamento visual de falhas. Sem alterações no servidor ou permissões. Validação automatizada local, sem sessão real do SEI.
+
+## 0.8.2 — 2026-10-23
+
+- Seção Aberto em recolhida por padrão em um acordeão nativo, com quantidade de unidades e maior tempo parado no resumo. Expandir revela as unidades e os tempos individuais.
+- Situação na própria unidade, pendências e alerta amarelo/vermelho continuam visíveis fora do acordeão. Atualizações do Organizador preservam a seção aberta durante a consulta.
+- 94 testes passaram, com a cobertura existente ajustada para recolhimento, contagem, maior tempo parado e preservação do alerta. Sem novas permissões ou alterações no servidor.
+
+## 0.8.1 — 2026-10-23
+
+- Botão ⚙ Organizador no cabeçalho do SEI, próximo ao usuário, abre a janela Configurações do SEI Organizador.
+- Configuração dos chefes, silenciamento, testes de som e diagnóstico de reprodução movidos para essa janela. Preferências existentes preservadas.
+- Card reservado aos alertas, links e reconhecimento dos avisos; blocos sem avisos ou erros deixam de ser listados nele.
+- Janela com fechamento por Esc/Fechar e retorno do foco ao botão. Atualizações dos alertas preservam o rascunho; erros ao salvar permanecem nas configurações e permitem tentar novamente.
+- 94 testes passaram, incluindo recuperação do botão sem duplicação, edição durante sincronização, foco e falha de salvamento. Sem alterações no servidor, banco ou permissões.
+
+## 0.8.0 — 2026-10-23
+
+- Removidos o toque padrão de três toques e o seletor genérico. Novo SEI toca em entradas no bloco; Assinar toca em mudanças do status manual para Assinar.
+- Lista configurável de chefes de seção por login do SEI, com identificação do usuário conectado, inclusão do próprio login e salvamento por unidade neste navegador. Som e avisos automáticos de Assinar ficam restritos aos logins configurados.
+- Consulta ao estado e histórico compartilhados permite detectar alterações feitas por colegas. Primeira leitura silenciosa, controle de versão entre respostas e prevenção de avisos repetidos ou causados apenas pela inserção de um processo já marcado como Assinar.
+- Painel e contador separam entradas e pendências de assinatura, com links, reconhecimento e testes dos dois sons. Falhas do Organizador preservam a referência anterior sem impedir alertas de entrada.
+- 92 testes passaram. Sem alterações no servidor, banco ou permissões da extensão. A configuração de chefes não é compartilhada entre computadores.
+
+## 0.7.0 — 2026-10-23
+
+- Seletor de áudio no painel dos alertas: Padrão — três toques, Novo SEI e Assinar, com preferência persistida no navegador e teste do áudio escolhido.
+- MP3 da pasta sound incluídos integralmente na distribuição, sem alterar os originais. Catálogo fixo compartilhado entre painel, worker e reprodutor; URLs ou caminhos arbitrários são recusados.
+- Trocar o áudio mantém a preferência de silenciamento. Avisos enfileirados preservam o áudio selecionado para cada reprodução.
+- 86 testes passaram, incluindo três novos cenários de escolha, persistência, reprodução, arquivos empacotados e interface. Sem novas permissões, serviços ou alterações no banco.
+
+## 0.6.1 — 2026-10-23
+
+- Aviso sonoro mais perceptível: três toques em 1,9 segundo e volume de reprodução de 85%, substituindo o toque de 0,65 segundo a 35%.
+- Reprodutor confirma somente após o fim do arquivo, detecta erro de mídia e tempo excedido e enfileira avisos para não cortar sons anteriores.
+- Worker aguarda o reprodutor ficar pronto antes de tocar; falhas no teste ficam registradas no painel sem remover os controles nem as preferências.
+- Painel informa som ativado/silenciado, progresso do teste e horário da última reprodução concluída, com orientação para conferir o áudio do sistema se necessário.
+- 83 testes passaram, incluindo quatro novos cenários de reprodução, inicialização, sinal de áudio e retorno do teste. Sem novas permissões ou mudanças no servidor. A saída física de áudio do usuário não foi validada nesta sessão.
+
+## 0.6.0 — 2026-10-23
+
+- Resumo do processo na árvore assim que ela abre, sem depender da seleção de documento: número, tipo, última movimentação, último envio, unidades abertas, tempo parado, pendências e classificação nos blocos internos.
+- Card único alterna para os detalhes do documento selecionado e restaura o resumo ao sair dele ou voltar à raiz; documentos de outras unidades mantêm o resumo do processo.
+- Respostas atrasadas não substituem o card atual; consultas periódicas do card anterior são encerradas quando ele é substituído.
+- Resumo sem documento não presume assinatura, unidade geradora ou bloco de assinatura de um documento arbitrário. Histórico parcial ou indisponível preserva as mensagens de incerteza.
+- 79 testes passaram, incluindo seis novos cenários de resumo e navegação. Sem mudanças no servidor, banco ou permissões. Validação automatizada local, sem sessão real do SEI.
+
+## 0.5.0 — 2026-10-23
+
+- Monitor automático dos blocos internos abertos na sessão, com consultas a cada minuto durante a navegação em outras telas do SEI e coordenação para evitar duplicação entre abas.
+- Primeira leitura silenciosa; comparação por IDs em leitura completa sem pesquisa e com paginação, preservando a referência anterior em falhas ou sessão expirada.
+- Painel com links, marcador Novo nas linhas carregadas, contador no ícone e notificação do sistema que abre o bloco.
+- Toque local em documento offscreen, com silenciamento e teste; reconhecimento dos avisos por bloco ou em conjunto.
+- URLs autenticadas restritas ao armazenamento de sessão do navegador; dados do monitor não passam pela API. Limites documentados de consultas e quantidade de blocos.
+- Chrome mínimo 120; novas permissões de storage, alarms, notifications, offscreen e host do SEI.
+- 11 testes do monitor adicionados; nenhuma mudança no servidor ou banco. Validação real de áudio/notificação no navegador não executada nesta sessão.
+
+## 0.4.3 — 2026-10-23
+
+- Histórico não reconhecido informa erro; registros vazios ou incompletos não declaram processo concluído nem ausência de envio.
+- Assuntos e status no card sincronizam a cada dez segundos com a página visível, sem sobrepor gravações. Consultas cessam ao sair ou substituir o card.
+- Falhas de sincronização identificam os dados anteriores e desabilitam a edição até reconectar, inclusive após falha na recuperação de uma gravação.
+- Confirmação de envio também intercepta a submissão do formulário, preservando o envio nativo e evitando pergunta duplicada após o clique confirmado.
+- Cinco testes de regressão adicionados. Sem mudança no servidor, banco ou permissões.
+
 ## 0.4.2 — 2026-10-19
 
 - Animação de carregamento no card: barra animada sob o cabeçalho e linhas pulsantes no lugar do andamento até o andamento, os blocos e o Organizador responderem; removida ao concluir ou falhar.

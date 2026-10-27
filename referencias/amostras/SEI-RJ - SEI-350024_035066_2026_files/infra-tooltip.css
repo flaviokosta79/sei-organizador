@@ -1,0 +1,37 @@
+div.infraTooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    color: #000000;
+    z-index: 999;
+    background: #ffffaa;
+    padding: 4px;
+    border: 2px solid #d9d9d9;
+    border-radius: 4px;
+    /* box-shadow: 0 0 5px #a0a0a0; */
+}
+
+div.infraTooltipTitulo {
+    font-size: 1em;
+    font-weight: bold;
+    background-color: #FFFFE1; /* #FFCC66;  */
+    border-bottom: .1em solid black;
+    padding: .2em;
+    background-color: transparent;
+}
+
+
+div.infraTooltipTexto {
+    font-size: 1em;
+    padding: .1em;
+}
+
+div.infraTooltipTexto b {
+    font-weight: bold;
+}
+
+div.infraTooltipTexto i {
+    font-style: italic;
+}
+

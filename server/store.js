@@ -21,8 +21,8 @@ export function createStore(path) {
           if(!tab||!Array.isArray(action.processIds)||action.processIds.length>1000||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id))) throw new Error('Seleção inválida');
           for(const id of action.processIds){const a=new Set(next.assignments[id]||[]);action.type==='assign'?a.add(tab.id):a.delete(tab.id);if(a.size)next.assignments[id]=[...a];else delete next.assignments[id];} break;
         case 'status':
-          if(!Array.isArray(action.processIds)||action.processIds.length!==1||typeof action.processIds[0]!=='string'||!/^\d{1,30}$/.test(action.processIds[0])||!['none','attention','follow','urgent','sign','archive'].includes(action.status))throw new Error('Status inválido');
-          if(action.status==='none')delete next.statuses[action.processIds[0]];else next.statuses[action.processIds[0]]=action.status;break;
+          if(!Array.isArray(action.processIds)||!action.processIds.length||action.processIds.length>1000||new Set(action.processIds).size!==action.processIds.length||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id))||!['none','attention','follow','urgent','sign','archive'].includes(action.status))throw new Error('Status inválido');
+          for(const id of action.processIds){if(action.status==='none')delete next.statuses[id];else next.statuses[id]=action.status;}break;
         case 'undo': {
           if(!Number.isSafeInteger(action.historyId))throw Object.assign(new Error('Selecione uma alteração no histórico.'),{status:400});
           const h=db.prepare('SELECT * FROM history WHERE unit=? AND block=? AND id=?').get(unit,block,action.historyId);
@@ -35,7 +35,10 @@ export function createStore(path) {
         default: throw new Error('Operação inválida');
       }
       const recorded={...action};
-      if(action.type==='status')recorded.previousStatus=old.statuses[action.processIds[0]]||'none';
+      if(action.type==='status'){
+        if(action.processIds.length===1)recorded.previousStatus=old.statuses[action.processIds[0]]||'none';
+        else recorded.previousStatuses=Object.fromEntries(action.processIds.map(id=>[id,old.statuses[id]||'none']));
+      }
       if(tab) recorded.tabName=old.tabs.find(t=>t.id===action.tabId).name;
       if(action.type==='create')recorded.tabName=next.tabs.at(-1).name;
       if(action.type==='rename')recorded.newTabName=next.tabs.find(t=>t.id===action.tabId).name;

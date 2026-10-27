@@ -44,5 +44,14 @@ globalThis.seiHistoryText = (h, numbers = {}) => {
       : 'desfez a última alteração',
   };
   descriptions.status = `alterou status do processo ${processes}: ${seiStatusLabels[a.previousStatus] || 'Status desconhecido'} → ${seiStatusLabels[a.status] || 'Status desconhecido'}`;
+  if (a.type === 'status' && a.processIds?.length > 1)
+    descriptions.status =
+      `alterou status de ${a.processIds.length} processos para ${seiStatusLabels[a.status] || 'Status desconhecido'}: ` +
+      a.processIds
+        .map(
+          (id) =>
+            `${a.processNumbers?.[id] || numbers[id] || `Identificador interno ${id}`} (${seiStatusLabels[a.previousStatuses?.[id]] || 'Sem status'} → ${seiStatusLabels[a.status]})`,
+        )
+        .join(', ');
   return `${new Date(h.time).toLocaleString('pt-BR')} · ${h.actor?.login || 'Usuário não identificado'} · ${descriptions[a.type] || 'Alteração desconhecida'}`;
 };

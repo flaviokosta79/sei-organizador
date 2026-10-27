@@ -1,0 +1,13 @@
+
+function infraAjustarAtributosData(chaveAntiga, chaveNova){
+    $("["+chaveAntiga+"]").each(function (index) {
+        $(this).attr(chaveNova,$(this).attr(chaveAntiga));
+    })
+}
+
+$(document).ready(function () {
+
+    infraAjustarAtributosData("data-target", "data-bs-target");
+    infraAjustarAtributosData("data-toggle", "data-bs-toggle");
+    infraAjustarAtributosData("data-dismiss", "data-bs-dismiss");
+});

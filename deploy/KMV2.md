@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções exibem somente informação, sem campos.
-A versão da extensão é 0.4.0. A API implantada corresponde ao commit 07a6e2a (0.4.0): status Assinar e snapshots compactos da 0.1.6. Cada atualização entregue da extensão deve incrementar a versão.
+A extensão local está na versão 0.11.0, com o card reorganizado por prioridade e distinção entre chegada, inclusão no bloco e tempo sem movimentação. A API implantada permanece em 0.10.0: status em lote atômico, com histórico e desfazer, compatível com os dados existentes. A versão 0.11.0 altera somente a extensão e não exige reimplantação. Cada atualização entregue da extensão deve incrementar a versão.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,11 +14,25 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:0ce6922cda50b3d2ebbd592d16e7fea50f3d17ed87686975f682b2836e91e47f (tag 0.4.0, commit 07a6e2a).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:fe0e4c88d715ef4b08ae67a2a228f2c4522df898b9777420e35941bd9bf63242.
+Imagem da stack: flaviokosta/sei-organizador@sha256:3ce5095f443e903ed952fd72b84cc9a270a7651d1c25b6b0889247756409bec2 (tag 0.10.0).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:0ce6922cda50b3d2ebbd592d16e7fea50f3d17ed87686975f682b2836e91e47f.
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.10.0 — 2026-10-24
+
+Build pelo Docker do Portainer com contexto restrito a package.json, server e deploy/Dockerfile. Imagem publicada no Docker Hub e validada em container isolado, sem rede, com lote Assinar e desfazer em SQLite em memória.
+
+Backup consistente via VACUUM INTO: /data/backups/before-0.10.0-20261024.sqlite, quick_check ok, cópia local em artifacts/backups/before-0.10.0-20261024.tar. Arquivo e variáveis anteriores em artifacts/stack-before-0.10.0.json.
+
+Stack 18 atualizada pela API suportada do Portainer, endpoint 1; somente SEI_IMAGE mudou. Administração exclusiva preservada, arquivo acessível ao editor, atualização concluída, container healthy como node e volume sei_organizador_data preservado em /data. HTTPS health/read 200 sem token; outra unidade 403. Evidência em artifacts/deployment-0.10.0.json.
+
+Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.10.0.json, mantendo o volume atual. Não houve migração de esquema. O backup é reservado à recuperação de dados e não é necessário para apenas voltar a imagem.
+
+## Conferência — 2026-10-27
+
+Stack 18 ativa, administração exclusiva e arquivo do editor acessível pelo Portainer. Container healthy, usuário node, volume sei_organizador_data em /data e atualização completed. API implantada 0.10.0: SHA-256 de server/index.js, store.js, auth.js e undo.js idênticos aos arquivos locais. HTTPS /healthz e leitura pública retornaram 200; outra unidade retornou 403. Não é necessária atualização do servidor para a correção do teste e da documentação. Evidência em artifacts/server-verification-2026-10-27.json. Esta conferência não revalida a interface no SEI real nem a integridade do banco.
 
 ## Atualização 0.4.0 — 2026-10-19
 
@@ -62,7 +76,7 @@ rollback. Não entregar apenas docker stack deploy externo. Não dar Docker sock
 
 ## Instalação e atualização da extensão
 
-Extrair artifacts/sei-organizador-extension-kmv2.zip e carregar a pasta extension
+Extrair artifacts/sei-organizador-extension-0.11.0.zip em uma pasta e carregar essa pasta
 em chrome://extensions (modo desenvolvedor), ou recarregar a extensão previamente
 carregada da pasta extension deste projeto. Aceitar a permissão de instalação
 para o serviço, se solicitada pelo Chrome, e recarregar a página do bloco no SEI.
@@ -95,7 +109,7 @@ não integridade ou backup do banco.
 
 ## Validação e rollback
 
-35 testes passaram na entrega atual da extensão, além de sintaxe. O smoke local do
+Na validação inicial do acesso público, 35 testes passaram, além de sintaxe. O smoke local do
 container confirmou acesso/leitura/gravação sem token, unidade diferente 403,
 usuário não root e persistência após recriar com o mesmo volume.
 

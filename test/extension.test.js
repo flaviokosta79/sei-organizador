@@ -110,7 +110,7 @@ test('Sem assunto virtual, contagens locais, vínculos obsoletos, sincronizaçã
  w.chrome.runtime.sendMessage=async msg=>{f.calls.push(msg);if(msg.body){const op=msg.body.action;const remaining=(state.assignments[op.processIds[0]]||[]).filter(id=>id!==op.tabId);state={...state,version:state.version+1,assignments:{...state.assignments,[op.processIds[0]]:remaining}};}return {data:state};};
  const click=name=>Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent===name).click();const tab=name=>Array.from(d.querySelectorAll('[role=tab]')).find(b=>b.textContent===name);
  f.sync();await tick();assert.equal(tab('Geral').getAttribute('aria-selected'),'true');assert.equal(tab('Geral').dataset.count,undefined);assert.equal(tab('Assunto').dataset.count,'1');assert.equal(tab('Outra').dataset.count,'1');assert.equal(tab('Sem assunto').dataset.count,'1');
- d.querySelector('#chkInfraItem100').checked=true;click('Sem assunto');assert.equal(d.querySelector('#chkInfraItem100').checked,false);assert.equal(d.querySelector('#chkInfraItem100').closest('tr').hidden,true);assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,false);assert.equal(Array.from(d.querySelectorAll('button')).some(b=>b.textContent==='Renomear'),false);assert.equal(d.querySelectorAll('.so-toolbar select').length,1);assert.equal(d.querySelector('.so-filter-notice'),null);assert.match(tab('Geral').title,/Mostrar todos/);
+ d.querySelector('#chkInfraItem100').checked=true;click('Sem assunto');assert.equal(d.querySelector('#chkInfraItem100').checked,false);assert.equal(d.querySelector('#chkInfraItem100').closest('tr').hidden,true);assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,false);assert.equal(Array.from(d.querySelectorAll('button')).some(b=>b.textContent==='Renomear'),false);assert.equal(d.querySelectorAll('.so-toolbar select').length,2);assert.equal(d.querySelector('.so-filter-notice'),null);assert.match(tab('Geral').title,/Mostrar todos/);
  d.querySelector('table').insertAdjacentHTML('beforeend',row('300'));await tick();assert.equal(tab('Geral').dataset.count,undefined);assert.equal(tab('Sem assunto').dataset.count,'2');assert.equal(d.querySelector('#chkInfraItem300').closest('tr').hidden,false);
  click('Geral');assert.equal(d.querySelectorAll('tr[hidden]').length,0);const target=d.querySelector('#chkInfraItem100').closest('tr');const open=()=>target.dispatchEvent(new w.MouseEvent('contextmenu',{bubbles:true,cancelable:true}));open();Array.from(d.querySelectorAll('[role=menuitemcheckbox]')).find(b=>b.textContent.includes('Assunto')).click();await tick();assert.equal(tab('Sem assunto').dataset.count,'2');open();Array.from(d.querySelectorAll('[role=menuitemcheckbox]')).find(b=>b.textContent.includes('Outra')).click();await tick();assert.equal(tab('Sem assunto').dataset.count,'3');click('Sem assunto');assert.equal(target.hidden,false);
  w.chrome.runtime.sendMessage=async()=>({error:'Falha simulada'});f.sync();await tick();assert.equal(tab('Geral').getAttribute('aria-selected'),'true');assert.equal(tab('Sem assunto').disabled,true);assert.equal(tab('Sem assunto').dataset.count,'—');assert.match(d.querySelector('.so-summary').textContent,/classificações desconhecidas/);assert.equal(d.querySelectorAll('tr[hidden]').length,0);
@@ -131,6 +131,26 @@ test('copiar usa somente número do link, preserva controles e não duplica em m
  d.querySelector('table').insertAdjacentHTML('beforeend',row('300'));await tick();assert.equal(d.querySelectorAll('.so-copy-number').length,3);f.sync();await tick();assert.equal(d.querySelectorAll('.so-copy-number').length,3);assert.equal(d.querySelectorAll('.so-copy-feedback').length,3);assert.equal(link.textContent.trim(),'SEI-123456/123456/2026');
  }finally{f.dom.window.close();}
 });
+test('marcador Novo entre link e copiar não duplica controles e recupera duplicados',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document;
+ const link=d.querySelector('a[href*="id_procedimento=100"]'),cell=link.closest('td'),copy=cell.querySelector('.so-copy-number');
+ const values=[];Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async value=>values.push(value)},configurable:true});
+ link.textContent='SEI-350024/036043/2026';
+ for(let i=0;i<5;i++){
+  cell.querySelector('.so-new-process-label')?.remove();const label=d.createElement('span');label.className='so-new-process-label';label.textContent='Novo';link.after(label);
+  await tick();f.sync();await tick();
+  assert.equal(cell.querySelectorAll('.so-copy-number').length,1);assert.equal(cell.querySelectorAll('.so-copy-feedback').length,1);
+  assert.equal(cell.querySelector('.so-copy-number'),copy);assert.equal(link.nextElementSibling,label);
+ }
+ cell.append(copy.cloneNode(true),cell.querySelector('.so-copy-feedback').cloneNode(true));await tick();await tick();
+ assert.equal(cell.querySelectorAll('.so-copy-number').length,1);assert.equal(cell.querySelectorAll('.so-copy-feedback').length,1);
+ copy.click();await tick();assert.deepEqual(values,['SEI-350024/036043/2026']);assert.ok(cell.querySelector('.so-new-process-label'));
+ const replacement=link.cloneNode(true);replacement.textContent='SEI-350024/999999/2026';link.replaceWith(replacement);await tick();await tick();
+ const next=cell.querySelector('.so-copy-number');assert.notEqual(next,copy);next.click();await tick();
+ assert.deepEqual(values,['SEI-350024/036043/2026','SEI-350024/999999/2026']);assert.equal(cell.querySelectorAll('.so-copy-number').length,1);
+ }finally{f.dom.window.close();}
+});
+
 test('status na coluna própria: manual, alvo correto, sync, sem assunto e offline',async()=>{
  const f=fixture();try{await tick();const w=f.dom.window,d=w.document;const target=d.querySelector('#chkInfraItem200').closest('tr');target.querySelector('[data-label="Anotações"]').innerHTML='<span id="note">Anotação preservada</span>';target.querySelector('[data-label="Ações"] a').id='native-note';
  let state={version:2,tabs:[{id:'a',name:'Assunto'}],assignments:{100:['a']},statuses:{}};w.chrome.runtime.sendMessage=async msg=>{f.calls.push(msg);if(msg.body){const a=msg.body.action;assert.equal(a.type,'status');assert.deepEqual(Array.from(a.processIds),['200']);state={...state,version:3,statuses:{200:a.status}};}return {data:state};};
@@ -195,4 +215,14 @@ test('órgão vem da configuração e outro órgão não recebe a interface',asy
   other.window.SEI_ORGANIZADOR_CONFIG={serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'OUTRO'};other.window.seiOrganizerLifecycle.reconcile();await tick();
   assert.ok(other.window.document.querySelector('#sei-organizador'));assert.ok(calls.length>0);
  }finally{other.window.close();}
+});
+
+test('status em lote confirma a seleção e envia uma única operação',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document;w.chrome.runtime.sendMessage=async msg=>{f.calls.push(msg);return {data:{version:2,tabs:[{id:'a',name:'Assunto'}],assignments:{},statuses:{}}};};f.sync();await tick();let confirmations=0;w.confirm=()=>{confirmations++;return false;};
+ for(const check of d.querySelectorAll('input[type=checkbox]'))check.checked=true;
+ d.querySelector('form').dispatchEvent(new w.Event('change',{bubbles:true}));
+ let batch=d.querySelector('.so-batch-status');batch.value='sign';batch.dispatchEvent(new w.Event('change'));
+ assert.equal(d.querySelector('.so-batch-apply').disabled,false);d.querySelector('.so-batch-apply').click();await tick();assert.equal(confirmations,1);assert.equal(f.calls.filter(c=>c.body?.action?.type==='status').length,0);
+ w.confirm=()=>true;d.querySelector('.so-batch-apply').click();await tick();const mutations=f.calls.filter(c=>c.body?.action?.type==='status');assert.equal(mutations.length,1);assert.deepEqual(Array.from(mutations[0].body.action.processIds),['100','200']);assert.equal(mutations[0].body.action.status,'sign');
+ }finally{f.dom.window.close();}
 });

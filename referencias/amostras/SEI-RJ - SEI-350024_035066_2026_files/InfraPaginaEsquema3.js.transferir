@@ -1,0 +1,385 @@
+var INFRA_PAGINA_ESQUEMA3 = true;
+var INFRA_ICONE_AGUARDAR = INFRA_PATH_SVG + '/aguarde.svg';
+var INFRA_ICONE_ALTERAR = INFRA_PATH_SVG + '/alterar.svg';
+var INFRA_ICONE_REMOVER = INFRA_PATH_SVG + '/remover.svg';
+var INFRA_ICONE_MOVER_ACIMA = INFRA_PATH_SVG + '/mover_acima.svg';
+var INFRA_ICONE_MOVER_ABAIXO = INFRA_PATH_SVG + '/mover_abaixo.svg';
+
+var btnInfraTopo;
+var divInfraMoverTopo;
+var infraExibirMoverScroll;
+var infraOcultarMoverScroll;
+
+var bolInfraAcoesOver = false;
+var bolInfraAcoesAberta = false;
+var bolInfraAcoesShiftTab = false;
+
+$(document).ready(function () {
+
+    infraCriarCheckboxRadio("infraCheckbox","infraCheckboxDiv","infraCheckboxLabel","infraCheckbox","infraCheckboxInput");
+    infraCriarCheckboxRadio("infraRadio","infraRadioDiv","infraRadioLabel","infraRadio","infraRadioInput");
+    setTimeout(function () {
+        infraCriarCheckboxRadio("ms-drop input[type='checkbox']","infraCheckboxDiv","infraCheckboxLabel","infraCheckbox","infraCheckboxInput");
+        infraCriarCheckboxRadio("ms-drop input[type='radio']","infraRadioDiv","infraRadioLabel","infraRadio","infraRadioInput");
+    },250)
+
+
+    $(document).bind('keydown', function (e) {
+
+        var tecla = infraGetCodigoTecla(e);
+
+        if (typeof (infraSistemaTeclasAtalho) == 'function') {
+            infraSistemaTeclasAtalho(tecla, e);
+        } else {
+            infraPadraoTeclasAtalho(tecla, e);
+        }
+    });
+
+    //botao topo
+    btnInfraTopo = $(document.getElementById("btnInfraTopo"));
+
+    if (btnInfraTopo) {
+        if (!divInfraMoverTopo) {
+            if (document.getElementById("divInfraAreaTelaD")) {
+                divInfraMoverTopo = document.getElementById("divInfraAreaTelaD");
+            }
+        }
+
+        if (divInfraMoverTopo) {
+            divInfraMoverTopo.onscroll = function () {
+                infraTestarScrollTopo();
+            };
+        } else {
+            window.onscroll = function () {
+                infraTestarScrollTopo()
+            };
+        }
+    }
+
+    if (INFRA_LUPA_TIPO_JANELA == 2) {
+        var botoes = document.querySelectorAll("[id=btnFecharSelecao]");
+        for (var i = 0; i < botoes.length; i++) {
+            botoes[i].onclick = function () {
+                infraFecharJanelaSelecao()
+            };
+        }
+    }
+    $("#divInfraBarraSistemaPadraoD").removeClass("infraBarraSistemaPadraoDOculta")
+
+    $('.infraBarraSistemaPadraoD .infraAcaoBarraSistema.nav-item>a:first-child').not('.d-none.d-md-block').each(function () {
+        elA = $(this);
+        /*      $arrIcones[] = '<a class="align-self-center d-none d-md-block" href="'.SessaoSEI::getInstance()->assinarLink('controlador.php?acao=md_abc_processo_processar').'" title="Botão Sistema Padrão ABC" tabindex="'.PaginaSEI::getInstance()->getProxTabBarraSistema().'">
+                        <img src="modulos/abc/exemplo/svg/sistema.svg" class="infraImg" title="Botão Sistema Padrão ABC" />
+                        </a>
+
+                       <span title="Controle de Processos"  class="nav-link d-flex d-md-none" >
+                         <img src="modulos/abc/exemplo/svg/sistema.svg" class="infraImg" title="Botão Sistema Móvel ABC" />
+                         <a class="align-self-center text-white pl-1"  href="'.SessaoSEI::getInstance()->assinarLink('controlador.php?acao=md_abc_processo_processar').'" title="Botão Sistema Móvel ABC" tabindex="' . PaginaSEI::getInstance()->getProxTabBarraSistema() . '" >
+                          Botão Sistema Móvel ABC
+                         </a>
+                       </span>';*/
+
+        const strTitle = elA.attr("title");
+        const strHref = elA.attr("href");
+        const strTabindex = elA.attr("tabindex");
+        const elImg = $(this).find("img").first();
+        const strSrc = elImg.attr("src");
+        elA.addClass("d-none d-md-block")
+        elA.after(
+            '<span title="'+strTitle+'"  class="nav-link d-flex d-md-none" >'+
+            '<img src="'+strSrc+'" class="infraImg" title="'+strTitle+'" />'+
+            '<a class="align-self-center text-white pl-1"  href="'+strHref+'" title="'+strTitle+'" tabindex="'+strTabindex+'" >'+
+            strTitle+
+             '</a>'+
+           '</span>'
+        )
+    })
+
+    const btnInfraAcoesAgrupadas = $("#infraBotaoAcoesSistemaAgrupadas");
+
+    if(btnInfraAcoesAgrupadas.length){
+        const clones = $('.infraBarraSistemaPadraoD .nav-item').not('#infraBotaoAcoesSistemaAgrupadas').not(".infraAcoesSistemaExibir").clone(true, true)
+        $('.infraBarraSistemaPadraoD .nav-item').not('#infraBotaoAcoesSistemaAgrupadas').not(".infraAcoesSistemaExibir").addClass("d-md-none")
+        clones.appendTo($('#infraGridAcoesSistemaAgrupadas'));
+        const tabidx = $("#lnkInfraAcoesSistemaAgrupadas").attr("tabindex");
+        $('#infraBotaoAcoesSistemaAgrupadas .nav-item a').attr("tabindex",tabidx)
+
+        // Select the container that holds both the trigger icon and the panel
+        const $appContainer = $('#infraBotaoAcoesSistemaAgrupadas');
+        // Select the panel itself
+        const $appPanel = $('#infraPanelAcoesSistemaAgrupadas');
+
+        function exibirIcones(){
+            const panelW    = $appPanel.outerWidth();
+            const actionL   = $appContainer.offset().left;
+            const windowW   = $(window).width();
+            if (actionL + panelW > windowW) {
+                $appPanel.addClass("infraAcoesSistemaAgrupadasEsquerda");
+            } else {
+                $appPanel.removeClass("infraAcoesSistemaAgrupadasEsquerda");
+            }
+            $appPanel.show(); // Use fadeIn for a smooth effect
+            bolInfraAcoesAberta=true;
+        }
+        function fecharIcones() {
+            setTimeout(function () {
+                if(!bolInfraAcoesOver && bolInfraAcoesAberta  ){
+                    $appPanel.hide();
+                    bolInfraAcoesAberta=false;
+                }
+            }, 500);
+        }
+
+        $appContainer.on('mouseenter', function() {
+            bolInfraAcoesOver=true;
+            exibirIcones()
+        });
+        $("#lnkInfraAcoesSistemaAgrupadas").on('focus', function() {
+            if(!bolInfraAcoesShiftTab){
+                exibirIcones()
+                $("#infraGridAcoesSistemaAgrupadas .nav-item>a").first().focus();
+            }else{
+                bolInfraAcoesShiftTab=false
+            }
+        });
+
+        $appContainer.on('mouseleave', function() {
+            bolInfraAcoesOver=false;
+            fecharIcones()
+        });
+
+        $("#infraGridAcoesSistemaAgrupadas .nav-item>a").last().on('blur', function() {
+            fecharIcones()
+        });
+        $("#infraGridAcoesSistemaAgrupadas .nav-item>a").first().on('keydown', function(e) {
+            if (e.shiftKey && e.keyCode === 9) {
+                bolInfraAcoesShiftTab=true
+                fecharIcones()
+            }
+        });
+    }
+
+});
+
+function infraCriarCheckboxRadio(classInput,classDiv,classLabel,classRemocao,classAdicao){
+    $("."+classInput).each(function (index) {
+        var div = $('<div class="'+classDiv+'" ></div>');
+        var isVisible = this.style.visibility !== 'hidden' && this.style.display !== 'none';
+
+        var isMultipleSelect = document.getElementsByClassName('ms-search').length > 0;
+
+        if (isVisible && !isMultipleSelect) {
+            $(this).wrap(div);
+        }else{
+            $(this).addClass("infraCheckboxRadioSemDiv");
+        }
+
+        var id = $(this).attr("id");
+        var title = $(this).attr("title");
+
+        var label = $('<label class="'+classLabel+'"></label>');
+
+        if(id == undefined){
+            id = "id"+classInput+index;
+            $(this).attr("id",id);
+        }
+        $(label).attr("for",id);
+        if(title != undefined){
+            $(label).attr("title",title);
+        }
+
+        $(this).removeClass(classRemocao);
+        $(this).addClass(classAdicao);
+
+        label.insertAfter($(this));
+    });
+}
+
+function infraTestarScrollTopo() {
+
+    show = false;
+
+    if (divInfraMoverTopo) {
+        if (divInfraMoverTopo.scrollTop > 20) {
+            show = true;
+        }
+    } else {
+        if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+            show = true;
+        }
+    }
+
+    if (show) {
+
+        btnInfraTopo.show('fast');
+
+        if ($("#divInfraBtnTopo").length == 0) {
+            var div = $('<div id="divInfraBtnTopo" style="height: 60px;"  ></div>');
+            if (divInfraMoverTopo) {
+                $(divInfraMoverTopo).append(div);
+            } else {
+                $(document.body).append(div);
+            }
+        }
+
+        if (infraExibirMoverScroll != null) {
+            infraExibirMoverScroll();
+        }
+    } else {
+
+        btnInfraTopo.hide('fast');
+
+        $("#divInfraBtnTopo").remove();
+
+        if (infraOcultarMoverScroll != null) {
+            infraOcultarMoverScroll();
+        }
+    }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function infraMoverParaTopo() {
+    if (divInfraMoverTopo) {
+        $(divInfraMoverTopo).animate({scrollTop: 0}, 600);
+    } else {
+        $(document.body).animate({scrollTop: 0}, 600);
+        $(document.documentElement).animate({scrollTop: 0}, 600);
+    }
+}
+
+function infraIsBreakpointBootstrap(alias) {
+    return $('#infraBs-' + alias).is(':visible');
+}
+
+function infraPadraoTeclasAtalho(tecla, e) {
+
+    if (e.altKey) {
+
+        switch (tecla) {
+
+            case 112: //F1
+                if (document.getElementById('lnkInfraAcessibilidadeSistema') != null) {
+                    $('#lnkInfraAcessibilidadeSistema').click();
+                    return true;
+                }
+                break;
+
+            case 77: //M
+                if (infraFocarPesquisaMenu()) {
+                    return true;
+                }
+                break;
+
+            case 120: //F9
+                if (infraClicarMenuBootstrap()) {
+                    return true;
+                }
+                break;
+
+            case 122: //F11
+                if (document.getElementById('lnkInfraUnidade') != null) {
+                    $('#lnkInfraUnidade').click();
+                    return true;
+                }
+                break;
+
+            case 123: //F12
+                if (document.getElementById('lnkInfraSairSistema') != null) {
+                    document.getElementById('lnkInfraSairSistema').focus();
+                    return true;
+                }
+                break;
+
+            case 84: //T
+                if (document.getElementById('divInfraBarraLocalizacao') != null) {
+                    document.getElementById('divInfraBarraLocalizacao').focus();
+                    return true;
+                }
+                break;
+
+            case 66: //B = Barra de comandos superior
+                var divBarraComandos = document.getElementById('divInfraBarraComandosSuperior');
+                if (divBarraComandos != null) {
+                    var arrBotoes = divBarraComandos.getElementsByClassName('infraButton');
+                    if (arrBotoes.length) {
+                        arrBotoes[0].focus();
+                        return true;
+                    }
+                }
+                break;
+
+            case 38: //SETA ACIMA
+                var elem = document.activeElement;
+                if (elem != null) {
+                    var indice = null;
+                    while (elem) {
+                        if (elem instanceof HTMLTableRowElement) {
+                            indice = elem.rowIndex;
+                        } else if (elem instanceof HTMLTableElement) {
+                            if (indice != null) {
+                                if (elem.rows[indice - 1] != undefined && elem.rows[indice - 1].cells[0] != undefined) {
+                                    box = elem.rows[indice - 1].cells[0].getElementsByTagName("input");
+                                    if (box.length > 0 && !box[0].disabled) {
+                                        box[0].focus();
+                                        return true;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                        elem = elem.parentNode;
+                    }
+                }
+                break;
+
+            case 40: //SETA ABAIXO
+                var elem = document.activeElement;
+                if (elem != null) {
+                    var indice = null;
+                    while (elem) {
+                        if (elem instanceof HTMLTableRowElement) {
+                            indice = elem.rowIndex;
+                        } else if (elem instanceof HTMLTableElement) {
+                            if (indice != null) {
+                                if (elem.rows[indice + 1] != undefined && elem.rows[indice + 1].cells[0] != undefined) {
+                                    box = elem.rows[indice + 1].cells[0].getElementsByTagName("input");
+                                    if (box.length > 0 && !box[0].disabled) {
+                                        box[0].focus();
+                                        return true;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                        elem = elem.parentNode;
+                    }
+                }
+                break;
+        }
+    }
+
+    if (tecla == 27) { //ESC
+        infraFecharJanelaModal();
+        return true;
+    }
+
+    if (parent.window != window && typeof (parent.infraPadraoTeclasAtalho) == 'function') {
+        return parent.infraPadraoTeclasAtalho(tecla, e);
+    }
+
+    return false;
+}
+
+function infraCalcularVH() {
+    $('#divInfraAreaGlobal').innerHeight($(window).innerHeight());
+}
+
+//tratamento de visibilidade de blocos responsivos
+function infraResponsivoExibir(id){
+    $('#'+id).removeClass('infraResponsivoEsconder');
+    $('#'+id).addClass('infraResponsivoExibir');
+}
+function infraResponsivoEsconder(id){
+    $('#'+id).removeClass('infraResponsivoExibir');
+    $('#'+id).addClass('infraResponsivoEsconder');
+}

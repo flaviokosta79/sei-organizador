@@ -360,6 +360,7 @@
     listen(window, 'scroll', () => closeMenu(), true);
     listen(window, 'resize', () => closeMenu());
     const processNumber = (a) => a.textContent.replace(/\s+/g, ' ').trim();
+    const copyControls = new WeakMap();
     function rows() {
       return Array.from(table.querySelectorAll('tr')).flatMap((row) => {
         const a = row.querySelector('a[href*="id_procedimento="]');
@@ -376,7 +377,13 @@
     }
     function injectCopyButtons(loaded) {
       for (const { link } of loaded) {
-        if (link.nextElementSibling?.classList.contains('so-copy-number')) continue;
+        const container = link.closest('td') || link.parentElement;
+        const existing = copyControls.get(link);
+        const reusable = existing?.button.parentElement === container && existing?.feedback.parentElement === container;
+        for (const control of container.querySelectorAll('.so-copy-number,.so-copy-feedback')) {
+          if (!reusable || (control !== existing.button && control !== existing.feedback)) control.remove();
+        }
+        if (reusable) continue;
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'so-copy-number';
@@ -414,6 +421,7 @@
         });
         b.addEventListener('contextmenu', (e) => e.stopPropagation());
         link.after(b, feedback);
+        copyControls.set(link, { button: b, feedback });
       }
     }
     const statusIcons = { none: '○', attention: '⚠', follow: '👁', urgent: '🔴', sign: '✍', archive: '📁' };
@@ -709,6 +717,19 @@
       }
       scheduleTableHeader();
     }
+    const selectedRows = () => rows().filter((item) => item.check?.checked && !item.row.hidden);
+    function updateBatch() {
+      const select = toolbar.querySelector('.so-batch-status'),
+        apply = toolbar.querySelector('.so-batch-apply');
+      if (!select || !apply) return;
+      const count = selectedRows().length;
+      select.disabled = !statusKnown() || busy || !count;
+      apply.disabled = !statusKnown() || busy || !count || !select.value;
+      const text = count ? `Aplicar em ${count}` : 'Aplicar status';
+      if (apply.textContent !== text) apply.textContent = text;
+    }
+    listen(form, 'change', updateBatch);
+    listen(form, 'click', () => queueMicrotask(updateBatch));
     function render() {
       if (disposed) return;
       closeMenu();
@@ -758,6 +779,39 @@
         render();
       };
       toolbar.append(select);
+      const batch = document.createElement('select');
+      batch.className = 'so-batch-status';
+      batch.setAttribute('aria-label', 'Status dos processos selecionados');
+      for (const [value, label] of [['', 'Status dos selecionados…'], ...Object.entries(seiStatusLabels)]) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        batch.append(option);
+      }
+      batch.addEventListener('change', updateBatch);
+      const apply = button('Aplicar status', async () => {
+        const selected = selectedRows(),
+          value = batch.value;
+        if (!selected.length || !value || busy || !statusKnown()) return;
+        const preview = selected
+          .slice(0, 10)
+          .map((row) => row.number || row.id)
+          .join('\n');
+        if (
+          !confirm(
+            `Alterar o status de ${selected.length} processo(s) selecionado(s) para ${seiStatusLabels[value]}?\n\n${preview}${selected.length > 10 ? '\n…' : ''}\n\nA alteração poderá ser desfeita pelo histórico.`,
+          )
+        )
+          return;
+        await change({
+          type: 'status',
+          status: value,
+          processIds: selected.map((row) => row.id),
+          processNumbers: Object.fromEntries(selected.map((row) => [row.id, row.number])),
+        });
+      });
+      apply.classList.add('so-batch-apply');
+      toolbar.append(batch, apply);
       const historyButton = button('Histórico', () => (historyOpen ? closeHistory() : showHistory()));
       historyButton.setAttribute('aria-controls', history.id);
       toolbar.append(historyButton);
@@ -768,6 +822,7 @@
       for (const b of history.querySelectorAll('.so-undo-record'))
         b.disabled = busy || !ready || b.dataset.undoable !== 'true';
       filter();
+      updateBatch();
     }
     const ownRecord = (h) =>
       !!actor.login.trim() &&

@@ -36,6 +36,8 @@ globalThis.seiApplyTheme = (root) => {
       parse(vars.getPropertyValue('--infra-esquema-cor-barra-sistema-texto')) ||
       parse(text ? getComputedStyle(text).color : '');
     let foreground = contrast(rgb, [0, 0, 0]) >= contrast(rgb, [255, 255, 255]) ? '#000000' : '#ffffff';
+    const headerBackground = `rgb(${rgb.join(',')})`;
+    const headerForeground = official && contrast(rgb, official) >= 4.5 ? `rgb(${official.join(',')})` : foreground;
     if (official && contrast(rgb, official) >= 3) {
       const base = rgb.slice(),
         toward = luminance(official) > 0.5 ? 0 : 255;
@@ -48,6 +50,8 @@ globalThis.seiApplyTheme = (root) => {
     let activeRgb = rgb.map((c) => Math.round(c * 0.7));
     while (contrast(activeRgb, [255, 255, 255]) < 4.5) activeRgb = activeRgb.map((c) => Math.floor(c * 0.9));
     const values = {
+      '--so-header-bg': headerBackground,
+      '--so-header-fg': headerForeground,
       '--so-theme-bg': `rgb(${rgb.join(',')})`,
       '--so-theme-fg': foreground,
       '--so-button-bg': s?.backgroundColor || '#ffffff',

@@ -1,12 +1,23 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "120",
   "name": "SEI Organizador",
-  "version": "0.4.2",
-  "description": "Abas compartilhadas por assunto em blocos internos e situação dos documentos no SEI.",
+  "version": "0.11.0",
+  "description": "Abas por assunto, situação dos documentos e alertas de novos processos nos blocos internos do SEI.",
   "background": {
     "service_worker": "background.js"
   },
   "options_page": "options.html",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "offscreen"
+  ],
+  "action": {
+    "default_title": "SEI Organizador — alertas dos blocos",
+    "default_icon": "monitor-icon.png"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -16,7 +27,11 @@
         "config.js",
         "history.js",
         "theme.js",
-        "content.js"
+        "content.js",
+        "monitor-data.js",
+        "monitor-sounds.js",
+        "monitor-settings.js",
+        "monitor.js"
       ],
       "css": [
         "content.css"
@@ -31,12 +46,15 @@
         "config.js",
         "history.js",
         "document-data.js",
+        "history-pages.js",
+        "history-filter.js",
         "document.js",
         "send.js"
       ]
     }
   ],
   "host_permissions": [
+    "https://sei.rj.gov.br/*",
     "https://ext.5cpa.com.br/*"
   ]
 }

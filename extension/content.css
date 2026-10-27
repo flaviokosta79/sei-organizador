@@ -1,4 +1,18 @@
 /* Bar: sticky container above the native table, themed from the SEI header (see theme.js). */
+.so-new-process > td {
+  box-shadow: inset 0 -2px #d79b26;
+}
+.so-new-process-label {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #fff0bf;
+  color: #6b4200;
+  font:
+    bold 11px Arial,
+    sans-serif;
+}
 #sei-organizador {
   position: sticky;
   top: var(--so-sticky-top, 0px);

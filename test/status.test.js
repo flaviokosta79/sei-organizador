@@ -6,6 +6,19 @@ import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {createStore} from '../server/store.js';
 import '../extension/history.js';
+
+test('status em lote é atômico, registra valores anteriores e desfaz o conjunto',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'sei-batch-')),s=createStore(join(dir,'db.sqlite'));
+ try{const actor={login:'teste',org:'SEPM'};
+ s.mutate('1','2',0,actor,{type:'status',status:'urgent',processIds:['10']});
+ assert.throws(()=>s.mutate('1','2',1,actor,{type:'status',status:'sign',processIds:['10','inválido']}));
+ assert.equal(s.read('1','2').version,1);assert.deepEqual(s.read('1','2').statuses,{'10':'urgent'});
+ let r=s.mutate('1','2',1,actor,{type:'status',status:'sign',processIds:['10','20']});
+ assert.deepEqual(r.statuses,{'10':'sign','20':'sign'});
+ const h=s.history('1','2')[0];assert.deepEqual(h.action.previousStatuses,{'10':'urgent','20':'none'});assert.match(seiHistoryText(h),/2 processos/);
+ r=s.mutate('1','2',2,actor,{type:'undo',historyId:h.id});assert.deepEqual(r.statuses,{'10':'urgent'});
+ }finally{s.close();rmSync(dir,{recursive:true,force:true});}
+});
 test('status persistente independente, allowlist, conflitos, histórico e desfazer antigo',()=>{
  const dir=mkdtempSync(join(tmpdir(),'sei-status-')),path=join(dir,'db.sqlite');let s=createStore(path);
  try{const actor={login:'teste'};let r=s.mutate('1','2',0,actor,{type:'create',name:'Pasta'});const tabId=r.tabs[0].id;

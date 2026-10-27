@@ -3,6 +3,12 @@ globalThis.seiDocumentData = (() => {
   const clean = (text) => (text || '').replace(/\s+/g, ' ').trim();
   // The SEI writes the same sigla with º or ° depending on the page.
   const sigla = (text) => clean(text).replace(/º/g, '°').toUpperCase();
+  // SEI captions may include the visible range: "(129 registros - 1 a 100)".
+  function recordCount(table) {
+    const match = clean(table?.querySelector('caption')?.textContent).match(/\(\s*([\d.]+)\s+registros?\b/i);
+    const value = match ? Number(match[1].replaceAll('.', '')) : null;
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
   function parseDate(text) {
     const m = clean(text).match(/^(\d{2})\/(\d{2})\/(\d{4})(?:,? (?:às )?(\d{2}):(\d{2}))?/);
     return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0)) : null;
@@ -55,7 +61,10 @@ globalThis.seiDocumentData = (() => {
       type: a[0],
       id: a[1],
       parent: a[2],
+      url: a[3],
+      target: a[4],
       title: a[5],
+      description: a[6],
       icon: a[7],
       protocol: a[15],
     }));
@@ -67,7 +76,7 @@ globalThis.seiDocumentData = (() => {
     }));
     const process = nodes.find((n) => n.type === 'PROCESSO');
     return {
-      process: process ? { id: process.id, number: process.title } : null,
+      process: process ? { id: process.id, number: process.title, type: process.description || '' } : null,
       document(id) {
         const node = nodes.find((n) => n.type === 'DOCUMENTO' && n.id === id);
         if (!node) return null;
@@ -81,6 +90,8 @@ globalThis.seiDocumentData = (() => {
           id,
           protocol: node.protocol,
           title: node.title,
+          url: node.url,
+          target: node.target,
           unit: actions.find((a) => a.type === 'UNIDADE_GERADORA' && a.target === id)?.sigla || null,
           signers,
         };
@@ -144,6 +155,8 @@ globalThis.seiDocumentData = (() => {
     return result;
   }
   function parseHistory(doc) {
+    if (!doc.querySelector('#tblHistorico'))
+      throw new Error('Andamento não reconhecido. Verifique a sessão do SEI e recarregue a página.');
     const rows = [];
     for (const row of doc.querySelectorAll('#tblHistorico tr')) {
       const cells = row.querySelectorAll('td');
@@ -161,21 +174,23 @@ globalThis.seiDocumentData = (() => {
       });
     }
     const toggle = doc.querySelector('#ancTipoHistorico');
-    const caption = clean(doc.querySelector('#tblHistorico caption')?.textContent).match(/\((\d+) registros?\)/);
+    const total = recordCount(doc.querySelector('#tblHistorico'));
     return {
       rows,
       complete: !/completo/i.test(toggle?.textContent || ''),
       completeValue: /completo/i.test(toggle?.textContent || '')
         ? toggle.getAttribute('onclick')?.match(/verHistorico\('(\w+)'\)/)?.[1] || null
         : null,
-      partial: caption ? Number(caption[1]) > rows.length : false,
+      partial: total === null || total > rows.length,
     };
   }
-  // rows come newest first, as the SEI lists them.
+  const byTime = (rows) => [...rows].sort((a, b) => b.time - a.time);
+  // The native table can group open-unit rows ahead of more recent closed-unit events.
   function summarize(rows, protocol, unit) {
+    rows = byTime(rows);
     const own = sigla(unit),
       escaped = String(protocol).replace(/\D/g, '');
-    const mentions = new RegExp(`\\b${escaped}\\b`);
+    const mentions = new RegExp(escaped ? `\\b${escaped}\\b` : '(?!)');
     const generated = rows.find(
       (r) => /^(Gerado documento|Registro de documento externo)/.test(r.text) && mentions.test(r.text),
     );
@@ -202,6 +217,24 @@ globalThis.seiDocumentData = (() => {
         afterDocument: !generated || head.time >= generated.time,
       };
     }
+    const incoming = rows.find((r) => {
+      const source = r.text.match(/^Processo remetido pela unidade (.+)$/);
+      return sigla(r.unit) === own && source && sigla(source[1]) !== own;
+    });
+    const received = rows.find((r) => sigla(r.unit) === own && /^Processo recebido na unidade\b/.test(r.text));
+    // A remessa registra quem enviou; o recebimento registra quem recebeu.
+    // Uma remessa posterior ao último recebimento inicia uma nova entrada.
+    const receipt = received && (!incoming || received.time >= incoming.time) ? received : null;
+    const lastArrival =
+      incoming || receipt
+        ? {
+            sentAt: incoming?.time || null,
+            receivedAt: receipt?.time || null,
+            origin: incoming?.text.match(/^Processo remetido pela unidade (.+)$/)[1] || null,
+            user: incoming?.user || '',
+            name: incoming?.userName || '',
+          }
+        : null;
     const open = [];
     for (const r of rows)
       if (r.open && !open.some((o) => sigla(o.unit) === sigla(r.unit)))
@@ -212,7 +245,7 @@ globalThis.seiDocumentData = (() => {
       const m = r.text.match(/^(Documento (\d+)\b.*?|Processo) (inserido no|retirado do) bloco (\d+)/);
       if (!m || (m[2] && m[2] !== escaped)) continue;
       const target = m[2] ? blocks.document : blocks.process;
-      if (m[3] === 'inserido no') target.set(m[4], { id: m[4], since: r.time, user: r.user });
+      if (m[3] === 'inserido no') target.set(m[4], { id: m[4], since: r.time, user: r.user, name: r.userName });
       else target.delete(m[4]);
     }
     return {
@@ -220,6 +253,7 @@ globalThis.seiDocumentData = (() => {
       generatedAt: generated?.time || null,
       signed,
       lastSend,
+      lastArrival,
       open,
       documentBlocks: [...blocks.document.values()],
       processBlocks: [...blocks.process.values()],
@@ -247,8 +281,8 @@ globalThis.seiDocumentData = (() => {
         available: cell('Disponibilização'),
       });
     }
-    const caption = clean(table.querySelector('caption')?.textContent).match(/\((\d+) registros?\)/);
-    return { blocks, partial: caption ? Number(caption[1]) > blocks.size : false };
+    const total = recordCount(table);
+    return { blocks, partial: total === null || total > blocks.size };
   }
   function age(since, now = new Date()) {
     const minutes = Math.max(0, Math.floor((now - since) / 60000));
@@ -271,6 +305,8 @@ globalThis.seiDocumentData = (() => {
     });
   return {
     sigla,
+    byTime,
+    recordCount,
     parseDate,
     calls,
     parseTree,

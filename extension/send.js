@@ -47,19 +47,30 @@
     host,
   );
 
-  // Capture on window runs before the native onsubmit, for mouse, Enter and the Alt+E access key.
+  // Capture runs before native handlers. Submit also covers keyboard and requestSubmit().
   let confirmed = false;
+  const check = (event) => {
+    if (confirmed) return;
+    const names = pending.map((d) => `• ${d.title}`).join('\n');
+    if (confirm(`Há documento(s) de ${context.unit} sem assinatura:\n\n${names}\n\nEnviar o processo mesmo assim?`))
+      confirmed = true;
+    else {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
   window.addEventListener(
     'click',
     (event) => {
       if (confirmed || !event.target.closest?.('#sbmEnviar')) return;
-      const names = pending.map((d) => `• ${d.title}`).join('\n');
-      if (confirm(`Há documento(s) de ${context.unit} sem assinatura:\n\n${names}\n\nEnviar o processo mesmo assim?`))
-        confirmed = true;
-      else {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
+      check(event);
+    },
+    true,
+  );
+  window.addEventListener(
+    'submit',
+    (event) => {
+      if (event.target === form) check(event);
     },
     true,
   );

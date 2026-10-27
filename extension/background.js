@@ -1,4 +1,7 @@
 importScripts('config.js');
+importScripts('monitor-sounds.js');
+importScripts('monitor-sign.js');
+importScripts('monitor-background.js');
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type !== 'api') return;
   (async () => {
