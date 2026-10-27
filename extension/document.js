@@ -14,7 +14,6 @@
   const { top, unit, actor } = context;
   if (globalThis.seiWorkScope) {
     await seiWorkScope.ready;
-    if (!seiWorkScope.block) return;
   }
   const loaded = await D.loadTree(top);
   if (!loaded) return;
@@ -414,10 +413,6 @@
     historySignature = JSON.stringify(history);
     loading.remove();
     let summary = D.summarize(history.rows, own ? info.protocol : null, unit);
-    if (globalThis.seiWorkScope && !summary.processBlocks.some((block) => seiWorkScope.allows(block.id))) {
-      dispose();
-      return;
-    }
     if (own && !info.unit && summary.generatedUnit && D.sigla(summary.generatedUnit) !== D.sigla(unit)) {
       own = false;
       signatureLine.remove();
@@ -651,7 +646,19 @@
         ...signatureBlocks.map((b) => span(`✎ Aguardando assinatura · ${b.short}`, 'item pending', b.text)),
       );
     else if (own) for (const b of signatureBlocks) signatureLine.append(span(`No ${b.short}`, 'item muted', b.text));
-    if (!signatureBlocks.length && !internalBlocks.length)
+    if (globalThis.seiWorkScope && !internalBlocks.length)
+      line(
+        'Bloco de trabalho',
+        span(
+          !seiWorkScope.block
+            ? 'Escolha um bloco de trabalho nas opções para ver suas classificações.'
+            : history.partial || !history.complete
+              ? `Não foi possível confirmar a inclusão no bloco ${seiWorkScope.block}: histórico incompleto.`
+              : `Nenhuma inclusão no bloco ${seiWorkScope.block} encontrada nos registros consultados.`,
+          'muted',
+        ),
+      );
+    else if (!signatureBlocks.length && !internalBlocks.length)
       line(
         'Blocos',
         span(

@@ -37,6 +37,38 @@
     } catch {}
     return null;
   }
+  function catalogRows(doc) {
+    const table = doc.querySelector('#tblBlocos');
+    if (!table) return [];
+    const header = [...table.rows].find((row) => row.querySelector('th'));
+    const labels = header
+      ? [...header.cells].map((cell) => cell.textContent.replace(/\s+/g, ' ').trim().toLowerCase())
+      : [];
+    const groupIndex = labels.findIndex((label) => /^grupos?$/.test(label));
+    const descriptionIndex = labels.findIndex((label) => label === 'descrição');
+    const result = new Map();
+    for (const link of table.querySelectorAll('a[href*="id_bloco="]')) {
+      try {
+        const url = new URL(link.getAttribute('href'), location.href),
+          id = url.searchParams.get('id_bloco'),
+          row = link.closest('tr');
+        if (
+          url.origin !== location.origin ||
+          url.pathname !== '/sei/controlador.php' ||
+          url.searchParams.get('acao') !== 'rel_bloco_protocolo_listar' ||
+          !/^\d{1,30}$/.test(id || '')
+        )
+          continue;
+        const clean = (index) => row?.cells[index]?.textContent.replace(/\s+/g, ' ').trim().slice(0, 150) || '';
+        result.set(id, {
+          id,
+          name: descriptionIndex >= 0 ? clean(descriptionIndex) : 'Bloco ' + id,
+          ...(groupIndex >= 0 ? { group: clean(groupIndex) } : {}),
+        });
+      } catch {}
+    }
+    return [...result.values()].slice(0, 200);
+  }
   function blocks() {
     const url = new URL(location.href),
       action = url.searchParams.get('acao');
@@ -50,21 +82,7 @@
         ? [{ id, name: (document.querySelector('#txtDescricao')?.value || `Bloco ${id}`).slice(0, 150) }]
         : [];
     }
-    if (action === 'bloco_interno_listar')
-      return [...document.querySelectorAll('a[href*="id_bloco="]')]
-        .flatMap((link) => {
-          try {
-            const url = new URL(link.getAttribute('href'), location.href);
-            const id = url.searchParams.get('id_bloco');
-            const row = link.closest('tr');
-            return url.searchParams.get('acao') === 'rel_bloco_protocolo_listar' && /^\d{1,30}$/.test(id || '')
-              ? [{ id, name: (row?.cells[4]?.textContent?.trim() || `Bloco ${id}`).slice(0, 150) }]
-              : [];
-          } catch {
-            return [];
-          }
-        })
-        .slice(0, 200);
+    if (action === 'bloco_interno_listar') return catalogRows(document);
     return [];
   }
   async function send(type, extra = {}) {
@@ -97,19 +115,7 @@
       'text/html',
     );
     if (!doc.querySelector('#tblBlocos')) throw Error('Lista de blocos indisponível; verifique a sessão do SEI.');
-    const found = [...doc.querySelectorAll('#tblBlocos a[href*="id_bloco="]')]
-      .flatMap((link) => {
-        try {
-          const url = new URL(link.getAttribute('href'), location.href),
-            id = url.searchParams.get('id_bloco');
-          return url.searchParams.get('acao') === 'rel_bloco_protocolo_listar' && /^\d{1,30}$/.test(id || '')
-            ? [{ id, name: (link.closest('tr')?.cells[4]?.textContent?.trim() || `Bloco ${id}`).slice(0, 150) }]
-            : [];
-        } catch {
-          return [];
-        }
-      })
-      .slice(0, 200);
+    const found = catalogRows(doc);
     await send('scope:remember', { blocks: found, catalog: true });
     await refresh(true);
   }

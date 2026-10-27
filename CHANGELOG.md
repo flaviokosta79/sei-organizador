@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.1 — 2026-10-27
+
+- Corrigido o card que carregava e desaparecia quando não encontrava inclusão no bloco escolhido. O resumo do processo permanece visível; somente status, assuntos e seus controles ficam restritos ao bloco de trabalho.
+- Card informa inclusão não encontrada, histórico incompleto ou necessidade de escolher um bloco, sem exibir classificações de outros blocos. Corrigida também a ausência do resumo antes da primeira escolha.
+- Lista de escolha usa número + Grupo do SEI, lido pelo cabeçalho da tabela nativa, independentemente da posição da coluna. Grupo vazio aparece como Sem grupo; grupo ainda não lido é identificado explicitamente. Abrir o bloco novamente preserva o grupo já conhecido, sem substituí-lo pela descrição.
+- Correção somente na extensão, compatível com a API 0.14.0, sem reimplantação da VPS.
+- 149 testes passaram; sintaxe e formatação aprovadas. Opções com número/grupo conferidas no Chromium, ZIP conferido por SHA-256. Relógio dos testes do card fixado para evitar falhas na virada do minuto. Conferência no SEI real pendente.
+
 ## 0.14.0 — 2026-10-27
 
 - Opções permitem escolher o bloco de trabalho por unidade, órgão e login neste navegador. O primeiro bloco reconhecido é escolhido automaticamente; salvar outra escolha aplica a alteração às páginas abertas. Lista de blocos pode ser atualizada pela sessão do SEI, sem endereço ou token manual.

@@ -1,4 +1,4 @@
-# SEI Organizador — 0.14.0
+# SEI Organizador — 0.14.1
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -20,11 +20,11 @@ Para clone existente, execute `git submodule update --init`. `referencias/sei` �
 
 ## Escolha do bloco de trabalho
 
-Abra **Opções** da extensão ou use **⚙ Organizador → Escolher bloco nas opções da extensão**. Selecione seu usuário, escolha o **Bloco interno** e clique em **Salvar bloco de trabalho**. A lista reúne blocos reconhecidos no SEI e pode ser atualizada pela sessão aberta; se algum faltar, abra esse bloco no SEI e clique em **Atualizar lista do SEI**. Serviço, unidade e acesso sem token continuam fixos.
+Abra **Opções** da extensão ou use **⚙ Organizador → Escolher bloco nas opções da extensão**. Selecione seu usuário, escolha o **Bloco interno**, identificado por **número + grupo do SEI**, e clique em **Salvar bloco de trabalho**. Sem grupo indica campo vazio no SEI; Grupo não identificado pede atualizar a lista pela sessão aberta, sem usar a descrição como substituto. A lista reúne blocos reconhecidos no SEI e pode ser atualizada pela sessão aberta; se algum faltar, abra esse bloco no SEI e clique em **Atualizar lista do SEI**. Serviço, unidade e acesso sem token continuam fixos.
 
 O primeiro bloco reconhecido é escolhido automaticamente, preservando o uso após instalar. A preferência é separada por unidade, órgão e login neste navegador. Trocar a preferência aplica a mudança às páginas abertas; não remove classificações do bloco anterior. Para iniciar consultas após reiniciar o navegador ou escolher um bloco que ainda não foi aberto, abra o bloco escolhido.
 
-Abas, status, assuntos, alertas, reconhecimento de novas entradas e avisos de edição ficam restritos ao bloco escolhido. Em outros blocos, os controles nativos permanecem disponíveis e um aviso oferece acesso à escolha. O card não apresenta o fluxo de um processo que não consta no bloco de trabalho no histórico carregado. A presença de edição também usa o bloco escolhido, mesmo quando o mesmo processo aparece em mais de um bloco. Todos precisam atualizar a extensão; versões antigas mantêm seu comportamento anterior. A preferência organiza o fluxo da extensão e não altera as permissões do SEI.
+Abas, status, assuntos, alertas, reconhecimento de novas entradas e avisos de edição ficam restritos ao bloco escolhido. Em outros blocos, os controles nativos permanecem disponíveis e um aviso oferece acesso à escolha. O resumo do processo permanece visível mesmo sem confirmação de inclusão no bloco de trabalho. Somente as classificações e os controles de assuntos/status ficam restritos ao bloco escolhido; ausência de registro ou histórico incompleto são informados no card. A presença de edição também usa o bloco escolhido, mesmo quando o mesmo processo aparece em mais de um bloco. Todos precisam atualizar a extensão; versões antigas mantêm seu comportamento anterior. A preferência organiza o fluxo da extensão e não altera as permissões do SEI.
 
 ## Limpeza após retirada do processo
 
@@ -156,10 +156,10 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension-0.14.0.zip -Force
+Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension-0.14.1.zip -Force
 ```
 
-Resultado da entrega 0.14.0: **146 testes passaram**, além da verificação de sintaxe e de formatação. A chegada à unidade e a inclusão no bloco foram validadas em fixtures, sem validação desta alteração no SEI real. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real em entregas anteriores; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.
+Resultado da entrega 0.14.1: **149 testes passaram**, além da verificação de sintaxe e de formatação. A chegada à unidade e a inclusão no bloco foram validadas em fixtures, sem validação desta alteração no SEI real. Use `npm run format` antes de entregar alterações na extensão. A estrutura dos campos foi conferida na página real em entregas anteriores; o layout foi validado em fixture com dados fictícios em 1280 e 520 px. A pesquisa real não foi submetida durante a validação visual. Testes cobrem navegação, recuperação da interface, múltiplos assuntos, filtros, controles nativos, indisponibilidade, histórico, reversão seletiva, autoria informada, conflitos, repetição e persistência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 

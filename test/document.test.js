@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {JSDOM} from 'jsdom';
 const read=f=>readFileSync(new URL('../extension/'+f,import.meta.url),'utf8');
-const data=(()=>{const w=new JSDOM('',{runScripts:'outside-only'}).window;w.eval(read('document-data.js'));return w.seiDocumentData;})();
+const fixtureNow=Date.now();
+const data=(()=>{const w=new JSDOM('',{runScripts:'outside-only'}).window;w.Date=class extends w.Date{constructor(...args){super(...(args.length?args:[fixtureNow]));}static now(){return fixtureNow;}};w.eval(read('document-data.js'));return w.seiDocumentData;})();
 const base='https://sei.rj.gov.br/sei/';
 const plain=v=>JSON.parse(JSON.stringify(v));
 const tree=`<div id="divArvore">Árvore nativa</div><div id="divConsultarAndamento"><a href="#" onclick="consultarAndamento('controlador.php?acao=procedimento_consultar_historico&id_procedimento=900&infra_unidade_atual=1&infra_hash=x');">Consultar Andamento</a></div><div id="divRelacionados"></div><script>
@@ -18,8 +19,8 @@ NosAcoes[2] = new infraArvoreAcao("UNIDADE_GERADORA","UG902","902","#",null,"Out
 const hrow=(time,unit,user,text,open=false)=>`<tr class="${open?'andamentoAberto':'andamentoConcluido'}"><td>${time}</td><td><a title="Nome ${unit}">${unit}</a></td><td><a title="Nome ${user}">${user}</a></td><td>${text}</td></tr>`;
 const stamp=d=>d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(',','');
 const historyRows=[
- hrow(stamp(new Date(Date.now()-10*60000)),'SEPM/3°CPA','r.rs','Processo recebido na unidade',true),
- hrow(stamp(new Date(Date.now()-8*86400000)),'SEPM/24° BPM','c.c','Processo atribuído para c.c',true),
+ hrow(stamp(new Date(fixtureNow-10*60000)),'SEPM/3°CPA','r.rs','Processo recebido na unidade',true),
+ hrow(stamp(new Date(fixtureNow-8*86400000)),'SEPM/24° BPM','c.c','Processo atribuído para c.c',true),
  hrow('19/10/2026 15:10','SEPM/5ºCPA','danilo','Documento 555 (CI fictícia 7) retirado do bloco 14'),
  hrow('19/10/2026 15:09','SEPM/24° BPM','m.sdo','Processo remetido pela unidade <a>SEPM/5°CPA</a>'),
  hrow('19/10/2026 15:09','SEPM/3°CPA','m.sdo','Processo remetido pela unidade <a>SEPM/5°CPA</a>'),
@@ -147,11 +148,19 @@ test('card prioriza controles e distingue chegada, atividade e alertas de outras
  }finally{f.leave();}
 });
 
-test('card não mostra fluxo de processo fora do bloco escolhido nas opções',async()=>{
+test('card preserva resumo fora do bloco escolhido sem expor classificações de outros blocos',async()=>{
  const blocked=frame({action:'procedimento_visualizar',scope:{ready:Promise.resolve(),block:'999',allows:id=>id==='999'}});
- await blocked.done;assert.equal(blocked.badge(),undefined);assert.equal(blocked.messages.length,0);blocked.leave();
+ await blocked.done;assert.ok(blocked.badge());assert.match(blocked.badge().textContent,/Última movimentação/);assert.match(blocked.badge().textContent,/Nenhuma inclusão no bloco 999 encontrada/);assert.equal(blocked.badge().querySelector('.organizer'),null);assert.equal(blocked.messages.length,0);blocked.leave();
  const allowed=frame({action:'procedimento_visualizar',scope:{ready:Promise.resolve(),block:'1343',allows:id=>id==='1343'}});
  try{await allowed.done;assert.ok(allowed.badge());assert.ok(allowed.messages.every(m=>m.block==='1343'));}finally{allowed.leave();}
+});
+
+test('card permanece visível sem bloco escolhido e quando o histórico parcial não confirma inclusão',async()=>{
+ const scope={ready:Promise.resolve(),block:null,allows:()=>false};const fresh=frame({action:'procedimento_visualizar',scope});
+ try{await fresh.done;assert.ok(fresh.badge());assert.match(fresh.badge().textContent,/Escolha um bloco de trabalho nas opções/);assert.equal(fresh.messages.length,0);}finally{fresh.leave();}
+ const html=historyPage([hrow('25/10/2026 10:00','SEPM/5°CPA','teste','Processo recebido na unidade')],'resumido').replace('(1 registros)','(50 registros)');
+ const partial=frame({action:'procedimento_visualizar',historyHTML:html,scope:{ready:Promise.resolve(),block:'1343',allows:id=>id==='1343'}});
+ try{await partial.done;assert.ok(partial.badge());assert.match(partial.badge().textContent,/Não foi possível confirmar a inclusão no bloco 1343: histórico incompleto/);assert.equal(partial.messages.length,0);}finally{partial.leave();}
 });
 
 test('tempo parado por faixa e lista de blocos',()=>{
@@ -296,7 +305,7 @@ test('alerta de tempo parado no topo do card, visível mesmo oculto',async()=>{
  const f=frame();await f.done;await settle();const root=f.badge(),alert=root.querySelector('.idle');
  assert.equal(alert.textContent,'⏱ Parado há 8 dias em SEPM/24° BPMAlerta de outra unidade; não indica atraso na sua unidade.');assert.equal(alert.dataset.level,'alert');assert.equal(root.querySelector('section').dataset.idle,'alert');
  assert.equal(alert.nextElementSibling.tagName,'UL');root.querySelector('.toggle').click();assert.equal(root.querySelector('ul').hidden,true);assert.equal(alert.hidden,false);
- const days=n=>stamp(new Date(Date.now()-n*86400000));
+ const days=n=>stamp(new Date(fixtureNow-n*86400000));
  const rows=[hrow(days(4),'SEPM/5°CPA','a','Processo recebido na unidade',true),hrow(days(3.5),'SEPM/EMG','b','Processo recebido na unidade',true),hrow(days(1),'SEPM/3°CPA','c','Processo recebido na unidade',true),...historyRows.slice(2)];
  const warn=frame({rows});await warn.done;await settle();const w=warn.badge().querySelector('.idle');
  assert.equal(w.dataset.level,'warn');assert.match(w.textContent,/^⏱ Parado há 4 dias nesta unidadee mais 1 unidade parada há 3 dias ou maisTempo desde a última movimentação na sua unidade\.$/);assert.match(w.title,/SEPM\/EMG: desde/);
@@ -459,7 +468,7 @@ test('resumo mantém pendências quando andamento falha e não conclui processo 
 });
 
 test('última movimentação prioriza unidade e alterna para processo sem novas consultas',async()=>{
- // Este cenário compara datas fixas; as duas linhas relativas a Date.now()
+ // Este cenário compara datas fixas; as duas linhas relativas a fixtureNow
  // pertencem aos testes de tempo parado e podem ser mais recentes que elas.
  const rows=[hrow('24/10/2026 09:10','sepm/5ºcpa','usuario.local','Processo recebido na própria unidade',true),...historyRows.slice(2),hrow('24/10/2026 12:00','SEPM/ASCOM','colega','Processo atribuído fora da unidade',true)];
  const f=frame({action:'procedimento_visualizar',rows});await f.done;

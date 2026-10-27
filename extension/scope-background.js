@@ -56,7 +56,13 @@
         if (
           !Array.isArray(msg.blocks) ||
           msg.blocks.length > 200 ||
-          !msg.blocks.every((b) => /^\d{1,30}$/.test(b.id) && typeof b.name === 'string' && b.name.length <= 150)
+          !msg.blocks.every(
+            (b) =>
+              /^\d{1,30}$/.test(b.id) &&
+              typeof b.name === 'string' &&
+              b.name.length <= 150 &&
+              (b.group === undefined || (typeof b.group === 'string' && b.group.length <= 150)),
+          )
         )
           throw Error('Lista de blocos inválida');
         if (
@@ -70,7 +76,7 @@
         )
           throw Error('Bloco não confirmado nesta página');
         const catalog = new Map(pref.catalog.map((b) => [b.id, b]));
-        for (const block of msg.blocks) catalog.set(block.id, block);
+        for (const block of msg.blocks) catalog.set(block.id, { ...catalog.get(block.id), ...block });
         pref.catalog = [...catalog.values()].slice(-200);
         if (!pref.block && !listing && !msg.catalog) pref.block = sourceBlock;
       }

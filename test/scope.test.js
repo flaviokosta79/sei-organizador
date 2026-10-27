@@ -37,6 +37,26 @@ test('API bloqueia classificação de outro bloco, mesmo com mensagem forjada',a
  assert.ok((await w.send({type:'api',identity:actor,unit:'1',block:'2'},url('2'))).data);assert.equal(w.requests.length,1);
 });
 
+test('opções mostram número e grupo nativo, preservando grupo ao reabrir o bloco',async()=>{
+ const state=worker(),source=base+'?acao=bloco_interno_listar&infra_unidade_atual=1';
+ const html='<a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><table id="tblBlocos"><tr><th>Número</th><th>Descrição</th><th>Ações</th><th>Grupo</th></tr><tr><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=2">2</a></td><td>Descrição diferente</td><td></td><td>P/3</td></tr><tr><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=3">3</a></td><td>Outra descrição</td><td></td><td></td></tr></table>';
+ const dom=new JSDOM(html,{url:source,runScripts:'outside-only'}),w=dom.window;
+ w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};w.chrome={runtime:{onMessage:{addListener:()=>{}},sendMessage:msg=>state.send(msg,source)}};
+ try{w.eval(read('scope.js'));await tick();const pref=await state.store.get(actor);assert.equal(pref.catalog.find(b=>b.id==='2').group,'P/3');assert.equal(pref.catalog.find(b=>b.id==='3').group,'');
+  await state.remember('2');assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').group,'P/3');
+  await state.remember('4');const opts=new JSDOM(read('options.html'),{url:options,runScripts:'outside-only'});try{opts.window.chrome={runtime:{sendMessage:msg=>state.send(msg,options)},tabs:{query:async()=>[]}};opts.window.eval(read('options.js'));await tick();const labels=[...opts.window.document.querySelector('#block').options].map(o=>o.textContent);assert.deepEqual(labels,['2 · P/3','3 · Sem grupo','4 · Grupo não identificado']);assert.ok(!labels.some(text=>text.includes('Descrição')));}finally{opts.window.close();}
+ }finally{w.close();}
+});
+
+test('atualizar lista lê Grupo pelo cabeçalho, independentemente da ordem das colunas',async()=>{
+ const state=worker(),source=url('2');let requests=0;
+ const html='<title>Processos do Bloco Interno</title><a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><a href="?acao=bloco_interno_listar&infra_unidade_atual=1">Internos</a><form id="frmRelBlocoProtocoloLista"><input id="txtDescricao" value="Isto é descrição"></form>';
+ const dom=new JSDOM(html,{url:source,runScripts:'outside-only'}),w=dom.window,listeners=[];
+ Object.assign(w,{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'},TextDecoder,AbortSignal,fetch:async()=>{requests++;return new Response('<table id="tblBlocos"><tr><th>Grupo</th><th>Descrição</th><th>Número</th></tr><tr><td>Seção P/3</td><td>Isto é descrição</td><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=2">2</a></td></tr></table>',{headers:{'content-type':'text/html; charset=utf-8'}});}});
+ w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:msg=>state.send(msg,source)}};
+ try{w.eval(read('scope.js'));await tick();const response=await new Promise(resolve=>listeners[0]({type:'scope:catalog-request'},{},resolve));assert.equal(response.error,undefined);assert.equal(requests,1);assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').group,'Seção P/3');}finally{w.close();}
+});
+
 test('trocar preferência ativa só o bloco escolhido e restaura a lista nativa ao sair',async()=>{
  const workerState=worker();await workerState.remember('2');
  const html='<title>Processos do Bloco Interno</title><h1>Processos do Bloco Interno</h1><a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista"><input id="txtDescricao" value="Pessoal"><div id="divInfraAreaPaginacaoSuperior"></div><table id="tblProtocolosBlocos"><tr><th>Processo</th><th>Tipo</th><th>Anotações</th><th>Ações</th></tr><tr><td><a href="?id_procedimento=100">SEI-350024/000100/2026</a></td><td>Tipo</td><td>Anotação</td><td><button id="native">Ação SEI</button></td></tr></table></form>';

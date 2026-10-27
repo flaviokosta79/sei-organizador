@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão e API estão na versão 0.14.0: bloco de trabalho por usuário, presença e vistos isolados por bloco, com limpeza de status e assuntos após confirmação completa da retirada do processo.
+A extensão está na versão 0.14.1 e a API permanece em 0.14.0: bloco de trabalho por usuário, presença e vistos isolados por bloco, com limpeza de status e assuntos após confirmação completa da retirada do processo.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -19,6 +19,10 @@ Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:f7997d386516d
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Correção 0.14.1 — 2026-10-27
+
+Resumo do processo preservado quando a inclusão no bloco escolhido não aparece no andamento, em histórico incompleto ou antes de escolher um bloco. Classificações permanecem limitadas ao bloco escolhido, sem consultar outros blocos. Opções identificam os blocos por número + Grupo do SEI, sem substituir grupo por descrição. Correções apenas na extensão, compatíveis com a API 0.14.0; não exigem reimplantação.
 
 ## Atualização 0.14.0 — 2026-10-27
 
@@ -112,7 +116,7 @@ rollback. Não entregar apenas docker stack deploy externo. Não dar Docker sock
 
 ## Instalação e atualização da extensão
 
-Extrair artifacts/sei-organizador-extension-0.14.0.zip em uma pasta e carregar essa pasta
+Extrair artifacts/sei-organizador-extension-0.14.1.zip em uma pasta e carregar essa pasta
 em chrome://extensions (modo desenvolvedor), ou recarregar a extensão previamente
 carregada da pasta extension deste projeto. Aceitar a permissão de instalação
 para o serviço, se solicitada pelo Chrome, e recarregar a página do bloco no SEI.

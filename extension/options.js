@@ -16,7 +16,7 @@
     for (const item of selected?.catalog || []) {
       const option = document.createElement('option');
       option.value = item.id;
-      option.textContent = `${item.id} · ${item.name}`;
+      option.textContent = `${item.id} · ${item.group === undefined ? 'Grupo não identificado' : item.group || 'Sem grupo'}`;
       block.append(option);
     }
     if (selected?.block) block.value = selected.block;
