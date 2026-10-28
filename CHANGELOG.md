@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.0 — 2026-10-28
+
+- Configuração de chefes no modal oferece sugestões por nome ou login, com busca sem acentos, seleção por mouse/teclado e inclusão somente do login, sem duplicar usuários. Cadastro só é aplicado ao clicar em Salvar chefes; digitação manual permanece disponível.
+- Inclui catálogo inicial de 65 usuários do 5º CPA, extraído do seletor selAtribuicao fornecido pelo usuário. Não é uma consulta em tempo real ao diretório. Ao abrir a página nativa de atribuição na unidade/órgão configurados, a lista visível atualiza o catálogo local automaticamente, sem alterar a seleção ou confirmar atribuições.
+- Nomes, logins do catálogo e IDs da atribuição não são enviados à API compartilhada. Apenas os logins escolhidos continuam salvos na configuração local de chefes. Sem novas requisições ao SEI, novas permissões ou observadores de usuários nas páginas comuns.
+- 185 testes passaram; sintaxe/formatação aprovadas. Chromium validou busca e seleção por teclado, salvamento somente de logins e modal de 320 px sem rolagem horizontal. Atualização automática na sessão real ainda precisa ser conferida. Sem mudança na API 0.16.4/VPS.
+
 ## 0.16.6 — 2026-10-28
 
 - Modal de configurações no cabeçalho do SEI permite escolher e salvar o bloco de trabalho e atualizar o catálogo, sem abrir as opções externas. Usa o usuário conectado, mostra número + descrição e aplica a escolha às páginas abertas.

@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão na versão 0.16.6 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão na versão 0.17.0 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -214,3 +214,7 @@ Alerta da Secretaria exige observação de recebidos de até 90 segundos; leitur
 ## Configurações no SEI 0.16.6 — 2026-10-28
 
 Escolha de bloco e atualização do catálogo disponíveis no modal do cabeçalho, junto de sons e chefes. Usa o perfil do usuário conectado; opções externas permanecem como alternativa para administrar perfis locais. Correção somente na extensão, sem reimplantação da API 0.16.4 ou mudanças de permissões.
+
+## Sugestões de usuários 0.17.0 — 2026-10-28
+
+Catálogo inicial de 65 usuários do 5º CPA distribuído com a extensão. Busca por nome/login e inclusão do login dos chefes no modal. A leitura do seletor selAtribuicao na tela nativa de atribuição atualiza somente o catálogo local da unidade/órgão configurados. Sem requisições adicionais, envio do diretório à API ou mudanças na atribuição. API 0.16.4 e stack preservadas; não exige implantação na VPS.

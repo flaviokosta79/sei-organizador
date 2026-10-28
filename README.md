@@ -204,3 +204,9 @@ O som e a notificação de processo para receber exigem uma leitura do SEI de at
 ### Configurações no próprio SEI (0.16.6)
 
 Clique em **⚙ Organizador** no cabeçalho do SEI. O modal reúne bloco de trabalho, atualização da lista de blocos, sons e chefes de seção. Escolha o bloco e clique em **Salvar bloco de trabalho** para aplicar às páginas abertas, sem sair do SEI. A alteração vale para o usuário conectado neste navegador. A página de opções do Chrome continua disponível como alternativa para os perfis locais.
+
+### Sugestões de chefes (0.17.0)
+
+Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
+
+O catálogo inicial contém os 65 usuários do 5º CPA fornecidos no seletor de atribuição. Ele não consulta um diretório em tempo real: ao abrir a tela nativa de atribuição na unidade atendida, a extensão lê o seletor já carregado e atualiza a cópia local. Não faz novas consultas, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível para usuários novos.

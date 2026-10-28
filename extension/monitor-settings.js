@@ -63,6 +63,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         :host{all:initial}dialog{box-sizing:border-box;width:min(480px,calc(100vw - 28px));max-height:85vh;overflow:auto;padding:0;border:1px solid #7294bb;border-radius:8px;background:#f7faff;color:#243b53;font:13px/1.5 Arial,sans-serif;box-shadow:0 8px 35px #0004}
         dialog::backdrop{background:#10243c80}header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#dceafa}h2{font-size:16px;margin:0}
         .body{padding:4px 16px 12px}p{margin:8px 0}h3{font-size:14px;margin:16px 0 6px}button{font:inherit;padding:5px 9px;margin:3px 6px 3px 0;cursor:pointer}button:disabled{cursor:wait;opacity:.6}
+        .chief-search input{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}.chief-search [role=listbox]{border:1px solid #b4c7dd;background:white;max-height:230px;overflow:auto}.chief-search [role=option]{display:block;width:100%;text-align:left;margin:0;border:0;border-bottom:1px solid #e0e8f0;padding:8px;white-space:normal;overflow-wrap:anywhere}.chief-search [aria-selected=true]{background:#dceafa}.chief-search [hidden]{display:none!important}
         label{display:block}select{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}textarea{box-sizing:border-box;width:100%;min-height:80px;font:inherit;padding:6px}.status{margin:0 16px 12px;min-height:1.5em}.error{color:#a02020}@media print{:host{display:none!important}}
       `;
       dialog = node('dialog');
@@ -103,7 +104,10 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
   async function action(type, extra) {
     const current = generation;
     const identity = JSON.stringify(getIdentity());
-    const locked = [...body.querySelectorAll('button,textarea,select')].map((control) => [control, control.disabled]);
+    const locked = [...body.querySelectorAll('button,textarea,select,input')].map((control) => [
+      control,
+      control.disabled,
+    ]);
     for (const [control] of locked) control.disabled = true;
     status.classList.remove('error');
     status.textContent = extra?.test ? 'Reproduzindo teste de som…' : 'Salvando configurações…';
@@ -130,7 +134,10 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     const current = generation,
       identity = JSON.stringify(getIdentity());
     const selected = body.querySelector('#so-settings-block')?.value;
-    const locked = [...body.querySelectorAll('button,textarea,select')].map((control) => [control, control.disabled]);
+    const locked = [...body.querySelectorAll('button,textarea,select,input')].map((control) => [
+      control,
+      control.disabled,
+    ]);
     for (const [control] of locked) control.disabled = true;
     status.classList.remove('error');
     status.textContent = update ? 'Atualizando lista de blocos do SEI…' : 'Salvando bloco de trabalho…';
@@ -152,6 +159,126 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       if (current === generation)
         for (const [control, disabled] of locked) if (control.isConnected) control.disabled = disabled;
     }
+  }
+  function chiefAutocomplete(input, identity) {
+    if (!globalThis.seiUnitUsers) return;
+    const box = node('div');
+    box.className = 'chief-search';
+    input.closest('label').before(box);
+    const label = node('label', 'Buscar usuário pelo nome ou login', box);
+    label.htmlFor = 'so-chief-search';
+    const search = node('input', null, box);
+    search.id = 'so-chief-search';
+    search.type = 'search';
+    search.autocomplete = 'off';
+    search.setAttribute('role', 'combobox');
+    search.setAttribute('aria-autocomplete', 'list');
+    search.setAttribute('aria-controls', 'so-chief-suggestions');
+    search.setAttribute('aria-expanded', 'false');
+    const suggestions = node('div', null, box);
+    suggestions.id = 'so-chief-suggestions';
+    suggestions.setAttribute('role', 'listbox');
+    suggestions.hidden = true;
+    const note = node('p', 'Carregando sugestões de usuários…', box);
+    note.setAttribute('role', 'status');
+    let users = [],
+      found = [],
+      active = -1;
+    const fold = (value) =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    function hide() {
+      suggestions.hidden = true;
+      search.setAttribute('aria-expanded', 'false');
+      search.removeAttribute('aria-activedescendant');
+      active = -1;
+    }
+    function add(user) {
+      const tokens = input.value
+        .split(/[,;\n]+/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (!tokens.some((value) => value.toLowerCase() === user.login)) tokens.push(user.login);
+      input.value = tokens.join('\n');
+      draft = input.value;
+      search.value = '';
+      hide();
+      note.textContent = user.name + ' (' + user.login + ') adicionado. Clique em Salvar chefes para aplicar.';
+      search.focus();
+    }
+    function highlight() {
+      [...suggestions.children].forEach((option, index) =>
+        option.setAttribute('aria-selected', String(index === active)),
+      );
+      if (active >= 0) {
+        search.setAttribute('aria-activedescendant', suggestions.children[active].id);
+        suggestions.children[active].scrollIntoView?.({ block: 'nearest' });
+      }
+    }
+    function update() {
+      const query = fold(search.value.trim());
+      suggestions.replaceChildren();
+      active = -1;
+      if (!query) return hide();
+      found = users.filter((user) => fold(user.login + ' ' + user.name).includes(query)).slice(0, 8);
+      for (const [index, user] of found.entries()) {
+        const option = node('button', user.name + ' — ' + user.login, suggestions);
+        option.type = 'button';
+        option.tabIndex = -1;
+        option.id = 'so-chief-option-' + index;
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        option.addEventListener('mousedown', (event) => event.preventDefault());
+        option.addEventListener('click', () => add(user));
+      }
+      suggestions.hidden = !found.length;
+      search.setAttribute('aria-expanded', String(!!found.length));
+      if (found.length) suggestions.scrollIntoView?.({ block: 'nearest' });
+      search.removeAttribute('aria-activedescendant');
+      note.textContent = found.length
+        ? 'Selecione um usuário para adicionar o login.'
+        : 'Nenhum usuário encontrado. Você pode digitar o login abaixo.';
+    }
+    search.addEventListener('input', update);
+    search.addEventListener('keydown', (event) => {
+      if (suggestions.hidden) return;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        active =
+          event.key === 'ArrowDown'
+            ? (active + 1) % found.length
+            : active < 0
+              ? found.length - 1
+              : (active - 1 + found.length) % found.length;
+        highlight();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (active >= 0) add(found[active]);
+        else if (found.length === 1) add(found[0]);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        hide();
+      }
+    });
+    search.addEventListener('blur', (event) => {
+      if (!suggestions.contains(event.relatedTarget)) hide();
+    });
+    seiUnitUsers
+      .list(identity)
+      .then((result) => {
+        if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
+        users = result;
+        note.textContent = users.length
+          ? 'Digite o nome ou login e selecione uma sugestão.'
+          : 'Sugestões indisponíveis. Você pode digitar o login abaixo.';
+        if (search.value.trim()) update();
+      })
+      .catch(() => {
+        if (search.isConnected) note.textContent = 'Sugestões indisponíveis. Você pode digitar o login abaixo.';
+      });
   }
   function render(view, preference = globalThis.seiWorkScope) {
     body.replaceChildren();
@@ -225,7 +352,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     );
     node(
       'p',
-      'Configuração por unidade neste navegador. Informe o login, sem o nome completo. Separe os usuários por vírgula ou por linha.',
+      'Configuração por unidade neste navegador. Busque um usuário ou informe os logins abaixo, separados por vírgula ou por linha.',
       body,
     );
     const label = node('label', 'Logins dos chefes: ', body);
@@ -236,6 +363,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     input.addEventListener('input', () => {
       draft = input.value;
     });
+    chiefAutocomplete(input, identity);
     const add = node('button', 'Adicionar meu login', body);
     add.type = 'button';
     add.addEventListener('click', () => {
