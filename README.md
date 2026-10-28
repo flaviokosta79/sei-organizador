@@ -196,3 +196,7 @@ O ZIP dos releases usa sempre o nome `sei-organizador-extension.zip`. Link perma
 ### Desempenho da API (0.16.4)
 
 O servidor reutiliza o cálculo do histórico enquanto os dados permanecem iguais, com cache limitado e invalidação nas gravações e alterações externas. O cabeçalho `Server-Timing` indica o tempo de processamento da resposta. Medições da implantação e seus limites estão em `deploy/performance-0.16.4.json`. Essa otimização não altera o carregamento nativo de documentos pelo SEI.
+
+### Atualidade do alerta da Secretaria (0.16.5)
+
+O som e a notificação de processo para receber exigem uma leitura do SEI de até 90 segundos. Uma leitura mais antiga permanece identificada no painel, sem gerar aviso sonoro. Se o processo ainda estiver pendente numa confirmação recente, o aviso ocorre uma vez; se já tiver sido recebido ou retirado, não há aviso atrasado. Outros usuários podem receber ou encaminhar o processo entre a leitura e a abertura da lista.

@@ -3,6 +3,7 @@
   const localKey = 'seiSecretariatReceipts',
     sessionKey = 'seiSecretariatReceiptTargets';
   const ownerKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
+  const maxObservationAge = 90000;
   let queue = Promise.resolve();
   function address(value, process) {
     const url = new URL(value);
@@ -75,9 +76,14 @@
       new Set(state.pending.map((p) => p.id)).size !== state.pending.length
     )
       throw Error('Resposta de recebidos inválida ou desatualizada.');
+    const age = Date.now() - state.observed;
+    const fresh = state.initialized && state.observed > 0 && age >= -30000 && age <= maxObservationAge;
     const known = new Set(record.known || []);
-    const arrived = record.known === null ? [] : state.pending.filter((p) => !p.baseline && !known.has(p.token));
-    if (state.initialized) record.known = state.pending.map((p) => p.token);
+    const arrived =
+      !fresh || record.known === null ? [] : state.pending.filter((p) => !p.baseline && !known.has(p.token));
+    // A stale snapshot is display-only. Keep unseen tokens eligible for a later fresh confirmation.
+    if (state.initialized && (fresh || record.known === null)) record.known = state.pending.map((p) => p.token);
+    record.stale = state.initialized && !fresh;
     record.pending = state.pending;
     record.version = state.version;
     record.checked = state.observed;
@@ -89,6 +95,7 @@
       pending: record.pending.map((p) => ({ ...p, url: target?.links?.[p.id] || target?.url || null })),
       checked: record.checked || null,
       initialized: !!record.initialized,
+      stale: !!record.stale,
       error: record.error || '',
       notificationError: record.notificationError || '',
       soundError: record.soundError || '',
@@ -160,7 +167,9 @@
       let poll = null;
       try {
         const arrived = apply(record, await shared());
-        record.error = '';
+        record.error = record.stale
+          ? 'Leitura de recebidos antiga; aguardando confirmação recente no SEI. Aviso sonoro suspenso.'
+          : '';
         await save(data);
         await notify(record, arrived, owner, data);
         if (

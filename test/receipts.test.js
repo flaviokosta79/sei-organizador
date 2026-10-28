@@ -199,3 +199,31 @@ test('integração do monitor lê seis páginas, exibe estoque e avisa nova cheg
   assert.ok(!JSON.stringify(store.receipts.read(unit)).includes('infra_hash'));assert.ok(!JSON.stringify(backend.local).includes('infra_hash'));
  }finally{w.close();store.close();}
 });
+
+test('leitura antiga não avisa nem consome chegada: confirmação recente avisa uma vez em dois navegadores',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
+ const store=createStore(':memory:'),a=browser(store),b=browser(store);
+ try{
+  await a.poll([]);await b.sync();
+  store.receipts.snapshot(unit,data(store.receipts.read(unit).version,[item('10')]));
+  t.mock.timers.tick(90001);
+  let view=await b.sync();assert.equal(view.stale,true);assert.match(view.error,/antiga/);assert.equal(view.pending.length,1);
+  assert.equal(b.sounds.length,0);assert.equal(b.notices.length,0);await b.sync();assert.equal(b.sounds.length,0);
+  a.due();view=await a.poll([item('10')]);assert.equal(view.stale,false);assert.equal(a.sounds.length,1);
+  view=await b.sync();assert.equal(view.stale,false);assert.equal(view.error,'');assert.equal(b.sounds.length,1);
+  await b.sync();assert.equal(b.sounds.length,1);
+ }finally{store.close();}
+});
+
+test('processo antigo já recebido desaparece após confirmação sem som ou notificação atrasada',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
+ const store=createStore(':memory:'),a=browser(store),b=browser(store);
+ try{
+  await a.poll([]);await b.sync();
+  store.receipts.snapshot(unit,data(store.receipts.read(unit).version,[item('20')]));
+  t.mock.timers.tick(3600000);assert.equal((await b.sync()).pending.length,1);assert.equal(b.notices.length,0);
+  a.due();await a.poll([item('20',false)]);
+  const view=await b.sync();assert.equal(view.pending.length,0);assert.equal(view.stale,false);
+  assert.equal(a.sounds.length,0);assert.equal(b.sounds.length,0);assert.equal(a.notices.length,0);assert.equal(b.notices.length,0);
+ }finally{store.close();}
+});

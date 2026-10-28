@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão na versão 0.16.5 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -206,3 +206,7 @@ Stack 18 atualizada pelo mecanismo suportado do Portainer, mudando somente SEI_I
 Backup consistente em /data/backups/before-0.16.4-20261028.sqlite, com cópia local em artifacts/backups/before-0.16.4-20261028.tar. Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.16.4.json, preservando o volume e o banco. A versão anterior pode ler os mesmos dados.
 
 Medições pontuais de oito consultas por rota: mediana HTTPS do histórico do bloco 1343 passou de 30,6 ms para 18,4 ms. Benchmark interno de 15 leituras mostra primeira leitura de aproximadamente 80 ms e mediana das demais de 0,6 ms. Não foi medida navegação real no SEI nem carga simultânea.
+
+## Correção da extensão 0.16.5 — 2026-10-28
+
+Alerta da Secretaria exige observação de recebidos de até 90 segundos; leituras mais antigas ou com relógio mais de 30 segundos no futuro não geram som/notificação. Referências desconhecidas não são consumidas por leitura antiga, permitindo confirmação posterior sem avisar processos já recebidos. Não altera o servidor nem aumenta consultas ao SEI. API 0.16.4 preservada.

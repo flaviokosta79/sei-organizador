@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.5 — 2026-10-28
+
+- Alerta da Secretaria não toca nem cria notificação a partir de leitura compartilhada com mais de 90 segundos. Leituras com horário mais de 30 segundos no futuro também não geram aviso. O painel informa a leitura antiga e aguarda confirmação recente no SEI.
+- Leituras antigas não consomem referências ainda não avisadas: se o processo continuar pendente numa confirmação recente, o alerta ocorre uma vez; se tiver sido recebido ou retirado, não ocorre. Primeira leitura continua silenciosa.
+- 177 testes passaram; sintaxe e formatação aprovadas. Regressões verificam leitura antiga sem aviso, confirmação posterior com aviso único em dois navegadores e processo já recebido sem alarme atrasado.
+- Correção somente na extensão, compatível com a API 0.16.4, sem aumentar consultas nem reimplantar a VPS. Não identifica retroativamente a causa do aviso relatado sem número e horário do processo.
+
 ## 0.16.4 — 2026-10-28
 
 - API reutiliza o histórico calculado enquanto os dados não mudam. Cache limitado a 16 blocos e 512 KiB serializados por entrada; devolve cópias independentes e invalida após gravações e alterações por outras conexões SQLite. Sem migração ou remoção de dados.
