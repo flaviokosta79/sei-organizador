@@ -3,6 +3,8 @@ importScripts('scope-background.js');
 importScripts('monitor-sounds.js');
 importScripts('monitor-sign.js');
 importScripts('monitor-background.js');
+importScripts('signature-background.js');
+importScripts('receipts-background.js');
 importScripts('editing-background.js');
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type !== 'api') return;

@@ -175,7 +175,7 @@ test('tempo parado por faixa e lista de blocos',()=>{
  assert.equal(data.parseBlockList(new JSDOM('<p>login</p>').window.document),null);
 });
 
-function frame({scope,action='documento_visualizar',processId='900',documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,historyHTML=null,historyFetcher=null,apiHandler=null,organizer,rows=historyRows,body=footer,signatureList=[],gate=null,treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
+function frame({autoLoad=true,scope,action='documento_visualizar',processId='900',documentId='901',unitParam='1',org='SEPM',historyToggle='completo',historyStatus=200,historyHTML=null,historyFetcher=null,apiHandler=null,organizer,rows=historyRows,body=footer,signatureList=[],gate=null,treeDom=new JSDOM(tree,{url:`${base}controlador.php?acao=procedimento_visualizar&id_procedimento=900`}),store=new Map()}={}){
  const docDom=new JSDOM(action==='procedimento_visualizar'?treeDom.serialize():`<title>SEI/ERJ - 555 - CI</title><p class="Texto">Conteúdo nativo</p>${body}`,{pretendToBeVisual:true,url:`${base}controlador.php?acao=${action}&${action==='documento_visualizar'?`id_documento=${documentId}`:`id_procedimento=${processId}`}&infra_unidade_atual=${unitParam}&infra_hash=d`});
  if(action==='procedimento_visualizar')treeDom=docDom;
  const topDom=new JSDOM(`<a id="lnkUsuarioSistema" title="Pessoa Teste (teste/${org})"></a><a id="lnkInfraUnidade">SEPM/5°CPA</a><a href="controlador.php?acao=bloco_interno_listar&infra_hash=i">Internos</a><a href="controlador.php?acao=bloco_assinatura_listar&infra_hash=a">Assinatura</a><iframe id="ifrArvore"></iframe>`,{url:`${base}controlador.php?acao=procedimento_trabalhar&id_procedimento=900`});
@@ -197,7 +197,11 @@ function frame({scope,action='documento_visualizar',processId='900',documentId='
  if(scope)context.seiWorkScope=scope;
  runInNewContext(read('history.js'),context);
  runInNewContext(read('history-pages.js'),context);
- const done=runInNewContext(read('document.js'),context);
+ const initial=runInNewContext(read('document.js'),context);
+ const done=initial.then(async()=>{
+  const load=treeDom.window.document.querySelector('#sei-organizador-documento')?.shadowRoot.querySelector('.load-history');
+  if(autoLoad && load)await load.onclick();
+ });
  return {done,publish:page=>context.seiFullHistory.write(processId,{login:'teste',org},page,topDoc),doc:docDom.window.document,tree:treeDom.window.document,treeDom,store,requests,messages,timers,tick:()=>{for(const {fn} of timers.values())fn();},leave:()=>listeners.pagehide?.(),badge:()=>treeDom.window.document.querySelector('#sei-organizador-documento')?.shadowRoot};
 }
 const settle=()=>new Promise(r=>setTimeout(r,30));
@@ -512,4 +516,26 @@ test('card consulta página restante e recebe a leitura completa publicada pela 
  const f=frame({action:'procedimento_visualizar',historyFetcher:async(url,init)=>new Response(native(Number(init.body?.get('hdnInfraPaginaAtual')||0)),{headers:{'content-type':'text/html; charset=utf-8'}})});
  await f.done;assert.match(f.badge().textContent,/Restituições SEPM/);assert.doesNotMatch(f.badge().textContent,/histórico incompleto|Fora de blocos/);assert.equal(f.requests.filter(r=>r.init.method==='POST').length,1);
  const updated=data.parseHistory(new JSDOM(historyPage([hrow('24/10/2026 12:00','SEPM/5°CPA','teste','Processo atribuído para chefe')],'resumido')).window.document);f.publish(updated);await settle();await settle();assert.match(f.badge().textContent,/Processo atribuído para chefe/);assert.match(f.badge().textContent,/Fora de blocos/);f.leave();
+});
+
+test('sair do documento cancela o andamento pendente e não inicia consultas restantes',async()=>{
+ let signal,aborted=false;
+ const f=frame({historyFetcher:async(url,init)=>new Promise((resolve,reject)=>{
+  signal=init.signal;
+  signal.addEventListener('abort',()=>{aborted=true;reject(signal.reason);},{once:true});
+ })});
+ try{
+  await settle();assert.ok(signal);assert.equal(signal.aborted,false);
+  f.leave();await f.done;
+  assert.equal(aborted,true);assert.equal(signal.aborted,true);
+  assert.equal(f.requests.length,1);assert.equal(f.badge(),undefined);assert.equal(f.timers.size,0);
+ }finally{f.leave();}
+});
+
+test('selecionar documento não consulta o SEI até solicitar andamento',async()=>{
+ const f=frame({autoLoad:false});try{
+  await f.done;await settle();assert.equal(f.requests.length,0);assert.ok(f.badge());
+  const load=f.badge().querySelector('.load-history');assert.ok(load);
+  await load.onclick();assert.ok(f.requests.length>0);assert.match(f.badge().textContent,/Bloco interno/);
+ }finally{f.leave();}
 });

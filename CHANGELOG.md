@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.16.2 — 2026-10-28
+
+- Telas de processo/documento deixam de iniciar varreduras automáticas de blocos, recebidos e assinaturas no SEI. Sincronização dos avisos pela API permanece ativa; as varreduras continuam nas demais telas.
+- Card mostra informações locais imediatamente e aproveita andamento completo recente em cache. Sem cache, o botão Consultar andamento permite solicitar os dados sem iniciar consultas adicionais apenas por selecionar um documento.
+- 170 testes passaram; sintaxe e formatação aprovadas. Regressões verificam ausência de consultas ao selecionar documento, carregamento explícito e bloqueio de varreduras no processo.
+- Correção somente na extensão, sem reimplantação do serviço. Validação de desempenho e abertura de documentos na sessão real pendente.
+
+## 0.16.1 — 2026-10-28
+
+- Consultas automáticas ao SEI aguardam 1,5 segundo após o carregamento da página, dando prioridade à navegação. Painel e reconhecimento de abertura continuam disponíveis durante a espera.
+- Consultas do card, incluindo paginação do andamento, são canceladas ao sair ou substituir o card.
+- Listas de blocos preservam os controles quando a versão compartilhada não muda e evitam uma segunda varredura causada pelas próprias alterações na tabela. Observações de presença de edição são agrupadas em intervalos de 50 ms.
+- 169 testes passaram; sintaxe e formatação aprovadas. Regressões cobrem espera antes da consulta automática, cancelamento ao sair e preservação dos controles sem mudança de versão.
+- Ajuste somente na extensão, sem reimplantação da API. Ganho de tempo na sessão real do SEI ainda precisa ser medido.
+
+## 0.16.0 — 2026-10-27
+
+- Usuários que escolheram o bloco 1396 — Secretaria recebem contador, lista de pendências, notificação e som Novo SEI para novas chegadas ainda não recebidas na unidade. A primeira leitura mostra o estoque sem som; consultas repetidas não repetem o aviso.
+- Leitor do Controle de Processos usa os marcadores nativos de recebimento, inclui processos sigilosos acessíveis e percorre todas as páginas de Recebidos. Formulário e paginação conferidos nos dois HTMLs fornecidos; teste completo com 217 registros em seis páginas. Filtros são normalizados em documento separado; a tela visível permanece intacta.
+- Pendências são compartilhadas em tabela própria, com versões para rejeitar consultas substituídas, tokens por chegada e preservação da última leitura em falhas, sessão expirada ou páginas incompletas. Não interfere em assuntos, status, históricos e alertas de inclusão no bloco 1396. Abrir ou marcar um aviso como visto não confirma recebimento; a listagem do SEI deve confirmar a mudança.
+- Consultas automáticas não abrem processos para registrar recebimento. O monitor de assinaturas passa a usar apenas URLs de andamento obtidas de processos já abertos pelo usuário, preservadas na sessão; referências antigas que abriam processos são descartadas.
+- API com rota de recebidos restrita à unidade fixa, validação de Secretaria, limite de 10.000 processos e corpo de 2 MiB. Nenhuma nova permissão, token ou configuração de serviço.
+- 167 testes passaram; sintaxe e formatação aprovadas. Inclui os dois HTMLs reais, seis páginas/217 processos, fluxo completo do painel, dois navegadores, reinício, falhas, reenvio, silenciamento, isolamento de classificações e restrição ao bloco 1396. Conferência de uma nova chegada na sessão real do SEI pendente.
+- API implantada pela stack 18 do Portainer, com backup íntegro, volume e 278 registros de histórico preservados. Editor e administração disponíveis, atualização completed, container healthy e oito módulos conferidos por SHA-256. Rotas de recebidos validadas por HTTPS.
+
+
+## 0.15.1 — 2026-10-27
+
+- Removida a faixa “Organizador ativo somente no bloco” e o botão de escolha das páginas de outros blocos. A escolha continua nas opções da extensão; o Organizador permanece restrito ao bloco escolhido, preservando os controles nativos dos demais.
+- Ajuste somente na extensão, compatível com a API 0.15.0, sem reimplantação do serviço.
+
+
+## 0.15.0 — 2026-10-27
+
+- Assinaturas efetivas do SEI geram alerta visual, notificação do sistema e som Assinar para todos os usuários que escolheram o mesmo bloco interno nas opções da extensão. Mostra número do documento, nome/login do assinante, data/hora e bloco de assinatura. Inclusão é atribuída ao usuário registrado pelo SEI; não depende do status manual nem da lista de chefes.
+- Descobre documentos nos blocos de assinatura da unidade e confirma inclusões/assinaturas no histórico completo. Rodízio limitado a três blocos e cinco processos por ciclo; URLs autenticadas permanecem na sessão do navegador. Mantém processos já descobertos durante navegações e após retirada do documento do bloco. Históricos parciais e falhas de sessão são indicados sem presumir assinaturas.
+- API compartilha eventos por bloco interno, deduplica observações de múltiplos navegadores e preserva o grupo de origem das inclusões já acompanhadas. Reconhecimento de assinatura é individual por navegador, com cursor persistente e retomada após falha de conexão. Primeira sincronização não reapresenta eventos anteriores; usa o som e o silenciamento existentes.
+- 156 testes passaram, incluindo amostra real do andamento, duas instâncias de navegador, autoria do assinante, retirada/reinclusão, persistência, isolamento por bloco, HTTP e painel. Sintaxe e formatação aprovadas; prévia no Chromium. Validação de uma nova assinatura em sessão real do SEI permanece pendente.
+- API 0.15.0 implantada pela stack 18 do Portainer: backup íntegro, 278 registros de histórico e volume preservados, administração/editor disponíveis, atualização completed, container healthy e sete módulos do servidor conferidos por SHA-256. Rollback pela configuração anterior, preservando o banco; tabelas de assinatura são aditivas.
+
+## 0.14.2 — 2026-10-27
+
+- Escolha do bloco de trabalho mostra número + descrição do SEI. Texto de ajuda atualizado; descrições já conhecidas são preservadas ao reabrir páginas sem o campo de descrição.
+- Correção somente na extensão, sem reimplantação da VPS.
+
 ## 0.14.1 — 2026-10-27
 
 - Corrigido o card que carregava e desaparecia quando não encontrava inclusão no bloco escolhido. O resumo do processo permanece visível; somente status, assuntos e seus controles ficam restritos ao bloco de trabalho.

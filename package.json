@@ -1,12 +1,12 @@
 {
   "name": "sei-organizador",
-  "version": "0.14.1",
+  "version": "0.16.2",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
     "test": "node --test",
-    "check": "node --check extension/content.js && node --check extension/theme.js && node --check extension/history.js && node --check extension/background.js && node --check extension/monitor-data.js && node --check extension/monitor.js && node --check extension/monitor-background.js && node --check extension/monitor-audio.js && node --check extension/monitor-sounds.js && node --check extension/monitor-sign.js && node --check extension/monitor-settings.js && node --check extension/document-data.js && node --check extension/history-filter.js && node --check extension/history-pages.js && node --check extension/document.js && node --check extension/send.js && node --check server/index.js && node --check server/alerts.js && node --check server/editing.js && node --check extension/editing.js && node --check extension/editing-background.js && node --check extension/scope.js && node --check extension/scope-background.js && node --check extension/options.js && prettier --check extension/*.js extension/content.css",
+    "check": "node --check extension/content.js && node --check extension/theme.js && node --check extension/history.js && node --check extension/background.js && node --check extension/monitor-data.js && node --check extension/monitor.js && node --check extension/monitor-background.js && node --check extension/monitor-audio.js && node --check extension/monitor-sounds.js && node --check extension/monitor-sign.js && node --check extension/monitor-settings.js && node --check extension/document-data.js && node --check extension/history-filter.js && node --check extension/history-pages.js && node --check extension/document.js && node --check extension/send.js && node --check server/index.js && node --check server/alerts.js && node --check server/editing.js && node --check extension/editing.js && node --check extension/editing-background.js && node --check extension/scope.js && node --check extension/scope-background.js && node --check extension/options.js && node --check extension/signature-data.js && node --check extension/signature-monitor.js && node --check extension/signature-background.js && node --check server/signatures.js && node --check extension/receipts-data.js && node --check extension/receipts-background.js && node --check server/receipts.js && prettier --check extension/*.js extension/content.css",
     "format": "prettier --write extension/*.js extension/content.css"
   },
   "engines": {

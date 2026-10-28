@@ -4,6 +4,8 @@ import { dirname } from 'node:path';
 import {sameActor,undoPlan,applyUndo,snapshots} from './undo.js';
 import {createAlerts} from './alerts.js';
 import {createEditing} from './editing.js';
+import {createSignatures} from './signatures.js';
+import {createReceipts} from './receipts.js';
 export function createStore(path) {
   mkdirSync(dirname(path), {recursive:true});
   const db = new DatabaseSync(path);
@@ -13,6 +15,8 @@ export function createStore(path) {
     for(let i=0;i<removed.length;i+=1000)mutate(unit,block,read(unit,block).version,{name:'SEI Organizador',login:'organizador.sistema',org:'SEPM',verified:false},{type:'departed',processIds:removed.slice(i,i+1000)},true);
   }});
   const editing=createEditing(db);
+  const signatures=createSignatures(db);
+  const receipts=createReceipts(db);
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
   const read=(unit,block)=>{const r=db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?').get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
   function mutate(unit,block,version,actor,action,inTransaction=false) {
@@ -60,6 +64,6 @@ export function createStore(path) {
       if(!inTransaction)db.exec('COMMIT'); return {version:v,...next};
     }catch(e){if(!inTransaction)db.exec('ROLLBACK');throw e;}
   }
-  return {editing,alerts,read,mutate,history:(u,b)=>{const items=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100').all(u,b);return items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});},close:()=>db.close()};
+  return {receipts,signatures,editing,alerts,read,mutate,history:(u,b)=>{const items=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100').all(u,b);return items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});},close:()=>db.close()};
 }
 function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw new Error('Nome deve conter 1 a 80 caracteres');return n.trim();}

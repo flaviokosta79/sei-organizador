@@ -79,7 +79,7 @@
       chrome.storage.local.set({ [localKey]: data.local }),
       chrome.storage.session.set({ [sessionKey]: data.session }),
     ]);
-    const count = Object.entries(data.session.targets)
+    let count = Object.entries(data.session.targets)
       .filter(([, target]) => target.owner === owner)
       .filter(([, target]) => data.workBlock === undefined || target.block === data.workBlock)
       .reduce(
@@ -89,6 +89,8 @@
           (eligible(data, owner) ? data.local.records[key]?.signPending?.length || 0 : 0),
         0,
       );
+    if (globalThis.seiCompletedSignatures) count += await seiCompletedSignatures.pendingCount(owner, data.workBlock);
+    if (globalThis.seiSecretariatReceipts) count += await seiSecretariatReceipts.pendingCount(owner, data.workBlock);
     await chrome.action.setBadgeText({ text: count ? String(count) : '' });
     await chrome.action.setBadgeBackgroundColor({ color: '#b45309' });
   }
@@ -113,6 +115,7 @@
     const result = await chrome.runtime.sendMessage({ type: 'monitor:audio', soundId });
     if (!result?.ok) throw new Error(result?.error || 'Não foi possível reproduzir o som.');
   }
+  globalThis.seiPlayAlertSound = sound;
   const view = (data, owner) => ({
     sound: data.local.sound,
     chiefLogins: chiefs(data),

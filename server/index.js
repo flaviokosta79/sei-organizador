@@ -13,6 +13,23 @@ const server=http.createServer(async(req,res)=>{
   if(!authorized(req.headers.authorization)){res.setHeader('WWW-Authenticate','Bearer');return send(401,{error:'Token de acesso ausente ou inválido'});}
   try{
     const url=new URL(req.url,'http://localhost');
+    const receipts=url.pathname.match(/^\/v1\/units\/(\d+)\/secretariat\/receipts$/);
+    if(receipts){
+      if(receipts[1]!==unit)return send(403,{error:'Unidade não permitida'});
+      if(req.method==='GET')return send(200,store.receipts.read(unit));
+      if(req.method!=='POST')return send(405,{error:'Método inválido'});
+      if(!req.headers['content-type']?.startsWith('application/json'))return send(415,{error:'Use JSON'});
+      let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>2097152)return send(413,{error:'Requisição grande demais'});}
+      return send(200,store.receipts.snapshot(unit,JSON.parse(body)));
+    }
+    const signatures=url.pathname.match(/^\/v1\/units\/(\d+)\/blocks\/(\d{1,30})\/signatures\/(sync|observe)$/);
+    if(signatures){
+      if(signatures[1]!==unit)return send(403,{error:'Unidade não permitida'});
+      if(req.method!=='POST')return send(405,{error:'Método inválido'});
+      if(!req.headers['content-type']?.startsWith('application/json'))return send(415,{error:'Use JSON'});
+      let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>262144)return send(413,{error:'Requisição grande demais'});}
+      return send(200,store.signatures[signatures[3]](unit,signatures[2],JSON.parse(body)));
+    }
     const editing=url.pathname.match(/^\/v1\/units\/(\d+)\/(?:editing\/query|processes\/(\d{1,30})\/editing)$/);
     if(editing){
       if(editing[1]!==unit)return send(403,{error:'Unidade não permitida'});

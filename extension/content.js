@@ -891,6 +891,7 @@
       try {
         const next = await api();
         if (disposed || busy) return;
+        if (ready && next.version === state.version) return;
         if (next.version >= state.version) state = next;
         ready = true;
         if (!statusKnown()) statusFilter = 'all';
@@ -982,7 +983,16 @@
           loading.textContent = 'Não foi possível carregar: ' + e.message;
       }
     }
-    observe(new MutationObserver(() => filter()), table, { childList: true, subtree: true });
+    // Our own DOM writes must not trigger another full table pass.
+    const tableObserver = new MutationObserver(() => {
+      tableObserver.disconnect();
+      try {
+        filter();
+      } finally {
+        if (!disposed) tableObserver.observe(table, { childList: true, subtree: true });
+      }
+    });
+    observe(tableObserver, table, { childList: true, subtree: true });
     render();
     refresh();
     const timer = setInterval(() => {

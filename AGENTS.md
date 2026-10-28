@@ -34,3 +34,7 @@ manual ou autenticação obrigatória sem pedido do usuário.
 ## Versionamento da extensão
 
 A cada alteração entregue da extensão, incremente a versão em extension/manifest.json, package.json e package-lock.json, registre as mudanças no CHANGELOG.md e atualize o ZIP de distribuição. Não mantenha a mesma versão entre entregas diferentes. Para correções e ajustes pequenos, incremente o patch; mudanças maiores devem refletir o escopo da entrega.
+
+## Publicação no GitHub
+
+A cada atualização entregue, fazer commit de todos os arquivos alterados, push para o GitHub e criar ou atualizar o release correspondente, anexando o ZIP de distribuição. Essa publicação faz parte da entrega e não exige nova confirmação do usuário.

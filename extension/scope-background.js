@@ -76,7 +76,11 @@
         )
           throw Error('Bloco não confirmado nesta página');
         const catalog = new Map(pref.catalog.map((b) => [b.id, b]));
-        for (const block of msg.blocks) catalog.set(block.id, { ...catalog.get(block.id), ...block });
+        for (const block of msg.blocks) {
+          const previous = catalog.get(block.id);
+          const name = !block.name || block.name === `Bloco ${block.id}` ? previous?.name || block.name : block.name;
+          catalog.set(block.id, { ...previous, ...block, name });
+        }
         pref.catalog = [...catalog.values()].slice(-200);
         if (!pref.block && !listing && !msg.catalog) pref.block = sourceBlock;
       }

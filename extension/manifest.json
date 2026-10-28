@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "SEI Organizador",
-  "version": "0.14.1",
+  "version": "0.16.2",
   "description": "Abas por assunto, situação dos documentos e alertas de novos processos nos blocos internos do SEI.",
   "background": {
     "service_worker": "background.js"
@@ -32,6 +32,11 @@
         "monitor-data.js",
         "monitor-sounds.js",
         "monitor-settings.js",
+        "document-data.js",
+        "history-pages.js",
+        "signature-data.js",
+        "signature-monitor.js",
+        "receipts-data.js",
         "monitor.js"
       ],
       "css": [

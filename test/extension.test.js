@@ -227,3 +227,16 @@ test('status em lote confirma a seleção e envia uma única operação',async()
  w.confirm=()=>true;d.querySelector('.so-batch-apply').click();await tick();const mutations=f.calls.filter(c=>c.body?.action?.type==='status');assert.equal(mutations.length,1);assert.deepEqual(Array.from(mutations[0].body.action.processIds),['100','200']);assert.equal(mutations[0].body.action.status,'sign');
  }finally{f.dom.window.close();}
 });
+
+test('sincronização sem mudança de versão preserva os controles e novas linhas continuam sendo preparadas',async()=>{
+ const f=fixture();try{
+  await tick();const d=f.dom.window.document,tab=d.querySelector('[data-tab="a"]');
+  let mutations=0;const observer=new f.dom.window.MutationObserver(records=>mutations+=records.length);
+  observer.observe(d.querySelector('#sei-organizador'),{childList:true,subtree:true});
+  f.sync();await tick();assert.equal(d.querySelector('[data-tab="a"]'),tab);assert.equal(mutations,0);
+  d.querySelector('table').insertAdjacentHTML('beforeend',row('300'));await tick();await tick();
+  assert.equal(d.querySelectorAll('.so-copy-number').length,3);
+  assert.equal(d.querySelectorAll('td[data-so-column="status"]').length,3);
+  observer.disconnect();
+ }finally{f.dom.window.close();}
+});

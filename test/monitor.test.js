@@ -188,15 +188,19 @@ test('integração: consulta continua em outra tela, rejeita sessão expirada e 
  w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:msg=>f.send(msg)}};
  w.eval(read('monitor-data.js'));w.eval(read('monitor-sounds.js'));w.eval(read('monitor-settings.js'));w.eval(read('monitor.js'));
  const settle=()=>new Promise(r=>setTimeout(r,40));await settle();
+ assert.equal(fetches,0,"consultas automáticas aguardam a navegação");
+ await new Promise(r=>setTimeout(r,1700));
  const due=()=>{for(const owner of Object.keys(f.session.seiBlockTargets.lastPoll))f.session.seiBlockTargets.lastPoll[owner]=0;};
  try{
   assert.equal(fetches,1);assert.equal(f.notices.length,0);
-  w.document.querySelector('form').remove();w.history.pushState({},'',base+'?acao=procedimento_trabalhar&infra_unidade_atual=1');
+  w.document.querySelector('form').remove();w.history.pushState({},'',base+'?acao=bloco_interno_listar&infra_unidade_atual=1');
   ids=['100','200'];due();listeners[0]({type:'monitor:tick'});await settle();
   assert.equal(f.notices.length,1);assert.equal(f.sounds.length,1);const root=w.document.querySelector('#sei-organizador-alertas').shadowRoot;
   assert.match(root.textContent,/1 processo novo/);assert.equal(root.querySelector('li a').href,item('200').url);
   failed=true;due();listeners[0]({type:'monitor:tick'});await settle();assert.match(root.textContent,/Sem atualização: Lista interna não reconhecida/);
   failed=false;due();listeners[0]({type:'monitor:tick'});await settle();assert.equal(f.notices.length,1);assert.doesNotMatch(root.textContent,/Sem atualização/);
+  const before=fetches;w.history.pushState({},'',base+'?acao=procedimento_trabalhar&infra_unidade_atual=1');
+  due();listeners[0]({type:'monitor:tick'});await settle();assert.equal(fetches,before,'processo não inicia consultas automáticas ao SEI');
  }finally{w.close();}
 });
 
@@ -347,7 +351,7 @@ test('integração consulta status e histórico compartilhados e mantém configu
  const dom=new JSDOM(html(['100']),{url:blockUrl,runScripts:'outside-only'}),w=dom.window,listeners=[];
  Object.assign(w,{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'},AbortSignal,AbortController,TextDecoder,fetch:async()=>response(html(['100']))});
  w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:msg=>f.send(msg)}};
- w.eval(read('monitor-data.js'));w.eval(read('monitor-sounds.js'));w.eval(read('monitor-settings.js'));w.eval(read('monitor.js'));const settle=()=>new Promise(r=>setTimeout(r,40));await settle();
+ w.eval(read('monitor-data.js'));w.eval(read('monitor-sounds.js'));w.eval(read('monitor-settings.js'));w.eval(read('monitor.js'));const settle=()=>new Promise(r=>setTimeout(r,40));await new Promise(r=>setTimeout(r,1700));
  try{
   f.organizer={version:1,statuses:{'100':'sign'},history:[{id:1,version:1,action:{type:'status',status:'sign',previousStatus:'none',processIds:['100']}}]};
   for(const owner of Object.keys(f.session.seiBlockTargets.lastPoll))f.session.seiBlockTargets.lastPoll[owner]=0;

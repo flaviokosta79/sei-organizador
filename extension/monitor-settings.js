@@ -145,7 +145,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     node('p', view.sound ? 'Som ativado' : 'Som silenciado', body);
     node(
       'p',
-      'Novo SEI: entrada no bloco. Assinar: mudança do status para Assinar, para os chefes configurados.',
+      'Novo SEI: entrada no bloco e processo aguardando recebimento para a Secretaria (bloco 1396). Assinar: status manual para os chefes e assinatura confirmada no SEI para todos que escolheram o mesmo bloco interno.',
       body,
     );
     const sound = node('button', view.sound ? 'Silenciar som' : 'Ativar som', body);

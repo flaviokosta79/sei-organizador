@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-A extensão está na versão 0.14.1 e a API permanece em 0.14.0: bloco de trabalho por usuário, presença e vistos isolados por bloco, com limpeza de status e assuntos após confirmação completa da retirada do processo.
+Extensão e API na versão 0.16.0. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,8 +14,8 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:30d5e039377af375cd84c904fadf59a9b407d49a270c0a70ff22fbc375bfb28b (tag 0.14.0).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:f7997d386516d64f0090f45733aed1735d9c8cd4321e718ac58beb298f0aba19 (0.13.0).
+Imagem da stack: flaviokosta/sei-organizador@sha256:9510a5205ac1a599eebff75a2023f2a217b94020a1fab4419495ec418981f68c (tag 0.16.0).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:778ef4c4bde8b6e83594bb38b0e46098271cc5d4fbd07ceed2df2b3dddf85161 (0.15.0).
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
@@ -172,3 +172,27 @@ pela API SQLite passaram abertura e quick_check. Para backup por cópia simples,
 parar a réplica e copiar diretório inteiro, incluindo WAL/SHM presentes.
 Restaurar com serviço parado e permissões do usuário node da imagem validada;
 restauração perde alterações posteriores. Fonte e documentação serão publicadas no repositório privado; artifacts permanece como saída local.
+
+## Atualização 0.15.0 — 2026-10-27
+
+Assinaturas efetivas do SEI compartilhadas entre usuários que escolheram o mesmo bloco interno. Tabelas aditivas signature_members, signature_groups, signature_watches e signature_events; incluem deduplicação por documento, assinante e horário. Não altera autenticação pública autorizada da API nem concede Docker socket ao aplicativo. Consultas limitadas no navegador e corpos JSON limitados a 256 KiB/200 observações no servidor.
+
+Backup consistente em /data/backups/before-0.15.0-20261027.sqlite, quick_check ok e cópia local em artifacts/backups/before-0.15.0-20261027.tar. Configuração anterior e variáveis preservadas em artifacts/stack-before-0.15.0.json. Imagem validada em container isolado sem rede/volume, incluindo assinatura, compartilhamento e deduplicação.
+
+Stack 18 atualizada pela API suportada do Portainer; somente SEI_IMAGE alterado. Administração exclusiva, arquivo acessível ao editor/atualização, demais variáveis e volume sei_organizador_data preservados. Atualização completed, container healthy como node; sete módulos conferidos por SHA-256. Banco íntegro, 1 bloco e 278 registros de histórico antes/depois. Evidências em artifacts/deployment-0.15.0.json, database-verification-0.15.0.json e signature-endpoints-0.15.0.json.
+
+Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.15.0.json e usar a extensão anterior. Preservar volume e banco; a imagem anterior ignora as tabelas novas. Não restaurar o banco para apenas voltar a imagem.
+
+156 testes passaram; sintaxe/formatação aprovadas e prévia do painel conferida no Chromium. ZIP com 32 arquivos comparados por SHA-256 com a pasta extension; hash 90127FA87D18E6213A4355B48A4249B4449CFA305C7AC0F54C1B2C30480CDE95. Uma nova assinatura na sessão real do SEI ainda precisa de conferência.
+
+## Atualização 0.16.0 — 2026-10-27
+
+Alertas de processos aguardando recebimento na unidade para os usuários que escolheram o bloco interno 1396 — Secretaria. Tabela aditiva secretariat_receipts, independente de classificações, histórico e limpeza dos blocos. Versão de snapshot compartilhada, referência por chegada, linha de base silenciosa e confirmação pela listagem nativa do SEI. JSON limitado a 2 MiB e 10.000 processos; unidade fixa e acesso público explicitamente autorizado preservados.
+
+Backup consistente em /data/backups/before-0.16.0-20261027.sqlite (VACUUM INTO, quick_check ok), com cópia local em artifacts/backups/before-0.16.0-20261027.tar. Imagem testada em container isolado sem rede/volume, incluindo transição de recebimento e preservação da classificação. Configuração anterior em artifacts/stack-before-0.16.0.json.
+
+Stack 18 reimplantada pela API suportada do Portainer, trocando apenas SEI_IMAGE. Administração exclusiva, arquivo/editor acessível, demais variáveis e volume sei_organizador_data preservados. Atualização completed, container healthy como node e oito módulos conferidos por SHA-256. Banco íntegro, 1 bloco e 278 registros de histórico antes/depois. Evidências em artifacts/deployment-0.16.0.json, database-verification-0.16.0.json e receipts-endpoints-0.16.0.json. A rota HTTPS de recebidos responde 200; outra unidade 403; método inválido 405; bloco inválido 403 e lista incompleta 400.
+
+Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.16.0.json e usar a extensão anterior, preservando o banco e o volume. A imagem anterior ignora a tabela adicional. Não restaurar o banco apenas para voltar a imagem.
+
+167 testes passaram, incluindo os dois HTMLs fornecidos e a simulação de seis páginas/217 processos. A integração do painel, som, duas instâncias de navegador e restrição ao bloco 1396 foram validadas; uma nova chegada na sessão real do SEI permanece pendente.

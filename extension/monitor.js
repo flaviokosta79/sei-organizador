@@ -5,7 +5,14 @@
   const D = globalThis.seiBlockMonitor;
   let spacer,
     footerCleanup = () => {};
-  let latestView, openedProcess;
+  let latestView,
+    openedProcess,
+    scopePending = false;
+  let signatures = { events: [] },
+    signatureOwner = '';
+  let receipts = { pending: [] },
+    receiptOwner = '',
+    receiptLimit = 50;
   const settings = seiOrganizerSettings({
     getIdentity: () => identity,
     getView: () => latestView,
@@ -156,8 +163,15 @@
     body.replaceChildren();
     const count = view.records.reduce((sum, r) => sum + r.pending.length, 0);
     const signing = view.records.reduce((sum, r) => sum + (r.signPending?.length || 0), 0);
-    const total = count + signing;
+    const completed = signatures.events.length;
+    const receiving = receipts.pending.length;
+    const total = count + signing + completed + receiving;
     const hasError =
+      !!receipts.error ||
+      !!receipts.notificationError ||
+      !!receipts.soundError ||
+      !!signatures.error ||
+      !!signatures.notificationError ||
       !!view.soundError ||
       view.records.some(
         (record) =>
@@ -175,16 +189,107 @@
         : hasError
           ? '🔔 Alertas dos blocos · atenção'
           : '🔔 Nenhum alerta novo';
+    if (completed)
+      summary.textContent = `✓ ${completed} ${completed === 1 ? 'documento assinado' : 'documentos assinados'}${count || signing ? ` · ${summary.textContent}` : ''}`;
+    if (receiving)
+      summary.textContent = `📥 Secretaria · ${receiving} para receber${count || signing || completed ? ` · ${summary.textContent}` : ''}`;
     summary.setAttribute('aria-live', 'polite');
     panel.dataset.new = String(total > 0);
     panel.dataset.error = String(hasError);
-    if (total) {
-      const ack = node('button', 'Marcar todos como vistos', body);
+    if (count + signing + completed) {
+      const ack = node('button', receiving ? 'Marcar demais avisos como vistos' : 'Marcar todos como vistos', body);
       ack.type = 'button';
-      ack.addEventListener('click', () => action('monitor:ack'));
+      ack.addEventListener('click', async () => {
+        try {
+          if (globalThis.seiSignatureScanner && globalThis.seiWorkScope?.block)
+            signatures = await call('signature:ack', { block: seiWorkScope.block });
+          await action('monitor:ack');
+        } catch (e) {
+          error(e.message);
+        }
+      });
+    }
+    if (globalThis.seiSecretariatData && globalThis.seiWorkScope?.block === '1396') {
+      node('h3', 'Secretaria · aguardando recebimento na unidade', body);
+      if (receipts.url) {
+        const control = node('a', 'Abrir Controle de Processos', body);
+        control.href = receipts.url;
+        control.target = '_blank';
+        control.rel = 'noopener';
+      }
+      if (receiving) {
+        node(
+          'p',
+          'Abra o processo no SEI para registrar o recebimento. A pendência permanece até a atualização da listagem.',
+          body,
+        );
+        const ul = node('ul', null, body);
+        for (const item of receipts.pending.slice(0, receiptLimit)) {
+          const li = node('li', null, ul);
+          const a = node(item.url ? 'a' : 'span', item.number || item.id, li);
+          if (item.url) {
+            a.href = item.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.title =
+              new URL(item.url).searchParams.get('id_procedimento') === item.id
+                ? 'Abrir processo para receber no SEI'
+                : 'Localizar o processo no Controle de Processos';
+          }
+        }
+        if (receiving > receiptLimit) {
+          const more = node('button', 'Mostrar mais processos para receber', body);
+          more.type = 'button';
+          more.addEventListener('click', () => {
+            receiptLimit += 50;
+            render(latestView);
+          });
+        }
+      } else
+        node(
+          'p',
+          receipts.initialized
+            ? 'Nenhum processo aguardando recebimento na última leitura.'
+            : 'Preparando a primeira leitura de recebidos, sem som para as pendências existentes.',
+          body,
+        ).className = 'muted';
+      if (receipts.checked)
+        node(
+          'p',
+          'Última leitura de recebidos: ' + new Date(receipts.checked).toLocaleTimeString('pt-BR'),
+          body,
+        ).className = 'muted';
+      for (const message of [receipts.error, receipts.notificationError, receipts.soundError])
+        if (message) node('p', message, body).className = 'error';
     }
     if (view.soundError) node('p', view.soundError, body).className = 'error';
-    if (!view.records.length) node('p', 'Abra um bloco interno para começar a acompanhar as entradas.', body);
+    if (completed) {
+      node('h3', 'Assinaturas confirmadas no SEI', body);
+      const ul = node('ul', null, body);
+      for (const item of signatures.events.slice(-50).reverse()) {
+        const li = node('li', null, ul);
+        node('strong', `Documento ${item.number || item.document}`, li);
+        node(
+          'span',
+          ` · assinado por ${item.signer.name || item.signer.login} (${item.signer.login}) · ${new Date(item.signedAt).toLocaleString('pt-BR')} · bloco de assinatura ${item.signatureBlock}`,
+          li,
+        );
+      }
+      const seen = node('button', 'Marcar assinaturas como vistas', body);
+      seen.type = 'button';
+      seen.addEventListener('click', async () => {
+        try {
+          signatures = await call('signature:ack', { block: seiWorkScope.block });
+          await sync(false);
+        } catch (e) {
+          error(e.message);
+        }
+      });
+    }
+    if (signatures.error) node('p', signatures.error, body).className = 'error';
+    if (signatures.notificationError) node('p', signatures.notificationError, body).className = 'error';
+    if (!view.records.length && !completed && !receiving && globalThis.seiWorkScope?.block !== '1396')
+      node('p', 'Abra um bloco interno para começar a acompanhar as entradas.', body);
     else if (!total) node('p', 'Nenhum alerta novo.', body).className = 'muted';
     for (const record of view.records) {
       if (
@@ -268,7 +373,64 @@
       }
     }
   }
+  async function syncReceipts(poll) {
+    const selected = globalThis.seiWorkScope?.block;
+    if (!globalThis.seiSecretariatData || selected !== '1396') {
+      receipts = { pending: [] };
+      receiptOwner = '';
+      return;
+    }
+    const nextOwner = key([identity, selected]);
+    if (nextOwner !== receiptOwner) {
+      receipts = { pending: [] };
+      receiptOwner = nextOwner;
+      receiptLimit = 50;
+    }
+    let lease;
+    try {
+      receipts = await call('receipts:sync', { poll, url: seiSecretariatData.source() });
+      const target = receipts.poll;
+      if (target) {
+        lease = target.id;
+        controller = new AbortController();
+        let result;
+        try {
+          result = await seiSecretariatData.snapshot(target.url, controller.signal);
+        } catch (e) {
+          result = { error: e.message };
+        }
+        if (!stopped && !scopePending && seiWorkScope.block === selected && key(D.context()) === key(identity))
+          receipts = await call('receipts:result', { ...result, lease });
+      }
+    } catch (e) {
+      if (!scopePending) receipts.error = 'Recebidos sem atualização: ' + e.message;
+    } finally {
+      if (lease) {
+        controller = null;
+        await call('receipts:done', { lease }).catch(() => {});
+      }
+    }
+  }
+  // Leave the initial page load to the native SEI navigation.
+  let pollingReady = false,
+    navigationTimer;
+  function resumePolling() {
+    clearTimeout(navigationTimer);
+    navigationTimer = setTimeout(() => {
+      pollingReady = true;
+      sync();
+    }, 1500);
+  }
+  if (document.readyState === 'complete') resumePolling();
+  else window.addEventListener('load', resumePolling, { once: true });
   async function sync(poll = true) {
+    // Process pages keep their native document frames responsive: do not start SEI scans here.
+    const nativeProcess =
+      !!document.querySelector('#ifrArvore') ||
+      ['procedimento_trabalhar', 'procedimento_visualizar', 'arvore_visualizar', 'documento_visualizar'].includes(
+        new URL(location.href).searchParams.get('acao'),
+      );
+    poll = poll && pollingReady && !nativeProcess;
     if (busy || stopped) return;
     const next = D.context();
     if (!next) {
@@ -288,6 +450,17 @@
     const reg = registration(),
       regKey = key(reg);
     try {
+      await syncReceipts(poll);
+      if (scopePending || stopped) return;
+      if (globalThis.seiSignatureScanner) {
+        const selected = globalThis.seiWorkScope?.block;
+        const owner = key([identity, selected]);
+        if (owner !== signatureOwner) {
+          signatures = { events: [] };
+          signatureOwner = owner;
+        }
+        if (selected) signatures = await call('signature:sync', { block: selected });
+      }
       const page = new URL(location.href);
       const process = page.searchParams.get('id_procedimento');
       const openKey = `${key(identity)}:${process}`;
@@ -348,10 +521,46 @@
           controller = null;
         }
       }
+      if (globalThis.seiSignatureScanner && poll && !stopped && !scopePending && globalThis.seiWorkScope?.block) {
+        signatures = await call('signature:sync', { block: seiWorkScope.block, poll: true });
+        render(latestView || view);
+        if (signatures.scan) {
+          controller = new AbortController();
+          const selected = globalThis.seiWorkScope?.block;
+          const scanIdentity = key(identity);
+          try {
+            const result = await seiSignatureScanner.scan(
+              identity,
+              selected,
+              AbortSignal.any([controller.signal, AbortSignal.timeout(110000)]),
+            );
+            if (!stopped && selected === seiWorkScope.block && key(D.context()) === scanIdentity) {
+              for (let index = 0; index < result.observations.length; index += 200)
+                await call('signature:observe', {
+                  block: selected,
+                  observations: result.observations.slice(index, index + 200),
+                });
+              signatures = await call('signature:sync', { block: selected });
+              if (result.error) signatures.error = result.error;
+              render(await call('monitor:sync', { poll: false }));
+            }
+          } catch (e) {
+            signatures.error = `Assinaturas sem atualização: ${e.message}`;
+            if (!scopePending) render(latestView || view);
+          } finally {
+            controller = null;
+            await call('signature:done', { block: selected }).catch(() => {});
+          }
+        }
+      }
     } catch (e) {
-      if (!stopped) error(e.message);
+      if (!stopped && !scopePending) error(e.message);
     } finally {
       busy = false;
+      if (scopePending && !stopped) {
+        scopePending = false;
+        sync();
+      }
     }
   }
   chrome.runtime.onMessage.addListener((msg) => {
@@ -364,7 +573,12 @@
   });
   window.addEventListener('sei-organizador:scope', () => {
     registered = '';
-    sync();
+    signatures = { events: [] };
+    receipts = { pending: [] };
+    controller?.abort();
+    removeFooter();
+    if (busy) scopePending = true;
+    else sync();
   });
   // A late SEI header/list is detected without reacting to our own panel updates.
   let scheduled;
@@ -384,6 +598,8 @@
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('pagehide', () => {
     stopped = true;
+    clearTimeout(navigationTimer);
+    pollingReady = false;
     controller?.abort();
     observer.disconnect();
     clearTimeout(scheduled);
@@ -392,6 +608,7 @@
   });
   window.addEventListener('pageshow', () => {
     stopped = false;
+    resumePolling();
     observer.observe(document.documentElement, { childList: true, subtree: true });
     sync();
   });

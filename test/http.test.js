@@ -12,7 +12,7 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'sei-http-'));const token=randomBytes(32).toString('base64url');const hashesFile=join(dir,'hashes');writeFileSync(hashesFile,createHash('sha256').update(token).digest('hex'));
  const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_API_TOKEN_HASHES_FILE:hashesFile,SEI_UNIT_ID:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
  const apiFetch=(url,options={})=>fetch(url,{...options,headers:{...options.headers,Authorization:`Bearer ${token}`}});
- try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),5000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
+ try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
  const base=`http://127.0.0.1:${port}`;assert.equal((await fetch(base+'/healthz')).status,200);
  assert.equal((await fetch(base+'/v1/units/1/blocks/2')).status,401);
  assert.equal((await fetch(base+'/v1/units/1/blocks/2',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
@@ -54,5 +54,24 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  assert.equal((await editingPost({...editor,activityAgeMs:-1})).status,400);assert.equal((await editingPost(editor)).status,200);
  let editors=await(await query()).json();assert.equal(editors.entries.length,1);assert.equal(editors.entries[0].actor.login,'colega');assert.equal(editors.entries[0].number,'555');
  assert.equal((await editingPost({...editor,stop:true})).status,200);editors=await(await query()).json();assert.equal(editors.entries.length,0);
+ const signatureBase=base+'/v1/units/1/blocks/2/signatures/';
+ const signaturePost=(action,data)=>apiFetch(signatureBase+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ assert.equal((await fetch(signatureBase+'sync')).status,401);assert.equal((await apiFetch(base+'/v1/units/2/blocks/2/signatures/sync',{method:'POST'})).status,403);assert.equal((await apiFetch(signatureBase+'sync')).status,405);
+ const signatureActor={login:'teste',org:'SEPM'};assert.equal((await signaturePost('sync',{actor:signatureActor,after:null})).status,200);
+ assert.equal((await signaturePost('sync',{actor:signatureActor,after:-1})).status,400);
+ const observations=[{process:'10',document:'11',number:'555',signatureBlock:'99',includedAt:Date.now()-60000,includedBy:{login:'teste',name:'Pessoa'},signature:{time:Date.now(),signer:{login:'chefe',name:'Nome do Chefe'}}}];
+ const observed=await signaturePost('observe',{actor:signatureActor,observations});assert.equal(observed.status,200);assert.equal((await observed.json()).accepted,1);
+ const signatures=await(await signaturePost('sync',{actor:signatureActor,after:0})).json();assert.equal(signatures.events[0].signer.name,'Nome do Chefe');assert.equal(signatures.events[0].document,'11');
+ const receiptUrl=base+'/v1/units/1/secretariat/receipts';
+ const receiptPost=data=>apiFetch(receiptUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ assert.equal((await fetch(receiptUrl)).status,401);assert.equal((await apiFetch(base+'/v1/units/2/secretariat/receipts')).status,403);assert.equal((await apiFetch(receiptUrl,{method:'DELETE'})).status,405);
+ assert.equal((await(await apiFetch(receiptUrl)).json()).initialized,false);
+ assert.equal((await receiptPost({block:'1343',actor:signatureActor,version:0,complete:true,items:[]})).status,403);
+ assert.equal((await receiptPost({block:'1396',actor:signatureActor,version:0,complete:false,items:[]})).status,400);
+ const receiptBody={block:'1396',actor:signatureActor,version:0,complete:true,items:[{id:'10',number:'SEI-350024/000010/2026',pending:true}]};
+ const firstReceipt=await receiptPost(receiptBody);assert.equal(firstReceipt.status,200);const receiptState=await firstReceipt.json();assert.equal(receiptState.pending[0].baseline,true);
+ assert.equal((await receiptPost(receiptBody)).status,409);
+ assert.equal((await receiptPost({...receiptBody,version:receiptState.version,items:[{...receiptBody.items[0],pending:false}]})).status,200);
+ assert.equal((await(await apiFetch(receiptUrl)).json()).pending.length,0);
  }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
 });

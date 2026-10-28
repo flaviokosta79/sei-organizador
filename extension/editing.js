@@ -350,7 +350,14 @@
       scheduled = setTimeout(refresh, 100);
     }
   }
-  const observer = new MutationObserver(scan);
+  let scanTimer;
+  const observer = new MutationObserver(() => {
+    if (scanTimer) return;
+    scanTimer = setTimeout(() => {
+      scanTimer = null;
+      scan();
+    }, 50);
+  });
   const start = () => {
     stopped = false;
     observer.observe(document.documentElement, { childList: true, subtree: true });
@@ -366,6 +373,8 @@
     stopped = true;
     observer.disconnect();
     clearTimeout(scheduled);
+    clearTimeout(scanTimer);
+    scanTimer = null;
     clearInterval(timer);
     release();
   });

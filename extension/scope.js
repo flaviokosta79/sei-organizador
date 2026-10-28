@@ -12,8 +12,7 @@
   };
   globalThis.seiWorkScope = state;
   let busy = false,
-    last = '',
-    notice;
+    last = '';
   function identity() {
     try {
       const user = window.top.document.querySelector('#lnkUsuarioSistema');
@@ -119,37 +118,11 @@
     await send('scope:remember', { blocks: found, catalog: true });
     await refresh(true);
   }
-  function banner() {
-    const table = document.querySelector('#tblProtocolosBlocos');
-    const block = new URL(location.href).searchParams.get('id_bloco');
-    if (!table || !state.identity || state.allows(block)) {
-      notice?.remove();
-      return;
-    }
-    if (!notice?.isConnected) {
-      notice = document.createElement('div');
-      notice.style.cssText =
-        'padding:10px;margin:8px 0;background:#eef5ff;border:1px solid #adc9eb;border-radius:4px;font:13px Arial;';
-      notice.id = 'sei-work-scope-notice';
-      const text = document.createElement('span'),
-        button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = 'Escolher bloco de trabalho';
-      button.addEventListener('click', () => send('scope:open-options'));
-      notice.append(text, ' ', button);
-      table.before(notice);
-    }
-    const text = state.block
-      ? `Organizador ativo somente no bloco ${state.block}. Esta página mantém os controles nativos do SEI.`
-      : 'Identificando o bloco de trabalho do Organizador…';
-    if (notice.firstChild.textContent !== text) notice.firstChild.textContent = text;
-  }
   async function refresh(force = false) {
     const next = identity(),
       found = blocks(),
       key = JSON.stringify([next, found]);
     if (busy || (!force && key === last)) {
-      banner();
       return;
     }
     busy = true;
@@ -168,7 +141,6 @@
     } finally {
       busy = false;
       resolveReady();
-      banner();
       if (previous !== state.block || previousIdentity !== JSON.stringify(next)) {
         const card = document.querySelector('#sei-organizador-documento');
         if (card) {

@@ -51,13 +51,15 @@
   // Signature footer is read before the badge exists, so our own text never matches.
   const signatures = own ? D.parseSignatures(document.body.textContent) : [];
 
+  let requestedHistory = false;
+  const pageController = new AbortController();
   async function fetchPage(link, base, init = {}) {
     const target = new URL(link, base);
     if (target.origin !== location.origin || target.pathname !== '/sei/controlador.php')
       throw new Error('Endereço do SEI inválido');
     const response = await fetch(target, {
       credentials: 'same-origin',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.any([pageController.signal, AbortSignal.timeout(15000)]),
       ...init,
     });
     if (!response.ok) throw new Error(`SEI respondeu HTTP ${response.status}`);
@@ -99,7 +101,7 @@
       page = D.parseHistory(source.doc);
     }
     try {
-      page = await seiFullHistory.finish(source.doc, source.url, new AbortController().signal);
+      page = await seiFullHistory.finish(source.doc, source.url, pageController.signal);
     } catch (e) {
       page = { ...page, partial: true, readError: e.message };
     }
@@ -109,6 +111,7 @@
   async function loadBlocks(kind) {
     const cached = cache.get('blocos:' + kind, 120000);
     if (cached) return { blocks: new Map(cached.blocks), partial: cached.partial };
+    if (!requestedHistory) return null;
     const link = top.querySelector(`a[href*="acao=bloco_${kind}_listar"]`)?.getAttribute('href');
     if (!link) return null;
     const list = D.parseBlockList((await fetchPage(link, top.location.href)).doc);
@@ -246,6 +249,7 @@
   const refreshers = [];
   const dispose = () => {
     disposed = true;
+    pageController.abort();
     clearInterval(timer);
     top.removeEventListener('sei-organizador:history-ready', receiveHistory);
     host.remove();
@@ -386,17 +390,40 @@
       return bar;
     }),
   );
-  try {
-    await fill();
-  } finally {
+  async function populate() {
+    try {
+      await fill();
+    } finally {
+      progress.remove();
+      root.removeAttribute('aria-busy');
+    }
+    if (active() && refreshers.length)
+      timer = setInterval(() => {
+        if (!active()) return dispose();
+        if (!document.hidden) for (const refresh of refreshers) refresh();
+      }, 10000);
+  }
+  // Never fetch authenticated SEI pages just because a document was selected.
+  if (options.history || seiFullHistory.read(tree.process.id, actor)) await populate();
+  else {
     progress.remove();
     root.removeAttribute('aria-busy');
+    const load = ui.createElement('button');
+    load.type = 'button';
+    load.className = 'load-history';
+    load.textContent = 'Consultar andamento';
+    const loadingContent = [...loading.childNodes];
+    loading.replaceChildren(load, span('Consulte quando precisar dos dados de andamento e blocos.', 'muted'));
+    load.onclick = async () => {
+      if (!active() || load.disabled) return;
+      load.disabled = true;
+      requestedHistory = true;
+      loading.replaceChildren(...loadingContent);
+      root.setAttribute('aria-busy', 'true');
+      header.after(progress);
+      await populate();
+    };
   }
-  if (active() && refreshers.length)
-    timer = setInterval(() => {
-      if (!active()) return dispose();
-      if (!document.hidden) for (const refresh of refreshers) refresh();
-    }, 10000);
 
   async function fill() {
     let history;

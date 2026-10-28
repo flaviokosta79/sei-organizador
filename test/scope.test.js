@@ -37,14 +37,14 @@ test('API bloqueia classificação de outro bloco, mesmo com mensagem forjada',a
  assert.ok((await w.send({type:'api',identity:actor,unit:'1',block:'2'},url('2'))).data);assert.equal(w.requests.length,1);
 });
 
-test('opções mostram número e grupo nativo, preservando grupo ao reabrir o bloco',async()=>{
+test('opções mostram número e descrição, preservando descrição ao reabrir sem o campo',async()=>{
  const state=worker(),source=base+'?acao=bloco_interno_listar&infra_unidade_atual=1';
  const html='<a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><table id="tblBlocos"><tr><th>Número</th><th>Descrição</th><th>Ações</th><th>Grupo</th></tr><tr><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=2">2</a></td><td>Descrição diferente</td><td></td><td>P/3</td></tr><tr><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=3">3</a></td><td>Outra descrição</td><td></td><td></td></tr></table>';
  const dom=new JSDOM(html,{url:source,runScripts:'outside-only'}),w=dom.window;
  w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};w.chrome={runtime:{onMessage:{addListener:()=>{}},sendMessage:msg=>state.send(msg,source)}};
  try{w.eval(read('scope.js'));await tick();const pref=await state.store.get(actor);assert.equal(pref.catalog.find(b=>b.id==='2').group,'P/3');assert.equal(pref.catalog.find(b=>b.id==='3').group,'');
-  await state.remember('2');assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').group,'P/3');
-  await state.remember('4');const opts=new JSDOM(read('options.html'),{url:options,runScripts:'outside-only'});try{opts.window.chrome={runtime:{sendMessage:msg=>state.send(msg,options)},tabs:{query:async()=>[]}};opts.window.eval(read('options.js'));await tick();const labels=[...opts.window.document.querySelector('#block').options].map(o=>o.textContent);assert.deepEqual(labels,['2 · P/3','3 · Sem grupo','4 · Grupo não identificado']);assert.ok(!labels.some(text=>text.includes('Descrição')));}finally{opts.window.close();}
+  await state.remember('2');assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').group,'P/3');assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').name,'Descrição diferente');
+  await state.remember('4');const opts=new JSDOM(read('options.html'),{url:options,runScripts:'outside-only'});try{opts.window.chrome={runtime:{sendMessage:msg=>state.send(msg,options)},tabs:{query:async()=>[]}};opts.window.eval(read('options.js'));await tick();const labels=[...opts.window.document.querySelector('#block').options].map(o=>o.textContent);assert.deepEqual(labels,['2 · Descrição diferente','3 · Outra descrição','4 · Descrição não identificada']);assert.ok(!labels.some(text=>text.includes('P/3') || text.includes('Sem grupo')));}finally{opts.window.close();}
  }finally{w.close();}
 });
 
@@ -64,11 +64,11 @@ test('trocar preferência ativa só o bloco escolhido e restaura a lista nativa 
  w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};w.chrome={runtime:{onMessage:{addListener:fn=>callbacks.push(fn)},sendMessage:msg=>workerState.send(msg,url('3'))}};
  try{
   for(const file of ['scope.js','history.js','theme.js','content.js'])w.eval(read(file));await tick();await tick();
-  assert.equal(w.document.querySelector('#sei-organizador'),null);assert.ok(w.document.querySelector('#sei-work-scope-notice'));assert.equal(workerState.requests.length,0);
+  assert.equal(w.document.querySelector('#sei-organizador'),null);assert.equal(w.document.querySelector('#sei-work-scope-notice'),null);assert.equal(workerState.requests.length,0);
   await workerState.call({type:'scope:set',profile:'1:SEPM:pessoa',block:'3'},options);callbacks.forEach(fn=>fn({type:'scope:changed'}, {},()=>{}));await tick();await tick();
   assert.ok(w.document.querySelector('#sei-organizador'));assert.equal(w.document.querySelectorAll('.so-copy-number').length,1);
   await workerState.call({type:'scope:set',profile:'1:SEPM:pessoa',block:'2'},options);callbacks.forEach(fn=>fn({type:'scope:changed'}, {},()=>{}));await tick();
-  assert.equal(w.document.querySelector('#sei-organizador'),null);assert.equal(w.document.querySelectorAll('.so-copy-number').length,0);assert.ok(w.document.querySelector('#native'));
+  assert.equal(w.document.querySelector('#sei-organizador'),null);assert.equal(w.document.querySelectorAll('.so-copy-number').length,0);assert.ok(w.document.querySelector('#native'));assert.equal(w.document.querySelector('#sei-work-scope-notice'),null);
  }finally{w.close();}
 });
 
