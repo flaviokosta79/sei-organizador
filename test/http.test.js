@@ -13,7 +13,7 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_API_TOKEN_HASHES_FILE:hashesFile,SEI_UNIT_ID:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
  const apiFetch=(url,options={})=>fetch(url,{...options,headers:{...options.headers,Authorization:`Bearer ${token}`}});
  try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
- const base=`http://127.0.0.1:${port}`;assert.equal((await fetch(base+'/healthz')).status,200);
+ const base=`http://127.0.0.1:${port}`;const health=await fetch(base+'/healthz');assert.equal(health.status,200);assert.match(health.headers.get('server-timing'),/^app;dur=\d+\.\d{2}$/);
  assert.equal((await fetch(base+'/v1/units/1/blocks/2')).status,401);
  assert.equal((await fetch(base+'/v1/units/1/blocks/2',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
  assert.equal((await fetch(base+'/v1/units/1/blocks/2',{headers:{Authorization:`Bearer ${randomBytes(32).toString('base64url')}`}})).status,401);

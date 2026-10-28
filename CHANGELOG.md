@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.4 — 2026-10-28
+
+- API reutiliza o histórico calculado enquanto os dados não mudam. Cache limitado a 16 blocos e 512 KiB serializados por entrada; devolve cópias independentes e invalida após gravações e alterações por outras conexões SQLite. Sem migração ou remoção de dados.
+- Respostas da API incluem Server-Timing para separar processamento do servidor e tempo total de rede.
+- Amostra no bloco 1343: mediana HTTPS do histórico de 30,6 ms para 18,4 ms; cálculo interno de cerca de 12,5 ms para 0,6 ms nas leituras repetidas. Primeira leitura continua calculando o histórico completo. Evidência em deploy/performance-0.16.4.json; não mede carregamento de documentos no SEI.
+- 175 testes passaram; sintaxe/formatação aprovadas. Imagem validada em container isolado, implantada pela stack 18 do Portainer, editor e administração preservados, atualização completed e container healthy. Banco íntegro com 2 blocos e 293 registros de histórico preservados, backup e rollback preparados.
+- Comportamento da extensão preservado; manifesto e distribuição atualizados para manter a versão alinhada com a API. ZIP com nome fixo sei-organizador-extension.zip.
+
 ## 0.16.3 — 2026-10-28
 
 - Atualizações periódicas da lista não iniciam uma segunda leitura enquanto a anterior está em andamento, evitando consultas sobrepostas em conexões lentas.

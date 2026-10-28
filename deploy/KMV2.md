@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão e API na versão 0.16.0. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,8 +14,8 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:9510a5205ac1a599eebff75a2023f2a217b94020a1fab4419495ec418981f68c (tag 0.16.0).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:778ef4c4bde8b6e83594bb38b0e46098271cc5d4fbd07ceed2df2b3dddf85161 (0.15.0).
+Imagem da stack: flaviokosta/sei-organizador@sha256:46275a0fe348b7ec1ee0f25ac553582152b3eac3b9982ee2758e4135cd40cdad (tag 0.16.4).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:9510a5205ac1a599eebff75a2023f2a217b94020a1fab4419495ec418981f68c (0.16.0).
 O conteúdo de todas as camadas foi conferido: somente package.json e
 server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
@@ -196,3 +196,13 @@ Stack 18 reimplantada pela API suportada do Portainer, trocando apenas SEI_IMAGE
 Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.16.0.json e usar a extensão anterior, preservando o banco e o volume. A imagem anterior ignora a tabela adicional. Não restaurar o banco apenas para voltar a imagem.
 
 167 testes passaram, incluindo os dois HTMLs fornecidos e a simulação de seis páginas/217 processos. A integração do painel, som, duas instâncias de navegador e restrição ao bloco 1396 foram validadas; uma nova chegada na sessão real do SEI permanece pendente.
+
+## Otimização da API 0.16.4 — 2026-10-28
+
+Histórico calculado em cache limitado, invalidado por gravações locais e PRAGMA data_version de outras conexões. Resultado devolvido como cópia independente. Cabeçalho Server-Timing mede o processamento de cada resposta. Nenhuma migração, mudança de permissão ou aumento de recursos. Limites de 0,5 CPU e 512 MiB preservados.
+
+Stack 18 atualizada pelo mecanismo suportado do Portainer, mudando somente SEI_IMAGE. Administração exclusiva, editor/arquivo acessível, atualização completed, container healthy como node e oito módulos conferidos por SHA-256. Volume e demais variáveis preservados. Banco com quick_check ok: 2 blocos e 293 registros de histórico antes/depois. Evidência resumida versionada em deploy/performance-0.16.4.json.
+
+Backup consistente em /data/backups/before-0.16.4-20261028.sqlite, com cópia local em artifacts/backups/before-0.16.4-20261028.tar. Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.16.4.json, preservando o volume e o banco. A versão anterior pode ler os mesmos dados.
+
+Medições pontuais de oito consultas por rota: mediana HTTPS do histórico do bloco 1343 passou de 30,6 ms para 18,4 ms. Benchmark interno de 15 leituras mostra primeira leitura de aproximadamente 80 ms e mediana das demais de 0,6 ms. Não foi medida navegação real no SEI nem carga simultânea.

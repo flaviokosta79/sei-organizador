@@ -7,8 +7,9 @@ const host=process.env.HOST||'127.0.0.1';
 const authorized=createAuth({file:process.env.SEI_API_TOKEN_HASHES_FILE,host,publicAccess:process.env.SEI_ALLOW_PUBLIC_ACCESS==='true'});
 const store=createStore(process.env.DATA_FILE||'./data/organizador.sqlite');
 const server=http.createServer(async(req,res)=>{
+  const started=performance.now();
   res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');
-  const send=(status,data)=>{res.writeHead(status);res.end(JSON.stringify(data));};
+  const send=(status,data)=>{const body=JSON.stringify(data);res.setHeader('Server-Timing',`app;dur=${(performance.now()-started).toFixed(2)}`);res.writeHead(status);res.end(body);};
   if(req.url==='/healthz'&&req.method==='GET')return send(200,{ok:true});
   if(!authorized(req.headers.authorization)){res.setHeader('WWW-Authenticate','Bearer');return send(401,{error:'Token de acesso ausente ou inválido'});}
   try{

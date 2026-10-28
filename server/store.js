@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import {serialize,deserialize} from 'node:v8';
 import {sameActor,undoPlan,applyUndo,snapshots} from './undo.js';
 import {createAlerts} from './alerts.js';
 import {createEditing} from './editing.js';
@@ -20,6 +21,7 @@ export function createStore(path) {
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
   const read=(unit,block)=>{const r=db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?').get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
   function mutate(unit,block,version,actor,action,inTransaction=false) {
+    historyCache.delete(JSON.stringify([unit,block]));
     if(!inTransaction)db.exec('BEGIN IMMEDIATE');
     try {
       const old=read(unit,block); if(old.version!==version) throw Object.assign(new Error('Estado atualizado por outro colega. Recarregue e tente novamente.'),{status:409});
@@ -64,6 +66,29 @@ export function createStore(path) {
       if(!inTransaction)db.exec('COMMIT'); return {version:v,...next};
     }catch(e){if(!inTransaction)db.exec('ROLLBACK');throw e;}
   }
-  return {receipts,signatures,editing,alerts,read,mutate,history:(u,b)=>{const items=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100').all(u,b);return items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});},close:()=>db.close()};
+  // Only computed metadata is cached. SQLite remains the source of truth.
+  // External commits change data_version; local mutations invalidate before touching the transaction.
+  const historyCache=new Map();
+  const historyRows=db.prepare('SELECT id,time,actor,action,before,after,version FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 100');
+  const historyHead=db.prepare('SELECT COALESCE(MAX(id),0) AS id FROM history WHERE unit=? AND block=?');
+  const dataVersion=db.prepare('PRAGMA data_version');
+  function history(u,b){
+    const key=JSON.stringify([u,b]);
+    const revision=JSON.stringify([dataVersion.get().data_version,historyHead.get(u,b).id]);
+    const cached=historyCache.get(key);
+    if(cached?.revision===revision){
+      historyCache.delete(key);historyCache.set(key,cached);
+      return deserialize(cached.payload);
+    }
+    const items=historyRows.all(u,b);const result=items.map((r,index)=>{const action=JSON.parse(r.action);const before=JSON.parse(r.before),after=JSON.parse(r.after);action.tabName??=before.tabs.find(t=>t.id===action.tabId)?.name||(action.type==='create'?after.tabs.at(-1)?.name:undefined);if(action.type==='rename')action.newTabName??=after.tabs.find(t=>t.id===action.tabId)?.name;const plan=undoPlan(r,items.slice(0,index));return {id:r.id,time:r.time,actor:JSON.parse(r.actor),action,version:r.version,undoable:!plan.reason,undoReason:plan.reason};});
+    const payload=serialize(result);
+    historyCache.delete(key);
+    if(payload.length<=524288){
+      historyCache.set(key,{revision,payload});
+      if(historyCache.size>16)historyCache.delete(historyCache.keys().next().value);
+    }
+    return result;
+  }
+  return {receipts,signatures,editing,alerts,read,mutate,history,close:()=>db.close()};
 }
 function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw new Error('Nome deve conter 1 a 80 caracteres');return n.trim();}

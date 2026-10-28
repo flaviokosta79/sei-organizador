@@ -192,3 +192,7 @@ Os arquivos em `artifacts/` são resultados locais, fora do Git: ZIPs, imagens d
 Nas telas de processo, o monitor sincroniza avisos pela API sem iniciar consultas automáticas de listas ou históricos no SEI. O card aproveita andamento completo recente em cache; sem cache, use **Consultar andamento** para carregar os detalhes. As varreduras automáticas continuam nas demais telas do SEI.
 
 O ZIP dos releases usa sempre o nome `sei-organizador-extension.zip`. Link permanente da versão mais recente: https://github.com/flaviokosta79/sei-organizador/releases/latest/download/sei-organizador-extension.zip
+
+### Desempenho da API (0.16.4)
+
+O servidor reutiliza o cálculo do histórico enquanto os dados permanecem iguais, com cache limitado e invalidação nas gravações e alterações externas. O cabeçalho `Server-Timing` indica o tempo de processamento da resposta. Medições da implantação e seus limites estão em `deploy/performance-0.16.4.json`. Essa otimização não altera o carregamento nativo de documentos pelo SEI.

@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-10-28T18:41:23.407Z",
+  "sample": {
+    "unit": "120000124",
+    "block": "1343",
+    "internalReads": 15,
+    "httpReadsPerRoute": 8,
+    "concurrentLoad": false
+  },
+  "historyComputeMs": {
+    "beforeMedian": 12.544471000000044,
+    "afterCold": 79.942671,
+    "afterWarmMedian": 0.6430440000000033
+  },
+  "https": {
+    "before": [
+      {
+        "route": "/healthz",
+        "medianMs": 17.381700000000023,
+        "maxMs": 111.3106
+      },
+      {
+        "route": "/v1/units/120000124/blocks/1343",
+        "medianMs": 16.133699999999862,
+        "maxMs": 17.821899999999914
+      },
+      {
+        "route": "/v1/units/120000124/blocks/1343/history",
+        "medianMs": 30.615699999999833,
+        "maxMs": 53.763900000000376
+      }
+    ],
+    "after": [
+      {
+        "route": "/healthz",
+        "medianMs": 16.53729999999996,
+        "maxMs": 95.6147,
+        "serverTiming": "app;dur=0.03"
+      },
+      {
+        "route": "/v1/units/120000124/blocks/1343",
+        "medianMs": 14.79970000000003,
+        "maxMs": 16.106300000000147,
+        "serverTiming": "app;dur=0.31"
+      },
+      {
+        "route": "/v1/units/120000124/blocks/1343/history",
+        "medianMs": 18.38239999999996,
+        "maxMs": 38.116399999999885,
+        "serverTiming": "app;dur=0.91"
+      }
+    ]
+  },
+  "deployment": {
+    "checkedAt": "2026-10-28T18:40:24.058Z",
+    "stackId": 18,
+    "endpoint": 1,
+    "administratorsOnly": true,
+    "editorFileAccessible": true,
+    "stackStatus": 1,
+    "image": "flaviokosta/sei-organizador@sha256:46275a0fe348b7ec1ee0f25ac553582152b3eac3b9982ee2758e4135cd40cdad",
+    "update": "completed",
+    "containerStatus": "running",
+    "health": "healthy",
+    "user": "node",
+    "mounts": [
+      {
+        "type": "volume",
+        "name": "sei_organizador_data",
+        "destination": "/data"
+      }
+    ],
+    "deployedVersion": "0.16.4",
+    "serverFilesMatch": {
+      "server/index.js": true,
+      "server/store.js": true,
+      "server/auth.js": true,
+      "server/undo.js": true,
+      "server/alerts.js": true,
+      "server/editing.js": true,
+      "server/signatures.js": true,
+      "server/receipts.js": true
+    },
+    "apiResults": [
+      {
+        "path": "/healthz",
+        "status": 200
+      },
+      {
+        "path": "/v1/units/120000124/blocks/0",
+        "status": 200
+      },
+      {
+        "path": "/v1/units/1/blocks/0",
+        "status": 403
+      }
+    ],
+    "serverUpdateRequired": false
+  },
+  "database": {
+    "before": {
+      "check": {
+        "quick_check": "ok"
+      },
+      "blocks": 2,
+      "history": 293
+    },
+    "after": {
+      "check": {
+        "quick_check": "ok"
+      },
+      "blocks": 2,
+      "history": 293
+    }
+  },
+  "limitations": [
+    "Medições pontuais, sem carga simultânea e sem sessão real do SEI.",
+    "A primeira leitura por bloco recalcula o histórico; gravações e alterações externas invalidam o resultado."
+  ]
+}
