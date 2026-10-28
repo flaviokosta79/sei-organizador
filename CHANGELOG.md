@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.3 — 2026-10-28
+
+- Atualizações periódicas da lista não iniciam uma segunda leitura enquanto a anterior está em andamento, evitando consultas sobrepostas em conexões lentas.
+- Leitura de identidade e catálogo de blocos agrupa alterações do DOM em intervalos de 50 ms, com cancelamento ao sair da página.
+- Card indexa os links dos documentos uma vez por montagem, em vez de percorrer todos os links para cada pendência. Mantém abertura pelos links nativos.
+- ZIP de distribuição passa a usar o nome fixo sei-organizador-extension.zip, com link permanente para a versão mais recente.
+- 172 testes passaram; sintaxe e formatação aprovadas. Regressões cobrem consulta lenta, recuperação após erro, leitura agrupada de catálogo e reconhecimento de alterações nativas.
+- Ajustes somente na extensão, sem reimplantação da API. Desempenho na sessão real do SEI ainda precisa ser medido.
+
 ## 0.16.2 — 2026-10-28
 
 - Telas de processo/documento deixam de iniciar varreduras automáticas de blocos, recebidos e assinaturas no SEI. Sincronização dos avisos pela API permanece ativa; as varreduras continuam nas demais telas.

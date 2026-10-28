@@ -113,3 +113,16 @@ test('primeira consulta completa limpa vínculos antigos ausentes; dados inváli
   store.alerts.snapshot('1','2',{version:1,ids:['200']});assert.equal(store.history('1','2').length,count);
  }finally{store.close();}
 });
+
+test('mudanças em rajada leem o catálogo uma vez e alterações nativas continuam sendo reconhecidas',async()=>{
+ const state=worker(),source=base+'?acao=bloco_interno_listar&infra_unidade_atual=1';
+ const dom=new JSDOM('<a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><table id="tblBlocos"><tr><th>Número</th><th>Descrição</th></tr><tr><td><a href="?acao=rel_bloco_protocolo_listar&id_bloco=2">2</a></td><td id="description">Antes</td></tr></table>',{url:source,runScripts:'outside-only'}),w=dom.window;
+ w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};w.chrome={runtime:{onMessage:{addListener:()=>{}},sendMessage:msg=>state.send(msg,source)}};
+ try{
+  w.eval(read('scope.js'));await tick();let scans=0;const query=w.document.querySelector.bind(w.document);
+  w.document.querySelector=selector=>{if(selector==='#tblBlocos')scans++;return query(selector);};
+  for(let i=0;i<20;i++){w.document.body.append(w.document.createElement('div'));await Promise.resolve();}
+  assert.equal(scans,0);await tick();assert.equal(scans,1);
+  query('#description').textContent='Depois';await tick();assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').name,'Depois');
+ }finally{w.close();}
+});

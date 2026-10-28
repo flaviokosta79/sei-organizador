@@ -38,3 +38,5 @@ A cada alteração entregue da extensão, incremente a versão em extension/mani
 ## Publicação no GitHub
 
 A cada atualização entregue, fazer commit de todos os arquivos alterados, push para o GitHub e criar ou atualizar o release correspondente, anexando o ZIP de distribuição. Essa publicação faz parte da entrega e não exige nova confirmação do usuário.
+
+O ZIP anexado aos releases deve ter sempre o nome `sei-organizador-extension.zip`, sem número de versão no nome, permitindo usar o link `/releases/latest/download/sei-organizador-extension.zip`. A versão permanece no manifesto e na tag do release.

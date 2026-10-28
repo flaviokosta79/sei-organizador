@@ -178,7 +178,7 @@ docker compose -f deploy/compose.yaml up -d --build
 ```powershell
 npm test
 npm run check
-Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension-0.16.2.zip -Force
+Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
 Resultado da entrega 0.16.0: **167 testes passaram**, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
@@ -190,3 +190,5 @@ Os arquivos em `artifacts/` são resultados locais, fora do Git: ZIPs, imagens d
 ### Navegação em documentos (0.16.2)
 
 Nas telas de processo, o monitor sincroniza avisos pela API sem iniciar consultas automáticas de listas ou históricos no SEI. O card aproveita andamento completo recente em cache; sem cache, use **Consultar andamento** para carregar os detalhes. As varreduras automáticas continuam nas demais telas do SEI.
+
+O ZIP dos releases usa sempre o nome `sei-organizador-extension.zip`. Link permanente da versão mais recente: https://github.com/flaviokosta79/sei-organizador/releases/latest/download/sei-organizador-extension.zip

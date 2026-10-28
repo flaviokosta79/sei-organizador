@@ -886,8 +886,10 @@
       if (result.error) throw new Error(result.error);
       return result.data;
     }
+    let refreshing = false;
     async function refresh() {
-      if (busy) return;
+      if (busy || refreshing || disposed) return;
+      refreshing = true;
       try {
         const next = await api();
         if (disposed || busy) return;
@@ -905,6 +907,8 @@
         statusFilter = 'all';
         render();
         setStatus('Sem sincronização: ' + e.message + ' · Geral preservado.', 'sync');
+      } finally {
+        refreshing = false;
       }
     }
     async function change(action) {

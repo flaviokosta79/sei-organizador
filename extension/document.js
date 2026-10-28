@@ -326,18 +326,20 @@
     return s;
   };
   const person = (name, login) => (name && login ? `${name} (${login})` : name || login || 'usuário não identificado');
+  const documentLinks = new Map();
+  if (pending.length)
+    for (const link of ui.querySelectorAll('a[href]')) {
+      try {
+        const id = new URL(link.getAttribute('href'), ui.location.href).searchParams.get('id_documento');
+        if (id && !documentLinks.has(id)) documentLinks.set(id, link);
+      } catch {}
+    }
   if (pending.length)
     line(
       'Pendências antes de enviar',
       ...pending.map((d) => {
         const text = '⚠ ' + d.title + ' sem assinatura';
-        const native = [...ui.querySelectorAll('a[href]')].find((link) => {
-          try {
-            return new URL(link.getAttribute('href'), ui.location.href).searchParams.get('id_documento') === d.id;
-          } catch {
-            return false;
-          }
-        });
+        const native = documentLinks.get(d.id);
         const node = tree.document(d.id);
         try {
           const href = new URL(native?.getAttribute('href') || node?.url, ui.location.href),

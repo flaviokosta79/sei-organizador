@@ -166,9 +166,21 @@
       return true;
     }
   });
-  const observer = new MutationObserver(() => refresh());
+  // Many DOM updates arrive while SEI builds a page; read identity/catalog once per burst.
+  let refreshTimer;
+  const observer = new MutationObserver(() => {
+    if (refreshTimer) return;
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      refresh();
+    }, 50);
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('pagehide', () => observer.disconnect());
+  window.addEventListener('pagehide', () => {
+    observer.disconnect();
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  });
   window.addEventListener('pageshow', () => {
     observer.observe(document.documentElement, { childList: true, subtree: true });
     refresh(true);

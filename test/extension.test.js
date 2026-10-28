@@ -240,3 +240,15 @@ test('sincronização sem mudança de versão preserva os controles e novas linh
   observer.disconnect();
  }finally{f.dom.window.close();}
 });
+
+test('sincronização lenta não sobrepõe leituras e permite nova tentativa após erro',async()=>{
+ const f=fixture();let release;try{
+  await tick();const w=f.dom.window,original=w.chrome.runtime.sendMessage;
+  let count=0;const gate=new Promise(resolve=>release=resolve);
+  w.chrome.runtime.sendMessage=async msg=>{count++;await gate;throw Error('Falha temporária');};
+  f.sync();f.sync();f.sync();await tick();assert.equal(count,1);
+  release();await tick();assert.match(w.document.querySelector('#sei-organizador').textContent,/Falha temporária/);
+  w.chrome.runtime.sendMessage=original;f.sync();await tick();
+  assert.ok(!w.document.querySelector('#sei-organizador').textContent.includes('Falha temporária'));
+ }finally{release?.();f.dom.window.close();}
+});
