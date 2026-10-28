@@ -174,6 +174,7 @@ test('painel em outra tela do SEI mostra links, destaque Novo e reconhece avisos
   pending=[item('100')];listeners[0]({type:'monitor:tick'});await new Promise(r=>setTimeout(r,30));
   assert.match(root.querySelector('summary').textContent,/1 processo novo/);assert.equal(root.querySelector('li a').href,item('100').url);
   assert.equal(w.document.querySelectorAll('.so-new-process-label').length,1);assert.equal(w.document.querySelectorAll('#tblProtocolosBlocos a').length,1);
+  const originalMarker=w.document.querySelector('.so-new-process-label');listeners[0]({type:'monitor:changed'});await new Promise(r=>setTimeout(r,30));assert.equal(w.document.querySelector('.so-new-process-label'),originalMarker);
   [...root.querySelectorAll('button')].find(b=>b.textContent==='Marcar todos como vistos').click();await new Promise(r=>setTimeout(r,30));
   assert.equal(w.document.querySelectorAll('.so-new-process-label').length,0);assert.equal(requests,0);
   w.history.pushState({},'',base+'?acao=procedimento_trabalhar&infra_unidade_atual=1');

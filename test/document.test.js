@@ -539,3 +539,15 @@ test('selecionar documento não consulta o SEI até solicitar andamento',async()
   await load.onclick();assert.ok(f.requests.length>0);assert.match(f.badge().textContent,/Bloco interno/);
  }finally{f.leave();}
 });
+
+test('card grande monta vinte pendências por vez sem perder acesso às restantes nem consultar o SEI',async()=>{
+ let source='new infraArvoreNo("PROCESSO","900",null,"#","ifrVisualizacao","SEI-1/1/2026","Tipo","p.svg");\n';
+ for(let i=1000;i<1055;i++)source+='new infraArvoreNo("DOCUMENTO","'+i+'","900","controlador.php?acao=documento_visualizar&id_documento='+i+'","ifrConteudoVisualizacao","Doc '+i+'","Doc","documento_interno.svg");\nnew infraArvoreAcao("UNIDADE_GERADORA","UG'+i+'","'+i+'","#",null,"Unidade",null,true,"SEPM/5°CPA");\n';
+ const dom=new JSDOM(`<div id="divConsultarAndamento"><a onclick="consultarAndamento('controlador.php?acao=procedimento_consultar_historico&id_procedimento=900')">Andamento</a></div><script type="text/plain">${source}</script>`,{url:base+'controlador.php?acao=procedimento_visualizar&id_procedimento=900'});
+ const f=frame({action:'procedimento_visualizar',autoLoad:false,treeDom:dom});try{
+  await f.done;const section=f.badge().querySelector('.pending-documents'),more=[...section.querySelectorAll('button')].find(b=>b.textContent==='Mostrar mais pendências');
+  assert.equal(section.querySelectorAll('.pending').length,20);assert.match(section.textContent,/20 de 55/);
+  more.click();assert.equal(section.querySelectorAll('.pending').length,40);
+  more.click();assert.equal(section.querySelectorAll('.pending').length,55);assert.equal(more.hidden,true);assert.equal(f.requests.length,0);
+ }finally{f.leave();}
+});

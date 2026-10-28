@@ -6,8 +6,9 @@
   let current = null,
     queued = false;
   function context() {
-    const url = new URL(location.href),
-      table = document.querySelector('#tblProtocolosBlocos'),
+    const url = new URL(location.href);
+    if (url.searchParams.get('acao') !== 'rel_bloco_protocolo_listar') return null;
+    const table = document.querySelector('#tblProtocolosBlocos'),
       form = document.querySelector('#frmRelBlocoProtocoloLista');
     const internal =
       /Processos do Bloco Interno/i.test(document.title) ||
@@ -240,8 +241,11 @@
         0,
         Math.min(root.getBoundingClientRect().bottom - naturalTop, rect.bottom - height - naturalTop),
       );
-      table.style.setProperty('--so-table-header-shift', offset + 'px');
-      for (const cell of header.cells) cell.classList.add('so-floating-header');
+      const shift = offset + 'px';
+      if (table.style.getPropertyValue('--so-table-header-shift') !== shift)
+        table.style.setProperty('--so-table-header-shift', shift);
+      for (const cell of header.cells)
+        if (!cell.classList.contains('so-floating-header')) cell.classList.add('so-floating-header');
     }
     function stickyOffset() {
       let scrollContainer = null;
@@ -261,7 +265,8 @@
         if (scrollContainer || ['fixed', 'sticky'].includes(style.position))
           offset = Math.max(offset, rect.bottom - edge);
       }
-      root.style.setProperty('--so-sticky-top', Math.max(0, offset) + 'px');
+      const top = Math.max(0, offset) + 'px';
+      if (root.style.getPropertyValue('--so-sticky-top') !== top) root.style.setProperty('--so-sticky-top', top);
       scheduleTableHeader();
     }
     stickyOffset();
@@ -561,8 +566,9 @@
           ? 'Crie um assunto para classificar'
           : cell.title + ' · Clique para atribuir ou retirar assuntos';
       }
+      const loadedRows = new Set(loaded.map((item) => item.row));
       for (const row of table.rows) {
-        if (row === header || loaded.some((r) => r.row === row)) continue;
+        if (row === header || loadedRows.has(row)) continue;
         for (const c of row.cells) {
           if (!c.dataset.soOriginalSpan && c.colSpan === native.length) c.dataset.soOriginalSpan = String(c.colSpan);
           if (c.dataset.soOriginalSpan) c.colSpan = Number(c.dataset.soOriginalSpan) + columns.length;
@@ -658,66 +664,72 @@
       });
     }
     function filter() {
-      const loaded = rows(),
-        valid = new Set(state.tabs.map((t) => t.id));
-      injectColumns(loaded);
-      injectCopyButtons(loaded);
-      injectStatusMarkers(loaded);
-      const ids = new Set(loaded.map((r) => r.id));
-      const links = (id) => (state.assignments[id] || []).filter((t) => valid.has(t));
-      const empty = [...ids].filter((id) => !links(id).length).length;
-      const matchesStatus = (id) =>
-        statusFilter === 'all' || !statusKnown() || (state.statuses[id] || 'none') === statusFilter;
-      for (const { row, id, check } of loaded) {
-        if (!originalRows.has(row))
-          originalRows.set(row, {
-            hidden: row.hidden,
-            tabindex: row.getAttribute('tabindex'),
-            popup: row.getAttribute('aria-haspopup'),
-          });
-        if (!row.hasAttribute('tabindex')) row.tabIndex = 0;
-        row.setAttribute('aria-haspopup', 'menu');
-        const hide =
-          (ready && !!active && (active === unassigned ? links(id).length > 0 : !links(id).includes(active))) ||
-          !matchesStatus(id);
-        row.hidden = hide;
-        if (hide && check) check.checked = false;
-      }
-      for (const b of tabs.querySelectorAll('[role=tab]')) {
-        const key = b.dataset.tab;
-        if (key === 'general') {
-          delete b.dataset.count;
-          b.setAttribute('aria-label', 'Geral — mostrar todos os processos');
-          b.title = active
-            ? 'Mostrar todos os processos carregados nesta página'
-            : 'Todos os processos carregados nesta página';
-          continue;
+      if (disposed) return;
+      tableObserver.disconnect();
+      try {
+        const loaded = rows(),
+          valid = new Set(state.tabs.map((t) => t.id));
+        injectColumns(loaded);
+        injectCopyButtons(loaded);
+        injectStatusMarkers(loaded);
+        const ids = new Set(loaded.map((r) => r.id));
+        const links = (id) => (state.assignments[id] || []).filter((t) => valid.has(t));
+        const empty = [...ids].filter((id) => !links(id).length).length;
+        const matchesStatus = (id) =>
+          statusFilter === 'all' || !statusKnown() || (state.statuses[id] || 'none') === statusFilter;
+        for (const { row, id, check } of loaded) {
+          if (!originalRows.has(row))
+            originalRows.set(row, {
+              hidden: row.hidden,
+              tabindex: row.getAttribute('tabindex'),
+              popup: row.getAttribute('aria-haspopup'),
+            });
+          if (!row.hasAttribute('tabindex')) row.tabIndex = 0;
+          row.setAttribute('aria-haspopup', 'menu');
+          const hide =
+            (ready && !!active && (active === unassigned ? links(id).length > 0 : !links(id).includes(active))) ||
+            !matchesStatus(id);
+          row.hidden = hide;
+          if (hide && check) check.checked = false;
         }
-        const count = !ready
-          ? '—'
-          : [...ids].filter(
-              (id) => matchesStatus(id) && (key === unassigned ? !links(id).length : links(id).includes(key)),
-            ).length;
-        b.dataset.count = String(count);
-        b.setAttribute('aria-label', `${b.textContent}: ${count} processos carregados nesta página`);
+        for (const b of tabs.querySelectorAll('[role=tab]')) {
+          const key = b.dataset.tab;
+          if (key === 'general') {
+            delete b.dataset.count;
+            b.setAttribute('aria-label', 'Geral — mostrar todos os processos');
+            b.title = active
+              ? 'Mostrar todos os processos carregados nesta página'
+              : 'Todos os processos carregados nesta página';
+            continue;
+          }
+          const count = !ready
+            ? '—'
+            : [...ids].filter(
+                (id) => matchesStatus(id) && (key === unassigned ? !links(id).length : links(id).includes(key)),
+              ).length;
+          b.dataset.count = String(count);
+          b.setAttribute('aria-label', `${b.textContent}: ${count} processos carregados nesta página`);
+        }
+        summary.textContent = ready
+          ? `${ids.size} processos carregados nesta página · ${ids.size - empty} com assunto · ${empty} sem assunto. Contagens limitadas à página e pesquisa atuais.`
+          : `${ids.size} processos carregados nesta página · classificações desconhecidas sem sincronização.`;
+        viewing.textContent = `Visualizando: ${!active ? 'todos os processos' : active === unassigned ? 'Sem assunto' : state.tabs.find((t) => t.id === active)?.name || 'todos os processos'}${statusFilter === 'all' ? '' : ' · ' + seiStatusLabels[statusFilter]} · ${loaded.filter((r) => !r.row.hidden).length}/${ids.size} carregados${statusKnown() ? '' : ' · Status indisponível'}`;
+        viewing.title = viewing.textContent;
+        for (const option of toolbar.querySelectorAll('.so-status-filter option')) {
+          const base = option.value === 'all' ? 'Todos os status' : seiStatusLabels[option.value];
+          const eligible = [...ids].filter(
+            (id) => !active || (active === unassigned ? !links(id).length : links(id).includes(active)),
+          );
+          const count = statusKnown()
+            ? eligible.filter((id) => option.value === 'all' || (state.statuses[id] || 'none') === option.value).length
+            : '—';
+          const text = base + ' (' + count + ')';
+          if (option.textContent !== text) option.textContent = text;
+        }
+        scheduleTableHeader();
+      } finally {
+        if (!disposed) tableObserver.observe(table, { childList: true, subtree: true });
       }
-      summary.textContent = ready
-        ? `${ids.size} processos carregados nesta página · ${ids.size - empty} com assunto · ${empty} sem assunto. Contagens limitadas à página e pesquisa atuais.`
-        : `${ids.size} processos carregados nesta página · classificações desconhecidas sem sincronização.`;
-      viewing.textContent = `Visualizando: ${!active ? 'todos os processos' : active === unassigned ? 'Sem assunto' : state.tabs.find((t) => t.id === active)?.name || 'todos os processos'}${statusFilter === 'all' ? '' : ' · ' + seiStatusLabels[statusFilter]} · ${loaded.filter((r) => !r.row.hidden).length}/${ids.size} carregados${statusKnown() ? '' : ' · Status indisponível'}`;
-      viewing.title = viewing.textContent;
-      for (const option of toolbar.querySelectorAll('.so-status-filter option')) {
-        const base = option.value === 'all' ? 'Todos os status' : seiStatusLabels[option.value];
-        const eligible = [...ids].filter(
-          (id) => !active || (active === unassigned ? !links(id).length : links(id).includes(active)),
-        );
-        const count = statusKnown()
-          ? eligible.filter((id) => option.value === 'all' || (state.statuses[id] || 'none') === option.value).length
-          : '—';
-        const text = base + ' (' + count + ')';
-        if (option.textContent !== text) option.textContent = text;
-      }
-      scheduleTableHeader();
     }
     const selectedRows = () => rows().filter((item) => item.check?.checked && !item.row.hidden);
     function updateBatch() {
@@ -731,7 +743,10 @@
       if (apply.textContent !== text) apply.textContent = text;
     }
     listen(form, 'change', updateBatch);
-    listen(form, 'click', () => queueMicrotask(updateBatch));
+    listen(form, 'click', (event) => {
+      if (event.target.closest?.('a[href*="id_procedimento="]')) return;
+      queueMicrotask(updateBatch);
+    });
     function render() {
       if (disposed) return;
       closeMenu();
@@ -988,14 +1003,7 @@
       }
     }
     // Our own DOM writes must not trigger another full table pass.
-    const tableObserver = new MutationObserver(() => {
-      tableObserver.disconnect();
-      try {
-        filter();
-      } finally {
-        if (!disposed) tableObserver.observe(table, { childList: true, subtree: true });
-      }
-    });
+    const tableObserver = new MutationObserver(filter);
     observe(tableObserver, table, { childList: true, subtree: true });
     render();
     refresh();

@@ -1,0 +1,101 @@
+{
+  "measuredAt": "2026-10-28T23:05:19.406Z",
+  "baselineCommit": "5b75b80",
+  "syntheticData": true,
+  "realSEISession": false,
+  "treeReader": {
+    "before": [
+      {
+        "documents": 500,
+        "parseMs": 5.802900000000001,
+        "lookupMs": 14.773699999999998,
+        "totalMs": 20.5792
+      },
+      {
+        "documents": 3000,
+        "parseMs": 16.176699999999997,
+        "lookupMs": 433.5583,
+        "totalMs": 449.7361
+      },
+      {
+        "documents": 7000,
+        "parseMs": 47.09899999999993,
+        "lookupMs": 2405.5488,
+        "totalMs": 2452.6481
+      }
+    ],
+    "after": [
+      {
+        "documents": 500,
+        "parseMs": 5.825899999999997,
+        "lookupMs": 0.9587000000000003,
+        "totalMs": 6.787199999999999
+      },
+      {
+        "documents": 3000,
+        "parseMs": 19.084200000000003,
+        "lookupMs": 3.5649999999999977,
+        "totalMs": 22.650399999999998
+      },
+      {
+        "documents": 7000,
+        "parseMs": 51.09639999999999,
+        "lookupMs": 10.486199999999997,
+        "totalMs": 61.5838
+      }
+    ]
+  },
+  "chromiumCard": [
+    {
+      "mode": "before",
+      "documents": 3000,
+      "ms": 507.7000000476837,
+      "renderedPending": 3000
+    },
+    {
+      "mode": "after",
+      "documents": 3000,
+      "ms": 50,
+      "renderedPending": 20
+    },
+    {
+      "mode": "before",
+      "documents": 7000,
+      "ms": 2926.400000035763,
+      "renderedPending": 7000
+    },
+    {
+      "mode": "after",
+      "documents": 7000,
+      "ms": 101.89999997615814,
+      "renderedPending": 20
+    }
+  ],
+  "tableObserver": {
+    "before": [
+      {
+        "rows": 100,
+        "calls": 2
+      },
+      {
+        "rows": 1000,
+        "calls": 2
+      }
+    ],
+    "after": [
+      {
+        "rows": 100,
+        "calls": 0
+      },
+      {
+        "rows": 1000,
+        "calls": 0
+      }
+    ]
+  },
+  "limitations": [
+    "Medições locais sintéticas, sem sessão autenticada real do SEI.",
+    "O teste do card mede trabalho da extensão; não mede o carregamento nativo do SEI.",
+    "Os tempos variam com navegador, computador e tamanho do processo."
+  ]
+}

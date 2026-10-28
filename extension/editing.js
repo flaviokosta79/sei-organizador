@@ -1,5 +1,8 @@
 // Detect editor presence without reading text, values, clipboard or document contents.
 (() => {
+  const action = new URL(location.href).searchParams.get('acao');
+  if (!['editor_montar', 'rel_bloco_protocolo_listar', 'procedimento_visualizar', 'arvore_visualizar'].includes(action))
+    return;
   if (globalThis.seiEditingInstalled) return;
   globalThis.seiEditingInstalled = true;
   const config = SEI_ORGANIZADOR_CONFIG;

@@ -334,40 +334,58 @@
         if (id && !documentLinks.has(id)) documentLinks.set(id, link);
       } catch {}
     }
-  if (pending.length)
-    line(
-      'Pendências antes de enviar',
-      ...pending.map((d) => {
-        const text = '⚠ ' + d.title + ' sem assinatura';
-        const native = documentLinks.get(d.id);
-        const node = tree.document(d.id);
-        try {
-          const href = new URL(native?.getAttribute('href') || node?.url, ui.location.href),
-            target = native?.target || node?.target;
-          if (
-            href.origin !== location.origin ||
-            href.pathname !== '/sei/controlador.php' ||
-            href.searchParams.get('id_documento') !== d.id ||
-            !['ifrVisualizacao', 'ifrConteudoVisualizacao'].includes(target)
-          )
-            return span(text, 'item pending');
-          const link = ui.createElement('a');
-          link.href = href.href;
-          link.target = target;
-          link.className = 'item pending';
-          link.textContent = text;
-          link.title = 'Abrir este documento na árvore do SEI';
-          if (native)
-            link.addEventListener('click', (event) => {
-              event.preventDefault();
-              native.click();
-            });
-          return link;
-        } catch {
+  if (pending.length) {
+    const pendingLine = line('Pendências antes de enviar');
+    pendingLine.classList.add('pending-documents');
+    const pendingItems = ui.createElement('div');
+    pendingLine.append(pendingItems);
+    const count = span('', 'item muted');
+    const more = ui.createElement('button');
+    more.type = 'button';
+    more.textContent = 'Mostrar mais pendências';
+    let shown = 0;
+    function pendingItem(d) {
+      const text = '⚠ ' + d.title + ' sem assinatura';
+      const native = documentLinks.get(d.id);
+      const node = tree.document(d.id);
+      try {
+        const href = new URL(native?.getAttribute('href') || node?.url, ui.location.href),
+          target = native?.target || node?.target;
+        if (
+          href.origin !== location.origin ||
+          href.pathname !== '/sei/controlador.php' ||
+          href.searchParams.get('id_documento') !== d.id ||
+          !['ifrVisualizacao', 'ifrConteudoVisualizacao'].includes(target)
+        )
           return span(text, 'item pending');
-        }
-      }),
-    );
+        const link = ui.createElement('a');
+        link.href = href.href;
+        link.target = target;
+        link.className = 'item pending';
+        link.textContent = text;
+        link.title = 'Abrir este documento na árvore do SEI';
+        if (native)
+          link.addEventListener('click', (event) => {
+            event.preventDefault();
+            native.click();
+          });
+        return link;
+      } catch {
+        return span(text, 'item pending');
+      }
+    }
+    function showMore() {
+      if (!active()) return;
+      const end = Math.min(shown + 20, pending.length);
+      for (const item of pending.slice(shown, end)) pendingItems.append(pendingItem(item));
+      shown = end;
+      count.textContent = shown + ' de ' + pending.length + ' documentos sem assinatura';
+      more.hidden = shown >= pending.length;
+    }
+    more.addEventListener('click', showMore);
+    if (pending.length > 20) pendingLine.append(count, more);
+    showMore();
+  }
   if (!own && tree.process.type) line('Tipo do processo', span(tree.process.type, 'item'));
   const signatureLine = own ? line('Assinatura') : null;
   if (own && signatures.length)

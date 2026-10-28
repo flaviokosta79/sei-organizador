@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.2 — 2026-10-28
+
+- Corrigida leitura quadrática da árvore: documentos, unidades geradoras e assinaturas passam a ter índices, preservando todas as pendências. Árvore analisada é reutilizada no contexto da própria árvore e invalidada se o script nativo mudar.
+- Card monta inicialmente até 20 pendências e oferece Mostrar mais pendências em lotes de 20, com total explícito quando houver mais. Todos os documentos permanecem acessíveis, sem consultas adicionais.
+- Atualização das colunas suspende o observador durante as próprias alterações, evitando outra varredura completa. Eliminada busca quadrática de linhas já reconhecidas; marcadores Novo são reaproveitados e estilos do cabeçalho só são escritos quando mudam. Clicar no link de processo não recalcula seleção em lote.
+- Monitor de edição só inicia nas páginas em que há editor, lista de bloco ou card da árvore; visualização de documentos deixa de instalar observador e temporizador de presença. A presença no card permanece no frame da árvore.
+- Chromium com dados sintéticos: card de 7.000 documentos passou de 2.926 ms para 102 ms; com 3.000, de 508 ms para 50 ms. Evidência em referencias/validacao/performance-0.17.2.json. Não é medição da sessão real nem do carregamento nativo do SEI.
+- 190 testes passaram; sintaxe e formatação aprovadas. Regressões cobrem árvores grandes, reutilização entre contextos e invalidação, acesso a todas as pendências por lotes, ausência de varredura duplicada e de monitor em visualização, além de preservar o marcador Novo em atualizações repetidas.
+- Alteração somente na extensão, sem reimplantação da API/VPS. Após atualizar, fechar/reabrir ou recarregar todas as abas do SEI para substituir os scripts antigos.
+
 ## 0.17.1 — 2026-10-28
 
 - Botão de configurações do cabeçalho usa engrenagem vetorial em âmbar, com ícone de 24 px e área de clique de 32 px, alinhado aos ícones nativos. Texto Organizador removido para reduzir espaço; dica, nome acessível, foco visível e abertura do modal preservados.

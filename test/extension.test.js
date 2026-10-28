@@ -252,3 +252,13 @@ test('sincronização lenta não sobrepõe leituras e permite nova tentativa ap�
   assert.ok(!w.document.querySelector('#sei-organizador').textContent.includes('Falha temporária'));
  }finally{release?.();f.dom.window.close();}
 });
+
+test('renderização própria não dispara segunda varredura completa da tabela',async()=>{
+ const f=fixture();try{
+  await tick();const w=f.dom.window,table=w.document.querySelector('table'),query=table.querySelectorAll.bind(table);let scans=0;
+  table.querySelectorAll=selector=>{if(selector==='tr')scans++;return query(selector);};
+  w.chrome.runtime.sendMessage=async()=>({data:{version:2,tabs:[{id:'a',name:'Atualizado'}],assignments:{'100':['a']},statuses:{'100':'urgent'}}});
+  f.sync();await tick();await tick();assert.ok(scans<=2,'Varreduras repetidas: '+scans);
+  assert.match(table.textContent,/Atualizado|Urgente/);
+ }finally{f.dom.window.close();}
+});

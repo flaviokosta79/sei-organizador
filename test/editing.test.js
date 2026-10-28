@@ -102,3 +102,11 @@ test('bloco e card mostram vários colegas sem duplicar avisos; expiração e fa
   const original=f.w.Date.now;f.w.Date.now=()=>original()+100000;f.intervals[0]();await tick();assert.equal(f.w.document.querySelector('.so-editing-presence'),null);assert.doesNotMatch(root.querySelector('.editing-presence').textContent,/Pessoa Teste|Colega/);
  }finally{f.close();}
 });
+
+test('documento de visualização não instala observador ou temporizador de presença',async()=>{
+ const f=client({url:base+'?acao=documento_visualizar&id_documento=901&infra_unidade_atual=1'});try{
+  let observers=0;const Original=f.w.MutationObserver;f.w.MutationObserver=class extends Original{constructor(callback){super(callback);observers++;}};
+  f.start();f.w.document.body.append(f.w.document.createElement('p'));await tick();
+  assert.equal(observers,0);assert.equal(f.intervals.length,0);assert.equal(f.calls.length,0);
+ }finally{f.close();}
+});

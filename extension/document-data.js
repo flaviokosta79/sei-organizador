@@ -74,13 +74,21 @@ globalThis.seiDocumentData = (() => {
       title: a[5],
       sigla: a[8],
     }));
+    const documents = new Map(),
+      units = new Map(),
+      signatures = new Map();
+    for (const node of nodes) if (node.type === 'DOCUMENTO' && !documents.has(node.id)) documents.set(node.id, node);
+    for (const action of actions) {
+      if (action.type === 'UNIDADE_GERADORA' && !units.has(action.target)) units.set(action.target, action.sigla);
+      if (action.type === 'ASSINATURA' && !signatures.has(action.target)) signatures.set(action.target, action);
+    }
     const process = nodes.find((n) => n.type === 'PROCESSO');
     return {
       process: process ? { id: process.id, number: process.title, type: process.description || '' } : null,
       document(id) {
-        const node = nodes.find((n) => n.type === 'DOCUMENTO' && n.id === id);
+        const node = documents.get(id);
         if (!node) return null;
-        const signature = actions.find((a) => a.type === 'ASSINATURA' && a.target === id);
+        const signature = signatures.get(id);
         // Tooltip lines after "Assinado por:" repeat name, role and unit for each signer.
         const lines = signature ? signature.title.split('\n').slice(1).filter(Boolean) : [];
         const signers = [];
@@ -92,25 +100,27 @@ globalThis.seiDocumentData = (() => {
           title: node.title,
           url: node.url,
           target: node.target,
-          unit: actions.find((a) => a.type === 'UNIDADE_GERADORA' && a.target === id)?.sigla || null,
+          unit: units.get(id) || null,
           signers,
         };
       },
       // Internal documents of the unit without any signature; external documents never carry one.
       pending(unit) {
+        const own = sigla(unit);
         return nodes
           .filter(
             (n) =>
               n.type === 'DOCUMENTO' &&
               /documento_interno/.test(n.icon || '') &&
-              sigla(actions.find((a) => a.type === 'UNIDADE_GERADORA' && a.target === n.id)?.sigla) === sigla(unit) &&
-              !actions.some((a) => a.type === 'ASSINATURA' && a.target === n.id),
+              sigla(units.get(n.id)) === own &&
+              !signatures.has(n.id),
           )
           .map((n) => ({ id: n.id, protocol: n.protocol, title: n.title }));
       },
     };
   }
   // Waits for the process tree frame (it may load after the frame asking for it) and reads it.
+  const treeCacheKey = Symbol.for('seiOrganizador.parsedTree');
   async function loadTree(top) {
     for (let attempt = 0; attempt < 20; attempt++) {
       if (attempt) await new Promise((resolve) => setTimeout(resolve, 250));
@@ -120,14 +130,18 @@ globalThis.seiDocumentData = (() => {
       } catch {
         return null;
       }
+      // Keep the cached reader in the tree's own realm, not in a document frame that will be discarded.
+      const owner = treeDocument?.defaultView?.seiDocumentData;
+      if (owner && owner !== globalThis.seiDocumentData) return owner.loadTree(top);
       const anchor = treeDocument?.querySelector('a[onclick*="procedimento_consultar_historico"]');
       const historyLink = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
       if (!historyLink) continue;
-      const tree = parseTree(
-        Array.from(treeDocument.scripts)
-          .map((s) => s.textContent)
-          .join('\n'),
-      );
+      const source = Array.from(treeDocument.scripts)
+        .map((script) => script.textContent)
+        .join('\n');
+      const cached = owner ? treeDocument[treeCacheKey] : null;
+      const tree = cached?.source === source ? cached.tree : parseTree(source);
+      if (owner && (!cached || cached.source !== source)) treeDocument[treeCacheKey] = { source, tree };
       return tree.process ? { treeDocument, tree, historyLink } : null;
     }
     return null;

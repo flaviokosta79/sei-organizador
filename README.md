@@ -214,3 +214,9 @@ O catálogo inicial contém os 65 usuários do 5º CPA fornecidos no seletor de 
 ### Ícone de configurações (0.17.1)
 
 As configurações são abertas pela **engrenagem âmbar** no cabeçalho do SEI, ao lado dos controles nativos. Ao passar o mouse, a dica mostra **Configurações do SEI Organizador**. O modal mantém as mesmas opções.
+
+### Correção de travamentos em processos grandes (0.17.2)
+
+A leitura da árvore usa índices e reutiliza o resultado enquanto o script nativo permanece igual. O card mostra até 20 pendências inicialmente; **Mostrar mais pendências** acrescenta outras 20, mantendo o total e o acesso a todos os documentos. Isso evita montar milhares de itens ao selecionar cada documento. A visualização de documentos não instala mais o monitor de edição; a presença continua no card da árvore e nos editores.
+
+Benchmark reproduzível com dados sintéticos: `node tools/benchmark-tree.mjs`. A comparação no Chromium está em `referencias/validacao/performance-0.17.2.json`. Após atualizar a extensão, recarregue ou feche/reabra **todas** as abas do SEI para substituir os scripts antigos.

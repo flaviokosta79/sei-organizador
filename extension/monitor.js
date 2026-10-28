@@ -357,20 +357,23 @@
     highlight(view);
   }
   function highlight(view) {
-    document.querySelectorAll('.so-new-process-label').forEach((label) => label.remove());
     const block = new URL(location.href).searchParams.get('id_bloco'),
       record = view.records.find((r) => r.block === block);
     const ids = new Set(record?.pending.map((p) => p.id) || []);
     for (const row of document.querySelectorAll('#tblProtocolosBlocos tr')) {
-      row.classList.remove('so-new-process');
       const link = row.querySelector('a[href*="id_procedimento="]');
-      if (!link) continue;
-      if (ids.has(new URL(link.getAttribute('href'), location.href).searchParams.get('id_procedimento'))) {
-        row.classList.add('so-new-process');
-        const label = node('span', 'Novo');
+      const isNew =
+        !!link && ids.has(new URL(link.getAttribute('href'), location.href).searchParams.get('id_procedimento'));
+      row.classList.toggle('so-new-process', isNew);
+      const labels = [...row.querySelectorAll('.so-new-process-label')];
+      let label = isNew ? labels.shift() : null;
+      for (const extra of labels) extra.remove();
+      if (!isNew) continue;
+      if (!label) {
+        label = node('span', 'Novo');
         label.className = 'so-new-process-label';
-        link.after(label);
       }
+      if (label.previousElementSibling !== link) link.after(label);
     }
   }
   async function syncReceipts(poll) {
