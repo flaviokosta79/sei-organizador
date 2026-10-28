@@ -126,3 +126,12 @@ test('mudanças em rajada leem o catálogo uma vez e alterações nativas contin
   query('#description').textContent='Depois';await tick();assert.equal((await state.store.get(actor)).catalog.find(b=>b.id==='2').name,'Depois');
  }finally{w.close();}
 });
+
+test('escolha pelo SEI altera só o usuário atual e rejeita bloco desconhecido ou origem externa',async()=>{
+ const w=worker(),colleague={...actor,login:'colega'};
+ await w.remember('2');await w.remember('3');await w.remember('4',colleague);
+ await w.call({type:'scope:set',profile:'1:SEPM:colega',block:'3'},url('2'));
+ assert.equal((await w.store.get(actor)).block,'3');assert.equal((await w.store.get(colleague)).block,'4');
+ await assert.rejects(w.call({type:'scope:set',block:'4'},url('2')),/Escolha um bloco/);
+ await assert.rejects(w.call({type:'scope:set',block:'3'},'https://evil.test'),/Origem/);
+});

@@ -10,6 +10,10 @@
     }),
     allows: (block) => state.block !== null && state.block === block,
   };
+  state.refreshCatalog = async () => {
+    await catalog();
+    return send('scope:get');
+  };
   globalThis.seiWorkScope = state;
   let busy = false,
     last = '';

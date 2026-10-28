@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.6 — 2026-10-28
+
+- Modal de configurações no cabeçalho do SEI permite escolher e salvar o bloco de trabalho e atualizar o catálogo, sem abrir as opções externas. Usa o usuário conectado, mostra número + descrição e aplica a escolha às páginas abertas.
+- Seleção de bloco e rascunho dos chefes são preservados durante as ações; erros ficam no modal e permitem tentar novamente. Catálogo só é consultado no SEI por ação explícita no botão Atualizar lista.
+- 180 testes passaram; sintaxe e formatação aprovadas. Regressões verificam salvamento e atualização no modal, preservação do rascunho, recuperação após falha e isolamento por usuário.
+- Página de opções da extensão permanece como alternativa para administrar perfis locais. Sem novas permissões ou mudanças na API/VPS.
+
 ## 0.16.5 — 2026-10-28
 
 - Alerta da Secretaria não toca nem cria notificação a partir de leitura compartilhada com mais de 90 segundos. Leituras com horário mais de 30 segundos no futuro também não geram aviso. O painel informa a leitura antiga e aguarda confirmação recente no SEI.

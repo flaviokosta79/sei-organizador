@@ -5,6 +5,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     body,
     status,
     draft = null,
+    blockDraft = null,
     generation = 0;
   const node = (tag, text, parent) => {
     const element = document.createElement(tag);
@@ -62,7 +63,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         :host{all:initial}dialog{box-sizing:border-box;width:min(480px,calc(100vw - 28px));max-height:85vh;overflow:auto;padding:0;border:1px solid #7294bb;border-radius:8px;background:#f7faff;color:#243b53;font:13px/1.5 Arial,sans-serif;box-shadow:0 8px 35px #0004}
         dialog::backdrop{background:#10243c80}header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#dceafa}h2{font-size:16px;margin:0}
         .body{padding:4px 16px 12px}p{margin:8px 0}h3{font-size:14px;margin:16px 0 6px}button{font:inherit;padding:5px 9px;margin:3px 6px 3px 0;cursor:pointer}button:disabled{cursor:wait;opacity:.6}
-        label{display:block}textarea{box-sizing:border-box;width:100%;min-height:80px;font:inherit;padding:6px}.status{margin:0 16px 12px;min-height:1.5em}.error{color:#a02020}@media print{:host{display:none!important}}
+        label{display:block}select{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}textarea{box-sizing:border-box;width:100%;min-height:80px;font:inherit;padding:6px}.status{margin:0 16px 12px;min-height:1.5em}.error{color:#a02020}@media print{:host{display:none!important}}
       `;
       dialog = node('dialog');
       dialog.setAttribute('aria-labelledby', 'sei-organizador-settings-title');
@@ -102,7 +103,8 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
   async function action(type, extra) {
     const current = generation;
     const identity = JSON.stringify(getIdentity());
-    for (const control of body.querySelectorAll('button,textarea')) control.disabled = true;
+    const locked = [...body.querySelectorAll('button,textarea,select')].map((control) => [control, control.disabled]);
+    for (const [control] of locked) control.disabled = true;
     status.classList.remove('error');
     status.textContent = extra?.test ? 'Reproduzindo teste de som…' : 'Salvando configurações…';
     try {
@@ -121,24 +123,73 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       }
     } finally {
       if (current === generation)
-        for (const control of body.querySelectorAll('button,textarea')) control.disabled = false;
+        for (const [control, disabled] of locked) if (control.isConnected) control.disabled = disabled;
     }
   }
-  function render(view) {
+  async function scopeAction(update) {
+    const current = generation,
+      identity = JSON.stringify(getIdentity());
+    const selected = body.querySelector('#so-settings-block')?.value;
+    const locked = [...body.querySelectorAll('button,textarea,select')].map((control) => [control, control.disabled]);
+    for (const [control] of locked) control.disabled = true;
+    status.classList.remove('error');
+    status.textContent = update ? 'Atualizando lista de blocos do SEI…' : 'Salvando bloco de trabalho…';
+    try {
+      const pref = update ? await seiWorkScope.refreshCatalog() : await call('scope:set', { block: selected });
+      if (current !== generation || JSON.stringify(getIdentity()) !== identity) return;
+      if (!update) blockDraft = null;
+      render(getView(), pref);
+      body.querySelector('#so-settings-block')?.focus();
+      status.textContent = update
+        ? 'Lista de blocos atualizada.'
+        : 'Bloco de trabalho salvo e aplicado às páginas abertas.';
+    } catch (error) {
+      if (current === generation && JSON.stringify(getIdentity()) === identity) {
+        status.textContent = error.message;
+        status.classList.add('error');
+      }
+    } finally {
+      if (current === generation)
+        for (const [control, disabled] of locked) if (control.isConnected) control.disabled = disabled;
+    }
+  }
+  function render(view, preference = globalThis.seiWorkScope) {
     body.replaceChildren();
-    if (globalThis.seiWorkScope) {
+    if (preference) {
       node('h3', 'Bloco de trabalho', body);
+      node('p', 'Usuário do SEI: ' + getIdentity().login + '. A escolha vale neste navegador.', body);
+      const label = node('label', 'Bloco interno', body);
+      label.htmlFor = 'so-settings-block';
+      const select = node('select', null, body);
+      select.id = 'so-settings-block';
+      for (const item of preference.catalog || []) {
+        const option = node(
+          'option',
+          item.id + ' · ' + (item.name && item.name !== 'Bloco ' + item.id ? item.name : 'Descrição não identificada'),
+          select,
+        );
+        option.value = item.id;
+      }
+      select.value = blockDraft ?? preference.block ?? select.options[0]?.value ?? '';
+      if (!select.value && select.options.length) select.selectedIndex = 0;
+      select.disabled = !select.options.length;
+      select.addEventListener('change', () => {
+        blockDraft = select.value;
+      });
+      const saveBlock = node('button', 'Salvar bloco de trabalho', body);
+      saveBlock.type = 'button';
+      saveBlock.disabled = select.disabled;
+      saveBlock.addEventListener('click', () => scopeAction(false));
+      const refresh = node('button', 'Atualizar lista do SEI', body);
+      refresh.type = 'button';
+      refresh.disabled = typeof globalThis.seiWorkScope?.refreshCatalog !== 'function';
+      refresh.addEventListener('click', () => scopeAction(true));
       node(
         'p',
-        seiWorkScope.block
-          ? `Organizador restrito ao bloco ${seiWorkScope.block}.`
-          : 'Abra um bloco interno para iniciar.',
+        select.options.length
+          ? 'Alertas, status, assuntos e avisos de edição ficam restritos ao bloco salvo.'
+          : 'Abra um bloco interno ou atualize a lista para escolher seu bloco de trabalho.',
         body,
-      );
-      const choose = node('button', 'Escolher bloco nas opções da extensão', body);
-      choose.type = 'button';
-      choose.addEventListener('click', () =>
-        chrome.runtime.sendMessage({ type: 'scope:open-options', identity: seiWorkScope.identity }),
       );
     }
     node('h3', 'Sons dos alertas', body);
@@ -214,6 +265,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     reset: () => {
       dispose();
       draft = null;
+      blockDraft = null;
     },
   };
 };

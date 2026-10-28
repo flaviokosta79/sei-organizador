@@ -200,3 +200,7 @@ O servidor reutiliza o cálculo do histórico enquanto os dados permanecem iguai
 ### Atualidade do alerta da Secretaria (0.16.5)
 
 O som e a notificação de processo para receber exigem uma leitura do SEI de até 90 segundos. Uma leitura mais antiga permanece identificada no painel, sem gerar aviso sonoro. Se o processo ainda estiver pendente numa confirmação recente, o aviso ocorre uma vez; se já tiver sido recebido ou retirado, não há aviso atrasado. Outros usuários podem receber ou encaminhar o processo entre a leitura e a abertura da lista.
+
+### Configurações no próprio SEI (0.16.6)
+
+Clique em **⚙ Organizador** no cabeçalho do SEI. O modal reúne bloco de trabalho, atualização da lista de blocos, sons e chefes de seção. Escolha o bloco e clique em **Salvar bloco de trabalho** para aplicar às páginas abertas, sem sair do SEI. A alteração vale para o usuário conectado neste navegador. A página de opções do Chrome continua disponível como alternativa para os perfis locais.
