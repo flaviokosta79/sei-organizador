@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão na versão 0.17.0 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão na versão 0.17.1 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem

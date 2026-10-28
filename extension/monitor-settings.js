@@ -36,16 +36,29 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     wrapper.className = 'nav-item d-flex align-self-center infraAcaoBarraSistema';
     const style = node('style', null, wrapper);
     style.textContent = `
-      #sei-organizador-settings-button{display:inline-flex;align-items:center;gap:4px;background:transparent;color:#fff;border:1px solid transparent;border-radius:4px;padding:4px 6px;font:12px Arial,sans-serif;cursor:pointer;white-space:nowrap}
-      #sei-organizador-settings-button:hover{background:#ffffff24}
-      #sei-organizador-settings-button:focus-visible{outline:2px solid #fff;outline-offset:1px}
-      @media(max-width:760px){#sei-organizador-settings-button span{display:none}}
+      #sei-organizador-settings-header{display:inline-flex;align-items:center;margin-inline:3px}
+      #sei-organizador-settings-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;color:#ffd166;border:0;border-radius:4px;padding:4px;cursor:pointer;flex-shrink:0}
+      #sei-organizador-settings-button svg{display:block;width:24px;height:24px;fill:currentColor;pointer-events:none}
+      #sei-organizador-settings-button:hover{background:#ffffff24;color:#ffe4a1}
+      #sei-organizador-settings-button:active{background:#00000018}
+      #sei-organizador-settings-button:focus-visible{outline:2px solid #ffd166;outline-offset:2px}
       @media print{#sei-organizador-settings-header{display:none!important}}
     `;
-    button = node('button', '⚙', wrapper);
+    button = node('button', null, wrapper);
     button.id = 'sei-organizador-settings-button';
     button.type = 'button';
-    node('span', 'Organizador', button);
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    const gear = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    gear.setAttribute('fill-rule', 'evenodd');
+    gear.setAttribute(
+      'd',
+      'M19.39 8.94 L22.30 9.95 L22.50 12.00 L19.85 13.56 L19.39 15.06 L20.73 17.83 L19.42 19.42 L16.44 18.65 L15.06 19.39 L14.05 22.30 L12.00 22.50 L10.44 19.85 L8.94 19.39 L6.17 20.73 L4.58 19.42 L5.35 16.44 L4.61 15.06 L1.70 14.05 L1.50 12.00 L4.15 10.44 L4.61 8.94 L3.27 6.17 L4.58 4.58 L7.56 5.35 L8.94 4.61 L9.95 1.70 L12.00 1.50 L13.56 4.15 L15.06 4.61 L17.83 3.27 L19.42 4.58 L18.65 7.56 Z M15.5 12 a3.5 3.5 0 1 0 -7 0 a3.5 3.5 0 1 0 7 0 Z',
+    );
+    icon.append(gear);
+    button.append(icon);
     button.title = 'Configurações do SEI Organizador';
     button.setAttribute('aria-label', button.title);
     button.setAttribute('aria-haspopup', 'dialog');

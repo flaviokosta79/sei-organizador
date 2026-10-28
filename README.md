@@ -210,3 +210,7 @@ Clique em **⚙ Organizador** no cabeçalho do SEI. O modal reúne bloco de trab
 Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
 
 O catálogo inicial contém os 65 usuários do 5º CPA fornecidos no seletor de atribuição. Ele não consulta um diretório em tempo real: ao abrir a tela nativa de atribuição na unidade atendida, a extensão lê o seletor já carregado e atualiza a cópia local. Não faz novas consultas, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível para usuários novos.
+
+### Ícone de configurações (0.17.1)
+
+As configurações são abertas pela **engrenagem âmbar** no cabeçalho do SEI, ao lado dos controles nativos. Ao passar o mouse, a dica mostra **Configurações do SEI Organizador**. O modal mantém as mesmas opções.

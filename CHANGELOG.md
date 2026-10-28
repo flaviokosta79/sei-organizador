@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.1 — 2026-10-28
+
+- Botão de configurações do cabeçalho usa engrenagem vetorial em âmbar, com ícone de 24 px e área de clique de 32 px, alinhado aos ícones nativos. Texto Organizador removido para reduzir espaço; dica, nome acessível, foco visível e abertura do modal preservados.
+- 34 testes relacionados passaram; sintaxe/formatação aprovadas. Chromium conferiu ícone compacto, abertura do modal, Escape/retorno de foco e cabeçalho em 320 px. Sem mudança na API/VPS.
+
 ## 0.17.0 — 2026-10-28
 
 - Configuração de chefes no modal oferece sugestões por nome ou login, com busca sem acentos, seleção por mouse/teclado e inclusão somente do login, sem duplicar usuários. Cadastro só é aplicado ao clicar em Salvar chefes; digitação manual permanece disponível.
