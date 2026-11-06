@@ -1,4 +1,4 @@
-# SEI Organizador — 0.16.0
+# SEI Organizador — 0.22.0
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -28,7 +28,9 @@ Abas, status, assuntos, alertas, reconhecimento de novas entradas e avisos de ed
 
 ## Limpeza após retirada do processo
 
-Quando uma leitura completa e sem pesquisa confirmar que um processo saiu do bloco, o servidor limpa o status manual e seus vínculos com assuntos **somente naquele bloco**. As pastas de assuntos, os outros processos e as classificações de outros blocos permanecem. A primeira leitura completa também reconcilia classificações antigas de processos que já não estão no bloco. Se o processo voltar depois da retirada confirmada, volta sem status e sem assuntos.
+Quando leituras completas e sem pesquisa confirmarem que um processo saiu do bloco, o servidor limpa o status manual e seus vínculos com assuntos **somente naquele bloco**. As pastas de assuntos, os outros processos e as classificações de outros blocos permanecem. A primeira leitura completa também reconcilia classificações antigas de processos que já não estão no bloco. Se o processo voltar depois da retirada confirmada, volta sem status e sem assuntos.
+
+Desde a 0.22.0, a retirada só é confirmada quando duas leituras completas, com pelo menos 30 segundos entre elas, deixam de encontrar o processo. Se ele reaparecer nesse intervalo, a contagem recomeça. Uma lista vazia, parcial ou forjada isolada não apaga mais a organização do bloco. Na prática, a limpeza acontece uma rodada depois da saída.
 
 A limpeza é atômica com a confirmação da lista e fica registrada no histórico como operação automática do Organizador. Não pode ser desfeita pelo histórico para restaurar vínculos de um processo ausente. Filtros visuais, paginação, leitura incompleta, falha de sessão ou consulta substituída não confirmam retirada. O monitor precisa estar ativo; saída e reinclusão entre duas consultas, sem observação da ausência, não permitem confirmar a retirada e não disparam limpeza.
 
@@ -156,6 +158,10 @@ A API está implantada na KMV2, com HTTPS via Traefik e imagem pública sem cred
 
 [Operação, imagem implantada, backups e rollback](deploy/KMV2.md). [Todas as versões e mudanças](CHANGELOG.md).
 
+Limites da API pública (0.22.0): IDs de bloco com até 30 dígitos e estado para no máximo 500 blocos por unidade (HTTP 409 acima disso). Erros que o usuário pode corrigir, como nome de aba inválido ou aba já excluída, voltam com a mensagem real (HTTP 400); os demais continuam genéricos. As respostas incluem `X-Content-Type-Options: nosniff`, e a conexão fica aberta por 95 segundos para evitar 502 esporádicos atrás do Traefik.
+
+Container (0.22.0): imagem base Node 24 Alpine fixada por digest, `HEALTHCHECK` na própria imagem, usuário não root, sistema de arquivos raiz somente leitura, `/tmp` em memória (64 MiB, usado pelo SQLite) e todas as capabilities removidas. O banco continua no volume `sei_organizador_data`.
+
 Ações HTTP: `GET /healthz`, `GET /v1/units/:unit/blocks/:block`, `GET .../history` e `POST ...` com `{version, actor, action}`. Ações: create, rename, delete, assign, unassign, status e undo. Status aceita de 1 a 1.000 IDs únicos e aplica o lote em uma transação, sujeito ao limite HTTP de 64 KiB; valores anteriores ficam registrados por processo. Desfazer exige `historyId`; o histórico inclui `undoable` e `undoReason`. O banco existente é compatível e não exige migração para estas mudanças.
 
 Para desenvolvimento local, com Node.js 24 ou superior:
@@ -181,7 +187,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.16.0: **167 testes passaram**, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.22.0: **226 testes passaram**. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -220,3 +226,25 @@ As configurações são abertas pela **engrenagem âmbar** no cabeçalho do SEI,
 A leitura da árvore usa índices e reutiliza o resultado enquanto o script nativo permanece igual. O card mostra até 20 pendências inicialmente; **Mostrar mais pendências** acrescenta outras 20, mantendo o total e o acesso a todos os documentos. Isso evita montar milhares de itens ao selecionar cada documento. A visualização de documentos não instala mais o monitor de edição; a presença continua no card da árvore e nos editores.
 
 Benchmark reproduzível com dados sintéticos: `node tools/benchmark-tree.mjs`. A comparação no Chromium está em `referencias/validacao/performance-0.17.2.json`. Após atualizar a extensão, recarregue ou feche/reabra **todas** as abas do SEI para substituir os scripts antigos.
+
+### Leituras de fundo e velocidade da navegação (0.20.0 a 0.22.0)
+
+O SEI atende um pedido por vez em cada sessão. Por isso, as leituras automáticas da extensão (blocos, recebidos e assinaturas) cedem a vez à navegação do usuário:
+
+- Uma única leitura de fundo por vez, para todas as abas, coordenada pelo service worker. Entre uma leitura e outra há um intervalo igual à duração da anterior, entre 1 e 10 segundos.
+- Cada leitura espera 2,5 segundos depois do último clique ou Enter. Uma rodada só começa após 15 segundos sem navegação, ou depois de 2 minutos sem nenhuma rodada daquele tipo.
+- Com o SEI lento (mediana acima de 4 segundos), o intervalo entre rodadas dobra, até 5 minutos, e volta ao normal quando o SEI se recupera.
+- O tempo-limite de cada leitura conta só o tempo de leitura, não a espera pela vez.
+
+Medição de 2026-11-06 no Chromium, com a extensão carregada, as páginas reais salvas do SEI e uma sessão simulada que atende um pedido por vez:
+
+| Cenário           | Navegação média sem extensão | Com extensão | Leituras de fundo em 3 min |
+| ----------------- | ---------------------------- | ------------ | -------------------------- |
+| Bloco comum       | 2,17 s                       | 2,21 s       | 3                          |
+| Secretaria (1396) | 2,17 s                       | 2,25 s       | 6                          |
+
+A extensão acrescenta cerca de 30 a 60 ms ao abrir o Controle de Processos e a tela do processo. Um bloco interno com 1.000 processos leva cerca de 0,4 s a mais para abrir; é o principal ponto pendente de otimização. A leitura de históricos para assinaturas e os tempos reais do SEI não entraram na simulação. Os scripts ficam em `artifacts/perf/`, fora do Git.
+
+### Estado em produção
+
+Extensão 0.22.0 e API 0.22.0, implantadas em 2026-11-06 (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

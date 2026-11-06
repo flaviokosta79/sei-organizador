@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão na versão 0.17.2 e API na versão 0.16.4. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão na versão 0.22.0 e API na versão 0.22.0. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,11 +14,18 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:46275a0fe348b7ec1ee0f25ac553582152b3eac3b9982ee2758e4135cd40cdad (tag 0.16.4).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:9510a5205ac1a599eebff75a2023f2a217b94020a1fab4419495ec418981f68c (0.16.0).
-O conteúdo de todas as camadas foi conferido: somente package.json e
-server/index.js, store.js, auth.js e undo.js em /app, sem .env, instruções privadas,
+Imagem da stack: flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93 (tag 0.22.0).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:47024df4be2a4af332ac05c301634e26d5fd76dc38307b09ecc4efb7026f6989 (0.21.0).
+O conteúdo da imagem é restrito a package.json e server/ em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.22.0 — 2026-11-06
+
+Backup consistente em /data/backups/before-0.22.0-20261106.sqlite (VACUUM INTO, quick_check ok), com cópia local em artifacts/backups/before-0.22.0-20261106.tar. Arquivo e Env anteriores em artifacts/stack-before-0.22.0.json; o arquivo em produção era idêntico ao deploy/stack-kmv2.yaml da 0.21.0.
+
+A stack ganhou `read_only: true`, tmpfs em /tmp (64 MiB) e `cap_drop: [ALL]`. A imagem fixa a base por digest e traz HEALTHCHECK, NODE_ENV=production e SQLITE_TMPDIR=/tmp. Antes da troca, a imagem foi validada em containers isolados, sem rede e com as mesmas restrições, em duas etapas: as regras do servidor (saída confirmada após 30 s, limite de 500 blocos, assinaturas, recebidos, conflito e desfazer) e o servidor real abrindo e gravando o banco. Na verificação final: serviço healthy, versão 0.22.0, arquivos do servidor idênticos ao commit 02206f9, raiz somente leitura, /tmp em tmpfs, volume sei_organizador_data em /data, administração exclusiva e editor da stack preservados, API 200/200/403. Evidências em artifacts/deployment-0.22.0.json.
+
+Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.22.0.json (imagem 0.21.0), preservando o volume. A API 0.21.0 ignora a tabela departures. Não restaurar o banco para apenas voltar a imagem.
 
 ## Correção 0.14.1 — 2026-10-27
 
