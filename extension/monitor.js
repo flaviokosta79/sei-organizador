@@ -470,6 +470,8 @@
           signatures = { events: [] };
           signatureOwner = owner;
         }
+        // The process page only records its history URL; a list page reads the histories.
+        if (selected && nativeProcessPage()) seiSignatureScanner.collect?.(identity, selected);
         // A polling cycle refreshes signatures once, after the block scan (signature:sync with poll).
         if (selected && !poll) signatures = await call('signature:sync', { block: selected });
       }

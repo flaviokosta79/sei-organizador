@@ -26,6 +26,45 @@ globalThis.seiSignatureScanner = (() => {
       if (e.message.startsWith('Limite')) throw e;
     }
   };
+  const message = async (type, extra) => {
+    const response = await chrome.runtime.sendMessage({ type, ...extra });
+    if (response?.error) throw Error(response.error);
+    return response?.data;
+  };
+  const treeHistory = () => {
+    const tree = document.querySelector('#ifrArvore')?.contentDocument;
+    const anchor = tree?.querySelector('a[onclick*="procedimento_consultar_historico"]');
+    const href = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
+    if (!href) return null;
+    const url = D.address(href, tree.location.href, ['procedimento_consultar_historico']);
+    const process = url.searchParams.get('id_procedimento');
+    return /^\d{1,30}$/.test(process || '') ? { process, url: url.href } : null;
+  };
+  // Process page: record the history URL for the list page that scans (no SEI request here, so the
+  // tree and documents keep the session to themselves). The tree may load after this page.
+  let collected = '';
+  function collect(identity, block) {
+    const attempt = async () => {
+      let found;
+      try {
+        found = treeHistory();
+      } catch {
+        return false;
+      }
+      if (!found) return false;
+      const done = JSON.stringify([identity, block, found.process]);
+      if (done === collected) return true;
+      await message('signature:remember', { identity, block, ...found });
+      collected = done;
+      return true;
+    };
+    (async () => {
+      for (let i = 0; i < 20; i++) {
+        if (await attempt().catch(() => false)) return;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    })();
+  }
   async function scan(identity, block, signal, progress) {
     const next = JSON.stringify([identity, block]);
     if (next !== owner) {
@@ -51,13 +90,16 @@ globalThis.seiSignatureScanner = (() => {
     }
     const unit = document.querySelector('#lnkInfraUnidade')?.textContent.trim();
     if (!unit) throw Error('Unidade do SEI indisponível para acompanhar assinaturas.');
+    // Processes opened in any tab of this browser session (recorded by their process pages).
+    try {
+      const shared = await message('signature:processes', { identity, block });
+      for (const [process, url] of shared?.processes || []) if (!processes.has(process)) remember(url);
+    } catch {}
     remember(location.href);
     for (const link of document.querySelectorAll('a[href*="id_procedimento="]')) remember(link.getAttribute('href'));
     try {
-      const tree = document.querySelector('#ifrArvore')?.contentDocument;
-      const anchor = tree?.querySelector('a[onclick*="procedimento_consultar_historico"]');
-      const href = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
-      if (href) remember(href, tree.location.href);
+      const found = treeHistory();
+      if (found) remember(found.url);
     } catch {}
     const errors = [];
     const observations = [],
@@ -80,5 +122,5 @@ globalThis.seiSignatureScanner = (() => {
       processes: processes.size,
     };
   }
-  return { scan };
+  return { scan, collect };
 })();

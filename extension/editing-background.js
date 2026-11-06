@@ -10,6 +10,9 @@
     run.finally(() => sessions.get(key) === run && sessions.delete(key)).catch(() => {});
     return run;
   };
+  // Every SEI page asks who is editing its processes: the same question is answered from memory for
+  // 15 s (a colleague's editor appears at most 15 s later). This browser's own heartbeats clear it.
+  const recentQueries = seiFreshCache(15000);
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!['editing:heartbeat', 'editing:query'].includes(msg?.type)) return;
     ordered(msg.type === 'editing:heartbeat' && typeof msg.session === 'string' ? msg.session : null, async () => {
@@ -59,9 +62,17 @@
         data.block = pref.block;
       }
       const path = msg.type === 'editing:query' ? 'editing/query' : `processes/${msg.process}/editing`;
+      const queryKey =
+        msg.type === 'editing:query' ? JSON.stringify([actor.login, data.block ?? null, data.processIds]) : '';
+      if (queryKey) {
+        const cached = recentQueries.get(queryKey);
+        if (cached) return cached;
+      } else recentQueries.clear();
       const response = await seiServiceFetch(path, { body: data });
       if (!response.ok) throw new Error(`Avisos de edição indisponíveis (HTTP ${response.status}).`);
-      return response.json();
+      const answer = await response.json();
+      if (queryKey) recentQueries.set(queryKey, answer);
+      return answer;
     }).then(
       (data) => reply({ data }),
       (error) => reply({ error: error.message }),

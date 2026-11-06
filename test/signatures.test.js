@@ -84,13 +84,15 @@ test('amostra real identifica inclusão, assinatura e nome do assinante mesmo ap
 });
 
 function browser(store,{local={},session={}}={}){
- const listeners=[],notices=[],sounds=[];let offline=false;
+ const listeners=[],notices=[],sounds=[];let offline=false,offset=0;
+ // The shared answer is reused for 20 s: later() moves this browser's clock past that window.
+ const Clock=class extends Date{static now(){return Date.now()+offset;}};
  const area=data=>({get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))});
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.push(fn)},openOptionsPage:async()=>{}},storage:{local:area(local),session:area(session)},notifications:{create:async(id,data)=>notices.push({id,data}),clear:async()=>{},onClicked:{addListener:()=>{}}}};
- const context={chrome,URL,AbortSignal,Date,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(identity,block)=>{if(block!=='2')throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>sounds.push(id),fetch:async(url,options)=>{if(offline)throw Error('Offline');const m=new URL(url).pathname.match(/blocks\/(\d+)\/signatures\/(sync|observe)$/);try{return {ok:true,json:async()=>store.signatures[m[2]]('1',m[1],JSON.parse(options.body))};}catch(e){return {ok:false,status:e.status||400};}}};
+ const context={chrome,URL,AbortSignal,Date:Clock,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(identity,block)=>{if(block!=='2')throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>sounds.push(id),fetch:async(url,options)=>{if(offline)throw Error('Offline');const m=new URL(url).pathname.match(/blocks\/(\d+)\/signatures\/(sync|observe)$/);try{return {ok:true,json:async()=>store.signatures[m[2]]('1',m[1],JSON.parse(options.body))};}catch(e){return {ok:false,status:e.status||400};}}};
  runInNewContext(read('service-client.js')+';'+read('signature-background.js'),context);
  const call=async(type,extra={},sender={tab:{url:base,id:1},frameId:0})=>{const result=await new Promise(resolve=>listeners[0]({type,identity:actor('p3a'),block:'2',...extra},sender,resolve));if(result.error)throw Error(result.error);return result.data;};
- return {call,local,session,notices,sounds,set offline(v){offline=v;}};
+ return {call,local,session,notices,sounds,later(){offset+=21000;},set offline(v){offline=v;}};
 }
 
 test('dois navegadores recebem som e alerta uma vez, vistos são individuais e offline não perde cursor',async()=>{
@@ -98,11 +100,12 @@ test('dois navegadores recebem som e alerta uma vez, vistos são individuais e o
  try{
   await a.call('signature:sync',{poll:true});await b.call('signature:sync');
   await a.call('signature:observe',{observations:[observation()]});
-  const av=await a.call('signature:sync'),bv=await b.call('signature:sync');assert.equal(av.events.length,1);assert.equal(bv.events.length,1);assert.equal(a.sounds[0],'assinar');assert.equal(b.sounds[0],'assinar');assert.match(b.notices[0].data.message,/555 assinado por Nome do Chefe \(chefe\)/);
+  // The browser that observed sees it at once (its write cleared the cache); the other one within 20 s.
+  const av=await a.call('signature:sync');assert.equal((await b.call('signature:sync')).events.length,0);b.later();const bv=await b.call('signature:sync');assert.equal(av.events.length,1);assert.equal(bv.events.length,1);assert.equal(a.sounds[0],'assinar');assert.equal(b.sounds[0],'assinar');assert.match(b.notices[0].data.message,/555 assinado por Nome do Chefe \(chefe\)/);
   await a.call('signature:sync');assert.equal(a.sounds.length,1);
-  await b.call('signature:ack');assert.equal((await a.call('signature:sync')).events.length,1);assert.equal((await b.call('signature:sync')).events.length,0);
+  await b.call('signature:ack');a.later();assert.equal((await a.call('signature:sync')).events.length,1);assert.equal((await b.call('signature:sync')).events.length,0);
   const restarted=browser(store,{local:a.local,session:a.session});await restarted.call('signature:sync');assert.equal(restarted.sounds.length,0);
-  b.offline=true;assert.match((await b.call('signature:sync')).error,/Offline/);await a.call('signature:observe',{observations:[observation({document:'12'})]});b.offline=false;assert.equal((await b.call('signature:sync')).events.length,1);assert.equal(b.sounds.length,2);
+  b.later();b.offline=true;assert.match((await b.call('signature:sync')).error,/Offline/);await a.call('signature:observe',{observations:[observation({document:'12'})]});b.offline=false;assert.equal((await b.call('signature:sync')).events.length,1);assert.equal(b.sounds.length,2);
   await assert.rejects(a.call('signature:sync',{block:'3'}),/não escolhido/);await assert.rejects(a.call('signature:sync',{}, {tab:{url:'https://evil.test'},frameId:0}),/Origem/);
  }finally{store.close();}
 });
@@ -160,3 +163,40 @@ test('rodapé mostra documento e assinante sem exigir registro de um bloco abert
  }finally{w.close();}
 });
 
+
+test('tela do processo registra o andamento na sessão do navegador e só endereços válidos são aceitos',async()=>{
+ const store=createStore(':memory:');const a=browser(store);
+ try{
+  const url=p=>`${base}?acao=procedimento_consultar_historico&id_procedimento=${p}&infra_unidade_atual=1&infra_hash=x`;
+  await a.call('signature:remember',{process:'10',url:url('10')});await a.call('signature:remember',{process:'11',url:url('11')});await a.call('signature:remember',{process:'10',url:url('10')});
+  assert.deepEqual((await a.call('signature:processes')).processes.map(([p])=>p),['10','11']);
+  await assert.rejects(a.call('signature:remember',{process:'12',url:url('13')}),/inválido/);
+  await assert.rejects(a.call('signature:remember',{process:'12',url:url('12').replace('infra_unidade_atual=1','infra_unidade_atual=2')}),/inválido/);
+  await assert.rejects(a.call('signature:remember',{process:'12',url:'https://evil.test/sei/controlador.php?acao=procedimento_consultar_historico&id_procedimento=12&infra_unidade_atual=1'}),/inválido/);
+  await assert.rejects(a.call('signature:remember',{process:'12',url:url('12'),block:'3'}),/não escolhido/);
+  // Session only: nothing goes to local storage or to the shared service.
+  assert.ok(a.session.seiSignatureProcesses);assert.equal(JSON.stringify(a.local).includes('infra_hash'),false);
+ }finally{store.close();}
+});
+
+test('aba de lista lê andamentos registrados por outra aba e a tela do processo só registra, sem ler o SEI',async()=>{
+ const {w}=reader('120000124');
+ const process='147797799',historyUrl=`${base}?acao=procedimento_consultar_historico&id_procedimento=${process}&infra_unidade_atual=120000124`;
+ const sent=[],calls=[];
+ w.chrome={runtime:{sendMessage:async msg=>{sent.push(msg);return msg.type==='signature:processes'?{data:{processes:[[process,historyUrl]]}}:{data:{ok:true}};}}};
+ w.fetch=async url=>{calls.push(new URL(url).searchParams.get('acao'));return new Response(history([['10:03',signing],['10:01',insertion.replaceAll('99','1420987')]]),{headers:{'content-type':'text/html; charset=utf-8'}});};
+ try{
+  w.document.body.innerHTML='<a id="lnkInfraUnidade">SEPM/P3</a>';
+  w.eval(read('signature-monitor.js'));
+  const result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
+  assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));assert.deepEqual(calls,['procedimento_consultar_historico']);
+  // Process page: the tree's history link is recorded, and no SEI page is fetched.
+  calls.length=0;sent.length=0;
+  const frame=w.document.createElement('iframe');frame.id='ifrArvore';w.document.body.append(frame);
+  frame.contentDocument.body.innerHTML=`<a onclick="consultar('${base}?acao=procedimento_consultar_historico&id_procedimento=555&infra_unidade_atual=120000124')">Andamento</a>`;
+  w.seiSignatureScanner.collect(actor('p3a'),'2');await new Promise(r=>setTimeout(r,20));
+  const remembered=sent.find(m=>m.type==='signature:remember');assert.ok(remembered);assert.equal(remembered.process,'555');assert.equal(remembered.block,'2');assert.match(remembered.url,/procedimento_consultar_historico/);
+  assert.equal(calls.length,0);
+  w.seiSignatureScanner.collect(actor('p3a'),'2');await new Promise(r=>setTimeout(r,20));assert.equal(sent.filter(m=>m.type==='signature:remember').length,1);
+ }finally{w.close();}
+});

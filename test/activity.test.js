@@ -118,7 +118,9 @@ test('manifesto avisa navegação no início de cada frame e só as leituras de 
  assert.match(read('background.js'),/importScripts\('activity-background.js'\)[\s\S]*importScripts\('monitor-background.js'\)/);
  for(const f of ['monitor-data.js','receipts-data.js','signature-data.js'])assert.match(read(f),/seiPacedFetch\(url, \{ \.\.\.init, timeout \}\)/);
  // User-requested reads (process card, history pages) are never delayed.
- for(const f of ['document.js','history-pages.js'])assert.doesNotMatch(read(f),/seiPacedFetch/);
+ assert.doesNotMatch(read('document.js'),/seiPacedFetch/);
+ // History pages are paced only when the signature monitor (background) asks for it.
+ assert.match(read('history-pages.js'),/paced && globalThis.seiPacedFetch/);assert.match(read('signature-data.js'),/finish([^)]*{ paced: true })/);assert.doesNotMatch(read('document.js'),/paced: true/);
  // The options page's block-list refresh is a background read too.
  assert.match(read('scope.js'),/seiPacedFetch\(url/);assert.doesNotMatch(read('options.js'),/Promise.allSettled/);
 });

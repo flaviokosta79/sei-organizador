@@ -7,7 +7,14 @@
   const identityKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const chiefKey = `${SEI_ORGANIZADOR_CONFIG.unitId}:${SEI_ORGANIZADOR_CONFIG.org}`;
   const sharedEnabled = !!SEI_ORGANIZADOR_CONFIG.serviceUrl;
-  async function shared(path, body) {
+  // Alert state read for the panel is reused for 20 s; any write to the API clears it.
+  const recent = seiFreshCache(20000);
+  async function shared(path, body, { fresh = false } = {}) {
+    if (body) recent.clear();
+    else if (!fresh) {
+      const cached = recent.get(path);
+      if (cached) return cached;
+    }
     const response = await seiServiceFetch(path, { body });
     if (!response.ok)
       throw Object.assign(new Error(`Leitura compartilhada indisponível (HTTP ${response.status}).`), {
@@ -20,6 +27,7 @@
         !(state.entries === null || (state.entries && typeof state.entries === 'object')))
     )
       throw new Error('Resposta compartilhada inválida.');
+    if (!body) recent.set(path, state);
     return state;
   }
   function applyShared(record, state) {
@@ -225,6 +233,17 @@
       const targets = Object.values(data.session.targets).filter(
         (t) => t.owner === owner && (data.workBlock === undefined || t.block === data.workBlock),
       );
+      const lease = data.session.leases[owner],
+        now = Date.now();
+      // A poll about to start needs the current shared version, never a reused one.
+      const pollDue =
+        msg.poll &&
+        targets.length &&
+        (!lease || lease.until < now) &&
+        (msg.force ||
+          (globalThis.seiActivity
+            ? seiActivity.due('monitor:' + owner, data.session.lastPoll[owner], now)
+            : now - (data.session.lastPoll[owner] || 0) >= 55000));
       if (sharedEnabled) {
         let queueError = '';
         try {
@@ -235,7 +254,7 @@
         for (const target of targets) {
           const record = data.local.records[`${owner}:${target.block}`];
           try {
-            const state = await shared(`blocks/${target.block}/alerts`);
+            const state = await shared(`blocks/${target.block}/alerts`, undefined, { fresh: !!pollDue });
             target.sharedVersion = state.version;
             if (record) {
               applyShared(record, state);
@@ -247,18 +266,8 @@
           }
         }
       }
-      const lease = data.session.leases[owner],
-        now = Date.now();
       let poll = null;
-      if (
-        msg.poll &&
-        targets.length &&
-        (!lease || lease.until < now) &&
-        (msg.force ||
-          (globalThis.seiActivity
-            ? seiActivity.due('monitor:' + owner, data.session.lastPoll[owner], now)
-            : now - (data.session.lastPoll[owner] || 0) >= 55000))
-      ) {
+      if (pollDue) {
         poll = {
           id: crypto.randomUUID(),
           targets: targets.map(({ block, url, sharedVersion }) => ({ block, url, sharedVersion })),

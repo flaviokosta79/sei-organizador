@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.22.3 — 2026-11-06
+
+**Extensão (não requer reimplantar a API)**
+
+- Alerta de assinatura confirmada voltou a funcionar no uso real:
+  - Desde a 0.16.2, as leituras de fundo não rodam na tela do processo, para não disputar a sessão com a árvore e os documentos. Mas o endereço do andamento só era guardado durante essas leituras, e só existe na tela do processo, que abre em outra aba. Resultado: nenhum andamento era lido, e o alerta nunca disparava. No teste no SEI real de 2026-11-06, não houve nenhuma leitura de andamento.
+  - Agora a tela do processo só registra o endereço do andamento, sem nenhum pedido ao SEI. O registro fica na sessão do navegador (`chrome.storage.session`), é compartilhado pelas abas e guarda no máximo os 300 processos mais recentes por usuário e bloco. Nada vai para o armazenamento local nem para a API.
+  - Uma aba de lista lê esses andamentos no ciclo normal: até 5 por ciclo, cedendo a vez à navegação.
+  - As páginas extras de um andamento longo, lidas pelo monitor, passam a esperar a vez como as demais leituras de fundo. O card do processo, que é pedido pelo usuário, continua lendo sem espera.
+- Menos chamadas à API própria:
+  - No teste no SEI real, cada navegador fazia cerca de 37 chamadas por minuto. Cada página carregada sincronizava o painel duas vezes, além do alarme de 1 minuto. Essas chamadas não afetam o SEI, só o servidor da extensão, e se multiplicam com o número de usuários.
+  - Alertas do bloco: a leitura do estado compartilhado é reaproveitada por 20 s. Quando uma consulta ao bloco vai começar, ou quando este navegador grava algo, a leitura é refeita.
+  - Assinaturas: a sincronização é reaproveitada por 20 s. Uma assinatura registrada por um colega aparece aqui em até 20 s a mais. As observações enviadas por este navegador renovam a leitura na hora.
+  - Presença nos editores: a mesma consulta é reaproveitada por 15 s. Um colega que abre um editor aparece em até 15 s a mais. Um aviso de edição deste navegador renova a consulta.
+
 ## 0.22.2 — 2026-11-06
 
 **Extensão (não requer reimplantar a API)**

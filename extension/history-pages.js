@@ -1,5 +1,5 @@
 // Read the remaining native history pages without submitting or changing the visible form.
-globalThis.seiLoadHistoryPages = async (table, signal, baseUrl = location.href) => {
+globalThis.seiLoadHistoryPages = async (table, signal, baseUrl = location.href, { paced = false } = {}) => {
   const rows = (table) => [...table.querySelectorAll('tr')].filter((row) => row.querySelectorAll('td').length >= 4);
   const total = globalThis.seiDocumentData.recordCount;
   const initial = rows(table),
@@ -52,14 +52,19 @@ globalThis.seiLoadHistoryPages = async (table, signal, baseUrl = location.href) 
     body.set('hdnInfraPaginaAtual', String(index));
     body.set('hdnInfraItensSelecionados', '');
     body.set('hdnInfraItemId', '');
-    const response = await fetch(url, {
+    const init = {
       method: 'POST',
       credentials: 'same-origin',
       redirect: 'error',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
-      signal: AbortSignal.any([deadline, AbortSignal.timeout(15000)]),
-    });
+    };
+    // Background reads (signature monitor) wait their turn like the other background reads; reads the
+    // user asked for (process card) are never delayed.
+    const response =
+      paced && globalThis.seiPacedFetch
+        ? await seiPacedFetch(url, { ...init, signal: deadline, timeout: 15000 })
+        : await fetch(url, { ...init, signal: AbortSignal.any([deadline, AbortSignal.timeout(15000)]) });
     if (!response.ok) throw new Error(`SEI respondeu HTTP ${response.status}.`);
     const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
     const doc = new DOMParser().parseFromString(
@@ -166,11 +171,11 @@ globalThis.seiFullHistory = {
       top.dispatchEvent(event);
     }
   },
-  async finish(doc, url, signal) {
+  async finish(doc, url, signal, options) {
     const table = doc.querySelector('#tblHistorico');
     if (!table) throw new Error('Andamento não reconhecido.');
     const original = [...table.querySelectorAll('tr')].filter((row) => row.querySelectorAll('td').length >= 4);
-    const result = await seiLoadHistoryPages(table, signal, url);
+    const result = await seiLoadHistoryPages(table, signal, url, options);
     if (original.length) {
       original[0].before(...result.before);
       original.at(-1).after(...result.after);

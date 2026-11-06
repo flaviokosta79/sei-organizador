@@ -1,8 +1,13 @@
 // Each browser keeps its own acknowledgement; events are shared by the selected internal block.
 (() => {
   const storageKey = 'seiCompletedSignatures',
-    scanKey = 'seiSignatureScans';
+    scanKey = 'seiSignatureScans',
+    // History URLs of processes the user opened, shared by the tabs of this browser session only.
+    processKey = 'seiSignatureProcesses';
   const serial = seiCreateQueue();
+  // Each SEI page load syncs signatures: the shared answer is reused for 20 s (new events arrive at most
+  // 20 s later); observations sent from this browser clear it.
+  const recentSync = seiFreshCache(20000);
   const key = (identity, block) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}:${block}`;
   async function records() {
     return (await chrome.storage.local.get(storageKey))[storageKey] || {};
@@ -39,6 +44,32 @@
     const { identity, block } = msg;
     if (!/^\d{1,30}$/.test(block || '') || !seiValidIdentity(identity)) throw Error('Usuário ou bloco inválido.');
     await seiWorkScopeStore.requireBlock(identity, block);
+    // The process page only records its history URL (no SEI request); a list page reads it later.
+    // Kept in chrome.storage.session: the process opens in a new tab whose sessionStorage is lost.
+    if (msg.type === 'signature:remember' || msg.type === 'signature:processes') {
+      const stored = (await chrome.storage.session.get(processKey))[processKey] || {},
+        owner = key(identity, block);
+      let list = Array.isArray(stored[owner]) ? stored[owner] : [];
+      if (msg.type === 'signature:processes') return { processes: list.map(([process, href]) => [process, href]) };
+      const history = new URL(String(msg.url || ''), 'https://sei.rj.gov.br/sei/');
+      if (
+        !/^\d{1,30}$/.test(msg.process || '') ||
+        history.origin !== 'https://sei.rj.gov.br' ||
+        history.pathname !== '/sei/controlador.php' ||
+        history.searchParams.get('acao') !== 'procedimento_consultar_historico' ||
+        history.searchParams.get('id_procedimento') !== msg.process ||
+        history.searchParams.get('infra_unidade_atual') !== SEI_ORGANIZADOR_CONFIG.unitId
+      )
+        throw Error('Andamento do processo inválido.');
+      // Most recent first, at most 300 processes per user and block.
+      list = [[msg.process, history.href, Date.now()], ...list.filter(([process]) => process !== msg.process)].slice(
+        0,
+        300,
+      );
+      stored[owner] = list;
+      await chrome.storage.session.set({ [processKey]: stored });
+      return { ok: true, processes: list.length };
+    }
     const all = await records(),
       owner = key(identity, block),
       record = all[owner] || { cursor: null, events: [] };
@@ -74,12 +105,17 @@
     }
     if (msg.type === 'signature:observe') {
       if (!Array.isArray(msg.observations) || msg.observations.length > 200) throw Error('Observações inválidas.');
+      recentSync.clear();
       await request(block, 'observe', { actor: identity, observations: msg.observations });
       return { ok: true };
     }
     let scan = false;
     try {
-      const response = await request(block, 'sync', { actor: identity, after: record.cursor });
+      let response = recentSync.get(owner);
+      if (!response) {
+        response = await request(block, 'sync', { actor: identity, after: record.cursor });
+        recentSync.set(owner, response);
+      }
       if (
         !Number.isSafeInteger(response.cursor) ||
         response.cursor < 0 ||
@@ -156,9 +192,15 @@
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (
-      !['signature:sync', 'signature:observe', 'signature:ack', 'signature:done', 'signature:progress'].includes(
-        msg?.type,
-      )
+      ![
+        'signature:sync',
+        'signature:observe',
+        'signature:ack',
+        'signature:done',
+        'signature:progress',
+        'signature:remember',
+        'signature:processes',
+      ].includes(msg?.type)
     )
       return;
     const operation = serial(() => handle(msg, sender));

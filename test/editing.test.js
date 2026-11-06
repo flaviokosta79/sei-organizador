@@ -123,3 +123,15 @@ test('encerrar a edição nunca ultrapassa um aviso ainda em envio da mesma sess
  const other=send({session:'outra'});const query=new Promise(r=>listener({identity,type:'editing:query',processIds:['900']},{url:base+'?acao=rel_bloco_protocolo_listar&infra_unidade_atual=1',tab:{url:base},frameId:0},r));
  assert.ok(await other);assert.ok(await query);
 });
+
+test('consulta de presença repetida em 15 s usa a resposta anterior e um heartbeat deste navegador a renova',async()=>{
+ let listener,offset=0;const requests=[];
+ const Clock=class extends Date{static now(){return Date.now()+offset;}};
+ runInNewContext(read('service-client.js')+';'+read('editing-background.js'),{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},URL,AbortSignal,Date:Clock,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}}},fetch:async(url,options)=>{requests.push(new URL(url).pathname);return {ok:true,json:async()=>({entries:[],serverTime:requests.length})};}});
+ const query=(ids=['900'])=>new Promise(r=>listener({identity,type:'editing:query',processIds:ids},{url:base,tab:{url:base},frameId:0},r));
+ const beat=()=>new Promise(r=>listener({identity,type:'editing:heartbeat',session,process:'900',document:'901',number:'555'},{url:editorUrl,tab:{url:base},frameId:0},r));
+ const first=await query();assert.equal((await query()).data.serverTime,first.data.serverTime);assert.equal(requests.length,1);
+ await query(['901']);assert.equal(requests.length,2);
+ await beat();await query();assert.equal(requests.length,4);
+ offset+=16000;await query();assert.equal(requests.length,5);
+});

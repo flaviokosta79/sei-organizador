@@ -124,7 +124,7 @@ globalThis.seiSignatureData = (() => {
         body,
       );
     }
-    parsed = await seiFullHistory.finish(source.doc, source.url.href, signal);
+    parsed = await seiFullHistory.finish(source.doc, source.url.href, signal, { paced: true });
     if (!parsed.complete || parsed.partial) throw Error('Histórico incompleto; aguardando próxima leitura.');
     return source.doc;
   }
