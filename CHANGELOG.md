@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.20.0 — 2026-11-06
+
+Páginas do SEI mais rápidas com a extensão carregada. As leituras de fundo (blocos monitorados, assinaturas e Controle de Processos) usam a mesma sessão do SEI que a navegação, e o SEI atende uma requisição por vez por sessão. Por isso essas leituras agora dão passagem à navegação.
+
+- Prioridade para a navegação: cada frame do SEI avisa o service worker ao começar a carregar, ao sair, ao clicar e ao terminar (`activity.js`, no início do documento).
+  - Uma rodada de leituras só começa depois de 15 s sem navegação, ou se ficou 5 min sem rodar.
+  - Durante a rodada, cada leitura espera 2,5 s após a última navegação (até 5 s por leitura) antes de ir ao SEI.
+- Ritmo das leituras de fundo (`pace.js`): pelo menos 1 s entre uma requisição e a seguinte, ou o tempo da última resposta, até 10 s.
+  - Se o SEI estiver lento (mediana acima de 4 s), o intervalo entre rodadas dobra, até 5 min, e volta a 55 s quando o SEI se normaliza.
+  - O card do processo e as páginas do andamento, pedidos pelo usuário, não esperam.
+  - Os tempos máximos de leitura completa de um bloco (120 s) e do Controle de Processos (170 s) foram ampliados para acomodar o ritmo.
+- Assinaturas: a lista de blocos de assinatura passa a ser relida a cada 2 min, e não mais a cada página aberta. O horário da última leitura fica guardado na aba junto com o resto do acompanhamento.
+- Inicialização única: card do processo, presença de edição, usuários, filtro do andamento, monitor, abas e bloco de trabalho não reiniciam mais no carregamento inicial (o evento `pageshow` também dispara nele). Só reiniciam ao voltar pelo histórico do navegador.
+- Teste do card ("card prioriza controles…") com datas relativas ao relógio do teste, sem depender do dia em que roda.
+- 206 testes, todos passando. Novos testes cobrem a prioridade para a navegação, o ritmo e o limite de espera, o recuo com SEI lento, o manifesto e a lista de assinatura entre navegações.
+- Somente extensão; a API não muda. Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.19.0 — 2026-11-05
 
 - Vistos em lote: "Marcar como visto" envia todos os processos do bloco numa única requisição (`POST /processes/opened`, até 1.000 por envio), em vez de uma por processo. A fila é gravada e enviada uma vez, e as pendências só são limpas depois do envio. Com a API anterior, a extensão volta a enviar um por um.

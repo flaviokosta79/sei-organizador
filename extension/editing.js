@@ -390,7 +390,8 @@
     clearInterval(timer);
     release();
   });
-  window.addEventListener('pageshow', start);
+  // Only a back/forward cache restore; pageshow also fires on the first load.
+  window.addEventListener('pageshow', (event) => event.persisted && start());
   window.addEventListener('sei-organizador:scope', async () => {
     cached = null;
     targetKey = '';

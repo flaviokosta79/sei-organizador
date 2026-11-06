@@ -24,7 +24,8 @@
   if (document === treeDocument && !globalThis.seiProcessCardLifecycle) {
     const restore = () => showCard().catch((e) => console.error('SEI Organizador: resumo indisponível', e));
     treeDocument.addEventListener('sei-organizador:restore-process', restore);
-    window.addEventListener('pageshow', restore);
+    // Only a back/forward cache restore; pageshow also fires on the first load.
+    window.addEventListener('pageshow', (event) => event.persisted && restore());
     globalThis.seiProcessCardLifecycle = { restore };
   }
   const previous = treeDocument.querySelector('#sei-organizador-documento');

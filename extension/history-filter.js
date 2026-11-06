@@ -300,7 +300,8 @@
     current?.dispose();
     current = null;
   });
-  window.addEventListener('pageshow', () => {
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
     active = true;
     observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     schedule();

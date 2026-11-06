@@ -1,5 +1,6 @@
 importScripts('config.js');
 importScripts('service-client.js');
+importScripts('activity-background.js');
 importScripts('scope-background.js');
 importScripts('monitor-sounds.js');
 importScripts('monitor-sign.js');

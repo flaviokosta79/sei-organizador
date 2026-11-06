@@ -87,6 +87,7 @@
     clearTimeout(timer);
     timer = null;
   });
-  window.addEventListener('pageshow', start);
+  // Only a back/forward cache restore; pageshow also fires on the first load.
+  window.addEventListener('pageshow', (event) => event.persisted && start());
   start();
 })();

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "SEI Organizador",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Abas por assunto, situação dos documentos e alertas de novos processos nos blocos internos do SEI.",
   "background": {
     "service_worker": "background.js"
@@ -19,6 +19,16 @@
     "default_icon": "monitor-icon.png"
   },
   "content_scripts": [
+    {
+      "matches": [
+        "https://sei.rj.gov.br/sei/controlador.php*"
+      ],
+      "all_frames": true,
+      "run_at": "document_start",
+      "js": [
+        "activity.js"
+      ]
+    },
     {
       "matches": [
         "https://sei.rj.gov.br/sei/controlador.php*"
@@ -45,6 +55,7 @@
         "users-data.js",
         "theme.js",
         "content.js",
+        "pace.js",
         "monitor-data.js",
         "monitor-sounds.js",
         "monitor-settings.js",

@@ -15,7 +15,7 @@ globalThis.seiSignatureData = (() => {
   }
   async function page(value, signal, body, base) {
     const url = address(value, base);
-    const response = await fetch(url, {
+    const response = await (globalThis.seiPacedFetch || fetch)(url, {
       credentials: 'same-origin',
       redirect: 'error',
       signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),

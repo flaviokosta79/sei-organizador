@@ -62,9 +62,9 @@ globalThis.seiBlockMonitor = (() => {
     };
   }
   async function snapshot(target, signal) {
-    signal = AbortSignal.any([signal, AbortSignal.timeout(60000)]);
+    signal = AbortSignal.any([signal, AbortSignal.timeout(120000)]);
     const read = async (url, body) => {
-      const response = await fetch(address(url, target.block), {
+      const response = await (globalThis.seiPacedFetch || fetch)(address(url, target.block), {
         credentials: 'same-origin',
         redirect: 'error',
         signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),

@@ -154,7 +154,10 @@
     data.local[owner] = record;
     data.session[owner] = target;
     if (msg.type === 'receipts:done') {
-      if (target.lease?.id === msg.lease && target.lease.tab === sender.tab.id) delete target.lease;
+      if (target.lease?.id === msg.lease && target.lease.tab === sender.tab.id) {
+        delete target.lease;
+        globalThis.seiActivity?.report('receipts:' + owner, msg.slow === true);
+      }
       await save(data);
       return view(record, target);
     }
@@ -172,7 +175,9 @@
           msg.poll &&
           target.url &&
           (!target.lease || target.lease.until < Date.now()) &&
-          Date.now() - target.lastPoll >= 55000
+          (globalThis.seiActivity
+            ? seiActivity.due('receipts:' + owner, target.lastPoll)
+            : Date.now() - target.lastPoll >= 55000)
         ) {
           poll = { id: crypto.randomUUID(), version: record.version, url: target.url };
           target.lease = { id: poll.id, version: poll.version, tab: sender.tab.id, until: Date.now() + 180000 };

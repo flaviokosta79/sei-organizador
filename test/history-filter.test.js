@@ -57,7 +57,8 @@ test('recupera tabela e barra sem duplicar; sair restaura classes e preserva ocu
  assert.equal(original.classList.contains('so-history-filtered'),false);assert.deepEqual(f.visible(),['r8']);assert.equal(f.doc.querySelectorAll('#sei-organizador-filtro-andamento').length,1);
  f.doc.querySelector('#sei-organizador-filtro-andamento').remove();await settle();assert.ok(f.root());assert.equal(f.doc.querySelectorAll('#sei-organizador-filtro-andamento').length,1);
  f.listeners.pagehide();await settle();assert.equal(f.root(),undefined);assert.equal(f.doc.querySelectorAll('.so-history-filtered').length,0);
- f.listeners.pageshow();await settle();assert.ok(f.root());
+ f.listeners.pageshow({persisted:false});await settle();assert.equal(f.root(),undefined);
+ f.listeners.pageshow({persisted:true});await settle();assert.ok(f.root());
  f.dom.window.history.pushState({},'','?acao=procedimento_trabalhar&infra_unidade_atual=1');f.listeners.popstate();await settle();
  assert.equal(f.root(),undefined);assert.equal(f.doc.querySelectorAll('.so-history-filtered').length,0);
  }finally{f.close();}

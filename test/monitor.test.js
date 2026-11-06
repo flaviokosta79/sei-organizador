@@ -21,7 +21,7 @@ function reader(fetch){
 const response=html=>new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}});
 const target={block:'2',url:blockUrl};
 const plain=v=>JSON.parse(JSON.stringify(v));
-function worker({local={},session={},sharedFetch,scopeStore,tabList,tabReply}={}){
+function worker({local={},session={},sharedFetch,scopeStore,tabList,tabReply,activity}={}){
  const listeners={},notices=[],sounds=[],tabs=[],badges=[],writes={local:0,session:0};
  const event=name=>({addListener:fn=>listeners[name]=fn});
  const counted=(a,name)=>({get:a.get,set:async v=>{writes[name]++;return a.set(v);}});
@@ -36,7 +36,7 @@ function worker({local={},session={},sharedFetch,scopeStore,tabList,tabReply}={}
   alarms:{onAlarm:event('alarm'),get:async()=>null,create:async()=>{}},
   tabs:{query:async()=>tabList||[{id:5,windowId:1}],sendMessage:async(id,msg)=>{tabs.push({id,msg});return tabReply?.(id,msg);},create:async data=>tabs.push(data),update:async()=>{},onRemoved:event('removed'),onUpdated:event('updated')}
  };
- runInNewContext(read('service-client.js')+';'+read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,AbortSignal,fetch:sharedFetch,seiWorkScopeStore:scopeStore,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',...(sharedFetch?{serviceUrl:'https://ext.5cpa.com.br'}:{})}});
+ runInNewContext(read('service-client.js')+';'+read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,AbortSignal,fetch:sharedFetch,seiWorkScopeStore:scopeStore,seiActivity:activity,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',...(sharedFetch?{serviceUrl:'https://ext.5cpa.com.br'}:{})}});
  const send=(msg,{tabId=5,url=base,frameId=0}={})=>msg.type==='api'?Promise.resolve({data:msg.history?organizer.history:{version:organizer.version,statuses:organizer.statuses}}):new Promise(resolve=>listeners.message({identity,...msg},{tab:{id:tabId,url},frameId},resolve));
  const call=async(msg,options)=>{const result=await send(msg,options);if(result.error)throw Error(result.error);return result.data;};
  const poll=options=>call({type:'monitor:sync',poll:true,force:true,registration:{block:'2',url:blockUrl,name:'Teste'}},options);
@@ -476,4 +476,17 @@ test('vistos em lote: um envio por bloco e retorno a envios individuais com API 
  assert.deepEqual(await run(),['/v1/units/1/processes/opened']);
  legacy=true;const old=await run();
  assert.equal(old[0],'/v1/units/1/processes/opened');assert.equal(old.filter(p=>/processes\/\d+\/opened/.test(p)).length,3);
+});
+
+test('monitor só inicia rodada quando a navegação permite e informa SEI lento ao terminar',async()=>{
+ let allow=false;const asked=[],reports=[];
+ const f=worker({activity:{due:(kind,last)=>{asked.push(kind);return allow;},report:(kind,slow)=>reports.push([kind,slow])}});
+ const sync=()=>f.call({type:'monitor:sync',poll:true,registration:{block:'2',url:blockUrl,name:'Teste'}});
+ assert.equal((await sync()).poll,null);assert.ok(asked.length&&asked.every(k=>k.startsWith('monitor:')));
+ allow=true;const view=await sync();assert.ok(view.poll);
+ // A forced refresh skips the navigation check.
+ allow=false;
+ await f.call({type:'monitor:done',lease:view.poll.id,slow:true});
+ assert.deepEqual(reports,[[asked[0],true]]);
+ assert.ok((await f.call({type:'monitor:sync',poll:true,force:true})).poll);
 });

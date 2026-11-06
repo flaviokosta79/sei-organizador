@@ -59,6 +59,7 @@
       const scans = (await chrome.storage.session.get(scanKey))[scanKey] || {};
       if (scans[owner]?.tab === sender.tab.id) {
         scans[owner].until = 0;
+        globalThis.seiActivity?.report('signature:' + owner, msg.slow === true);
         await chrome.storage.session.set({ [scanKey]: scans });
       }
       return { ok: true };
@@ -128,7 +129,12 @@
       }
       if (msg.poll) {
         const scans = (await chrome.storage.session.get(scanKey))[scanKey] || {};
-        if (Date.now() - (scans[owner]?.started || 0) >= 55000 && (scans[owner]?.until || 0) <= Date.now()) {
+        if (
+          (globalThis.seiActivity
+            ? seiActivity.due('signature:' + owner, scans[owner]?.started)
+            : Date.now() - (scans[owner]?.started || 0) >= 55000) &&
+          (scans[owner]?.until || 0) <= Date.now()
+        ) {
           scan = true;
           scans[owner] = { started: Date.now(), until: Date.now() + 120000, tab: sender.tab.id };
           await chrome.storage.session.set({ [scanKey]: scans });

@@ -18,6 +18,8 @@ globalThis.seiSignatureScanner = (() => {
           knownBlocks: [...knownBlocks],
           processCursor,
           blockCursor,
+          // Kept across navigations: the block list is re-read every 2 min, not on every page.
+          lastList,
         }),
       );
     } catch {}
@@ -59,6 +61,7 @@ globalThis.seiSignatureScanner = (() => {
           knownBlocks = new Set(saved.knownBlocks);
           processCursor = saved.processCursor || 0;
           blockCursor = saved.blockCursor || 0;
+          lastList = Math.min(Number(saved.lastList) || 0, Date.now());
         }
       } catch {}
     }

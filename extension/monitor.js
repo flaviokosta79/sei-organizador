@@ -410,7 +410,7 @@
     } finally {
       if (lease) {
         controller = null;
-        await call('receipts:done', { lease }).catch(() => {});
+        await call('receipts:done', { lease, slow: globalThis.seiPacedFetch?.slow?.() === true }).catch(() => {});
       }
     }
   }
@@ -516,7 +516,8 @@
             );
           }
         } finally {
-          if (!stopped) await call('monitor:done', { lease: view.poll.id });
+          if (!stopped)
+            await call('monitor:done', { lease: view.poll.id, slow: globalThis.seiPacedFetch?.slow?.() === true });
           controller = null;
         }
       }
@@ -548,7 +549,9 @@
             if (!scopePending) render(latestView || view);
           } finally {
             controller = null;
-            await call('signature:done', { block: selected }).catch(() => {});
+            await call('signature:done', { block: selected, slow: globalThis.seiPacedFetch?.slow?.() === true }).catch(
+              () => {},
+            );
           }
         }
       }
@@ -642,7 +645,8 @@
     removeFooter();
     settings.dispose();
   });
-  window.addEventListener('pageshow', () => {
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
     stopped = false;
     resumePolling();
     observer.observe(document.documentElement, { childList: true, subtree: true });

@@ -254,7 +254,10 @@
         msg.poll &&
         targets.length &&
         (!lease || lease.until < now) &&
-        (msg.force || now - (data.session.lastPoll[owner] || 0) >= 55000)
+        (msg.force ||
+          (globalThis.seiActivity
+            ? seiActivity.due('monitor:' + owner, data.session.lastPoll[owner], now)
+            : now - (data.session.lastPoll[owner] || 0) >= 55000))
       ) {
         poll = {
           id: crypto.randomUUID(),
@@ -268,7 +271,10 @@
     }
     if (msg.type === 'monitor:done') {
       const lease = data.session.leases[owner];
-      if (lease?.id === msg.lease && lease.tab === sender.tab.id) delete data.session.leases[owner];
+      if (lease?.id === msg.lease && lease.tab === sender.tab.id) {
+        delete data.session.leases[owner];
+        globalThis.seiActivity?.report('monitor:' + owner, msg.slow === true);
+      }
     } else if (msg.type === 'monitor:result') {
       if (globalThis.seiWorkScopeStore) await seiWorkScopeStore.requireBlock(identity, msg.block);
       const lease = data.session.leases[owner],

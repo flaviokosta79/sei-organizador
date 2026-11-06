@@ -99,10 +99,10 @@ globalThis.seiSecretariatData = (() => {
     return { items, total, start, end, page, criteria, form, url: address(form.getAttribute('action'), base) };
   }
   async function snapshot(value, signal) {
-    signal = AbortSignal.any([signal, AbortSignal.timeout(110000)]);
+    signal = AbortSignal.any([signal, AbortSignal.timeout(170000)]);
     async function read(value, data) {
       const url = address(value);
-      const response = await fetch(url, {
+      const response = await (globalThis.seiPacedFetch || fetch)(url, {
         credentials: 'same-origin',
         redirect: 'error',
         signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),

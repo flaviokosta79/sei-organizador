@@ -129,6 +129,10 @@ test('scanner percorre telas nativas, confirma andamento e preserva acompanhamen
   const post=calls.find(c=>c.action==='bloco_assinatura_listar'&&c.body);assert.equal(post.body.get('hdnMeusBlocos'),'T');assert.equal(post.body.get('txtPalavrasPesquisaBloco'),'');assert.equal(post.body.get('chkSinEstadoConcluido'),'on');
   assert.ok(w.sessionStorage.getItem('seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2'])));
   signatureList=signatureList.replace(/<table\s+id="tblBlocos"[\s\S]*?<\/table>/,'<table id="tblBlocos"><caption>Lista (0 registros)</caption><tr><th>Número</th></tr></table>');
+  // A navigation within 2 min reuses the saved block list instead of reading it again.
+  const listed=calls.filter(c=>c.action==='bloco_assinatura_listar').length;
+  w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);assert.equal(result.blocks,15);assert.equal(calls.filter(c=>c.action==='bloco_assinatura_listar').length,listed);
+  const key='seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2']),saved=JSON.parse(w.sessionStorage.getItem(key));assert.ok(saved.lastList>0);w.sessionStorage.setItem(key,JSON.stringify({...saved,lastList:Date.now()-120000}));
   w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);assert.equal(result.blocks,0);assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));
   assert.throws(()=>D.address(base+'?acao=documento_assinar&infra_unidade_atual=120000124',undefined,['rel_bloco_protocolo_listar']),/inválido/);
  }finally{w.close();}

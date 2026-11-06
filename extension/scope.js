@@ -192,7 +192,8 @@
     clearTimeout(refreshTimer);
     refreshTimer = null;
   });
-  window.addEventListener('pageshow', () => {
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
     observer.observe(document.documentElement, { childList: true, subtree: true });
     refresh(true);
   });

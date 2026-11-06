@@ -56,7 +56,8 @@
   }
   const lifecycleObserver = new MutationObserver(schedule);
   lifecycleObserver.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('pageshow', () => {
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
     lifecycleObserver.observe(document.documentElement, { childList: true, subtree: true });
     schedule();
   });
