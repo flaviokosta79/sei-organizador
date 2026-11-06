@@ -3,18 +3,29 @@ const validSession=value=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value)
 export function createEditing(db) {
   db.exec('CREATE TABLE IF NOT EXISTS editing_presence (unit TEXT, session TEXT, process TEXT, document TEXT, number TEXT, actor TEXT, updated INTEGER, activity INTEGER, expires INTEGER, PRIMARY KEY(unit,session)); CREATE INDEX IF NOT EXISTS editing_process ON editing_presence(unit,process,expires); CREATE INDEX IF NOT EXISTS editing_expiry ON editing_presence(expires);');
   db.exec('CREATE TABLE IF NOT EXISTS editing_scopes (unit TEXT, session TEXT, block TEXT, PRIMARY KEY(unit,session)); CREATE INDEX IF NOT EXISTS editing_scope_block ON editing_scopes(unit,block);');
-  const prune=()=>{db.prepare('DELETE FROM editing_presence WHERE expires<=?').run(Date.now());db.exec('DELETE FROM editing_scopes WHERE NOT EXISTS (SELECT 1 FROM editing_presence p WHERE p.unit=editing_scopes.unit AND p.session=editing_scopes.session)');};
+  const q={
+    expire:db.prepare('DELETE FROM editing_presence WHERE expires<=?'),
+    stop:db.prepare('DELETE FROM editing_presence WHERE unit=? AND session=? AND process=? AND document=?'),
+    dropScope:db.prepare('DELETE FROM editing_scopes WHERE unit=? AND session=?'),
+    exists:db.prepare('SELECT 1 FROM editing_presence WHERE unit=? AND session=?'),
+    count:db.prepare('SELECT count(*) AS n FROM editing_presence WHERE unit=? AND expires>?'),
+    upsert:db.prepare('INSERT INTO editing_presence VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(unit,session) DO UPDATE SET process=excluded.process,document=excluded.document,number=excluded.number,actor=excluded.actor,updated=excluded.updated,activity=excluded.activity,expires=excluded.expires'),
+    scope:db.prepare('INSERT INTO editing_scopes VALUES(?,?,?) ON CONFLICT(unit,session) DO UPDATE SET block=excluded.block'),
+  };
+  // Queries already filter by expiry, so physical cleanup only needs to run every few seconds.
+  let pruned=0;
+  const prune=()=>{const now=Date.now();if(now-pruned<5000)return;pruned=now;q.expire.run(now);db.exec('DELETE FROM editing_scopes WHERE NOT EXISTS (SELECT 1 FROM editing_presence p WHERE p.unit=editing_scopes.unit AND p.session=editing_scopes.session)');};
   function update(unit,process,data) {
     const {session,document,number='',actor,activityAgeMs=null,stop=false,block=''}=data;
     if(block!==''&&!validId(block))throw Error('Bloco inválido');
     if(!validId(process)||!validId(document)||!validSession(session)||typeof stop!=='boolean'||typeof number!=='string'||(number!==''&&!validId(number))||!actor||typeof actor.login!=='string'||!actor.login.trim()||actor.login.length>100||typeof actor.org!=='string'||!actor.org||actor.org.length>80||typeof actor.name!=='string'||actor.name.length>150||(activityAgeMs!==null&&(!Number.isSafeInteger(activityAgeMs)||activityAgeMs<0||activityAgeMs>60000)))throw Error('Presença inválida');
     prune();
-    if(stop){const removed=db.prepare('DELETE FROM editing_presence WHERE unit=? AND session=? AND process=? AND document=?').run(unit,session,process,document);if(removed.changes)db.prepare('DELETE FROM editing_scopes WHERE unit=? AND session=?').run(unit,session);return {ok:true};}
+    if(stop){const removed=q.stop.run(unit,session,process,document);if(removed.changes)q.dropScope.run(unit,session);return {ok:true};}
     const now=Date.now();
-    if(!db.prepare('SELECT 1 FROM editing_presence WHERE unit=? AND session=?').get(unit,session)&&db.prepare('SELECT count(*) AS n FROM editing_presence WHERE unit=?').get(unit).n>=1000)throw Object.assign(Error('Limite de editores ativos atingido'),{status:429});
+    if(!q.exists.get(unit,session)&&q.count.get(unit,now).n>=1000)throw Object.assign(Error('Limite de editores ativos atingido'),{status:429});
     const clean={login:actor.login.trim().toLowerCase(),name:actor.name,org:actor.org,verified:false};
-    db.prepare('INSERT INTO editing_presence VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(unit,session) DO UPDATE SET process=excluded.process,document=excluded.document,number=excluded.number,actor=excluded.actor,updated=excluded.updated,activity=excluded.activity,expires=excluded.expires').run(unit,session,process,document,number,JSON.stringify(clean),now,activityAgeMs===null?null:now-activityAgeMs,now+90000);
-    db.prepare('INSERT INTO editing_scopes VALUES(?,?,?) ON CONFLICT(unit,session) DO UPDATE SET block=excluded.block').run(unit,session,block);
+    q.upsert.run(unit,session,process,document,number,JSON.stringify(clean),now,activityAgeMs===null?null:now-activityAgeMs,now+90000);
+    q.scope.run(unit,session,block);
     return {ok:true,expiresAt:now+90000};
   }
   function query(unit,processIds,block) {

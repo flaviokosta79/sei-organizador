@@ -3,27 +3,12 @@
   const alarm = 'sei-block-monitor',
     localKey = 'seiBlockAlerts',
     sessionKey = 'seiBlockTargets';
-  let queue = Promise.resolve();
-  const serial = (fn) => {
-    const result = queue.then(fn);
-    queue = result.catch(() => {});
-    return result;
-  };
+  const serial = seiCreateQueue();
   const identityKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const chiefKey = `${SEI_ORGANIZADOR_CONFIG.unitId}:${SEI_ORGANIZADOR_CONFIG.org}`;
   const sharedEnabled = !!SEI_ORGANIZADOR_CONFIG.serviceUrl;
   async function shared(path, body) {
-    const response = await fetch(
-      new URL(`/v1/units/${SEI_ORGANIZADOR_CONFIG.unitId}/${path}`, SEI_ORGANIZADOR_CONFIG.serviceUrl),
-      {
-        method: body ? 'POST' : 'GET',
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(10000),
-      },
-    );
+    const response = await seiServiceFetch(path, { body });
     if (!response.ok) throw new Error(`Leitura compartilhada indisponível (HTTP ${response.status}).`);
     const state = await response.json();
     if (
@@ -69,16 +54,23 @@
       chrome.storage.local.get(localKey),
       chrome.storage.session.get(sessionKey),
     ]);
-    return {
+    const data = {
       local: local[localKey] || { sound: true, records: {} },
       session: session[sessionKey] || { targets: {}, leases: {}, lastPoll: {} },
     };
+    data.stored = { local: JSON.stringify(data.local), session: JSON.stringify(data.session) };
+    return data;
   }
+  let badge;
+  // Writes only the areas that changed since load/last save; most polls change nothing.
   async function save(data, owner) {
-    await Promise.all([
-      chrome.storage.local.set({ [localKey]: data.local }),
-      chrome.storage.session.set({ [sessionKey]: data.session }),
-    ]);
+    const local = JSON.stringify(data.local),
+      session = JSON.stringify(data.session),
+      writes = [];
+    if (local !== data.stored?.local) writes.push(chrome.storage.local.set({ [localKey]: data.local }));
+    if (session !== data.stored?.session) writes.push(chrome.storage.session.set({ [sessionKey]: data.session }));
+    await Promise.all(writes);
+    data.stored = { local, session };
     let count = Object.entries(data.session.targets)
       .filter(([, target]) => target.owner === owner)
       .filter(([, target]) => data.workBlock === undefined || target.block === data.workBlock)
@@ -91,18 +83,36 @@
       );
     if (globalThis.seiCompletedSignatures) count += await seiCompletedSignatures.pendingCount(owner, data.workBlock);
     if (globalThis.seiSecretariatReceipts) count += await seiSecretariatReceipts.pendingCount(owner, data.workBlock);
-    await chrome.action.setBadgeText({ text: count ? String(count) : '' });
+    const text = count ? String(count) : '';
+    if (text === badge) return;
+    await chrome.action.setBadgeText({ text });
     await chrome.action.setBadgeBackgroundColor({ color: '#b45309' });
+    badge = text;
   }
-  async function sound(soundId) {
+  // Monitor, signatures and receipts may play at the same time: create the offscreen document only once.
+  let creating;
+  async function offscreen() {
+    if (creating) return creating;
     const url = chrome.runtime.getURL('monitor-audio.html');
     const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url] });
-    if (!contexts.length)
-      await chrome.offscreen.createDocument({
+    if (contexts.length) return;
+    creating ??= chrome.offscreen
+      .createDocument({
         url: 'monitor-audio.html',
         reasons: ['AUDIO_PLAYBACK'],
         justification: 'Tocar aviso curto de novos processos nos blocos internos monitorados.',
+      })
+      .catch((e) => {
+        // Another caller won the creation race; the existing document is what we need.
+        if (!/single offscreen/i.test(e?.message || '')) throw e;
+      })
+      .finally(() => {
+        creating = null;
       });
+    await creating;
+  }
+  async function sound(soundId) {
+    await offscreen();
     let ready = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -150,14 +160,7 @@
     if (from.origin !== 'https://sei.rj.gov.br' || from.pathname !== '/sei/controlador.php' || sender.frameId !== 0)
       throw new Error('Origem não permitida');
     const identity = msg.identity;
-    if (
-      identity?.unit !== SEI_ORGANIZADOR_CONFIG.unitId ||
-      identity.org !== SEI_ORGANIZADOR_CONFIG.org ||
-      typeof identity.login !== 'string' ||
-      !identity.login.trim() ||
-      identity.login.length > 100
-    )
-      throw new Error('Unidade ou usuário inválido');
+    if (!seiValidIdentity(identity)) throw new Error('Unidade ou usuário inválido');
     const owner = identityKey(identity),
       data = await load();
     data.workBlock = globalThis.seiWorkScopeStore ? (await seiWorkScopeStore.get(identity)).block : undefined;
@@ -474,10 +477,37 @@
     );
     return true;
   });
+  // Only one tab polls per minute; the others just redraw (hidden ones wait until shown).
+  const processPages = [
+    'procedimento_trabalhar',
+    'procedimento_visualizar',
+    'arvore_visualizar',
+    'documento_visualizar',
+  ];
   const wake = async () => {
     const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
+    const rank = (tab) => {
+      let acao = '';
+      try {
+        acao = new URL(tab.url || '').searchParams.get('acao') || '';
+      } catch {}
+      return (processPages.includes(acao) ? 2 : 0) + (tab.active ? 0 : 1);
+    };
+    const ordered = [...tabs].sort((a, b) => rank(a) - rank(b));
+    let leader;
+    for (const tab of ordered) {
+      try {
+        const reply = await chrome.tabs.sendMessage(tab.id, { type: 'monitor:tick', lead: true }, { frameId: 0 });
+        if (reply?.accepted) {
+          leader = tab.id;
+          break;
+        }
+      } catch {}
+    }
     await Promise.allSettled(
-      tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'monitor:tick' }, { frameId: 0 })),
+      tabs
+        .filter((tab) => tab.id !== leader)
+        .map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'monitor:tick', lead: false }, { frameId: 0 })),
     );
   };
   chrome.alarms.onAlarm.addListener((a) => {

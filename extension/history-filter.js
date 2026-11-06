@@ -102,6 +102,23 @@
       '#tblHistorico tr.so-history-filtered,.so-history-native-pagination{display:none!important}';
     host.append(tableStyle);
     info.table.before(host);
+    // SEI rows are static once rendered: parse each one once instead of on every apply/sort comparison.
+    const ownUnit = D.sigla(info.unit),
+      parsed = new WeakMap();
+    const parse = (row, cells = row.querySelectorAll('td')) => {
+      let data = parsed.get(row);
+      if (!data) {
+        const text = cells[3].textContent.replace(/\s+/g, ' ').trim();
+        const sent = text.match(/^Processo remetido pela unidade (.+)$/);
+        data = {
+          time: D.parseDate(cells[0].textContent)?.getTime() || 0,
+          own: D.sigla(cells[1].textContent) === ownUnit || (!!sent && D.sigla(sent[1]) === ownUnit),
+          transport: !!sent || /^Processo recebido na unidade\b/.test(text),
+        };
+        parsed.set(row, data);
+      }
+      return data;
+    };
     const apply = () => {
       let total = 0,
         visible = 0;
@@ -117,8 +134,7 @@
       const rank = new Map(nativeOrder.map((row, index) => [row, index]));
       const desired = [...currentRows].sort((a, b) =>
         order.value === 'recent' && !loading
-          ? (D.parseDate(b.cells[0].textContent)?.getTime() || 0) -
-              (D.parseDate(a.cells[0].textContent)?.getTime() || 0) || rank.get(a) - rank.get(b)
+          ? parse(b).time - parse(a).time || rank.get(a) - rank.get(b)
           : rank.get(a) - rank.get(b),
       );
       order.disabled = loading;
@@ -129,6 +145,8 @@
       ) {
         const parent = desired[0]?.parentNode;
         for (const row of desired) parent.append(row);
+        // Our own reordering must not schedule another full pass.
+        observer.takeRecords();
       }
       const matchesByRow = new Map(),
         matching = [];
@@ -137,12 +155,8 @@
         if (cells.length < 4) continue;
         rows.add(row);
         total++;
-        const destination = D.sigla(cells[1].textContent);
-        const text = cells[3].textContent.replace(/\s+/g, ' ').trim();
-        const sent = text.match(/^Processo remetido pela unidade (.+)$/);
-        const received = /^Processo recebido na unidade\b/.test(text);
-        const own = destination === D.sigla(info.unit) || (sent && D.sigla(sent[1]) === D.sigla(info.unit));
-        const matches = (unit.value === 'all' || own) && (type.value === 'all' || sent || received);
+        const { own, transport } = parse(row, cells);
+        const matches = (unit.value === 'all' || own) && (type.value === 'all' || transport);
         matchesByRow.set(row, !!matches);
         if (matches && !row.hidden) matching.push(row);
       }
@@ -269,7 +283,16 @@
       queueMicrotask(reconcile);
     }
   };
-  const observer = new MutationObserver(schedule);
+  // Changes inside existing cells (tooltips, native widgets) never change the filter result.
+  const insideCell = (record) => {
+    const element = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+    const cell = element?.closest?.('td');
+    return !!cell && current.table.contains(cell);
+  };
+  const observer = new MutationObserver((records) => {
+    if (current && records.every(insideCell)) return;
+    schedule();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   window.addEventListener('pagehide', () => {
     active = false;

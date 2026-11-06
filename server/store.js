@@ -10,6 +10,8 @@ import {createReceipts} from './receipts.js';
 export function createStore(path) {
   mkdirSync(dirname(path), {recursive:true});
   const db = new DatabaseSync(path);
+  // WAL with NORMAL sync stays durable across app crashes; busy_timeout absorbs short lock waits.
+  db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;');
   const alerts=createAlerts(db,{onSnapshot:(unit,block,ids)=>{
     const current=read(unit,block),present=new Set(ids);
     const removed=[...new Set([...Object.keys(current.assignments),...Object.keys(current.statuses)])].filter(id=>!present.has(id));
@@ -18,8 +20,15 @@ export function createStore(path) {
   const editing=createEditing(db);
   const signatures=createSignatures(db);
   const receipts=createReceipts(db);
-  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
-  const read=(unit,block)=>{const r=db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?').get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
+  db.exec('CREATE TABLE IF NOT EXISTS blocks (unit TEXT, block TEXT, version INTEGER, state TEXT, PRIMARY KEY(unit,block)); CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, time TEXT, actor TEXT, action TEXT, before TEXT, after TEXT, version INTEGER); CREATE INDEX IF NOT EXISTS history_block ON history(unit,block,id);');
+  const q={
+    read:db.prepare('SELECT * FROM blocks WHERE unit=? AND block=?'),
+    entry:db.prepare('SELECT * FROM history WHERE unit=? AND block=? AND id=?'),
+    later:db.prepare('SELECT * FROM history WHERE unit=? AND block=? AND id>? ORDER BY id'),
+    save:db.prepare('INSERT INTO blocks VALUES(?,?,?,?) ON CONFLICT(unit,block) DO UPDATE SET version=excluded.version,state=excluded.state'),
+    record:db.prepare('INSERT INTO history(unit,block,time,actor,action,before,after,version) VALUES(?,?,?,?,?,?,?,?)'),
+  };
+  const read=(unit,block)=>{const r=q.read.get(unit,block);return r?{version:r.version,statuses:{},...JSON.parse(r.state)}:{version:0,tabs:[],assignments:{},statuses:{}};};
   function mutate(unit,block,version,actor,action,inTransaction=false) {
     historyCache.delete(JSON.stringify([unit,block]));
     if(!inTransaction)db.exec('BEGIN IMMEDIATE');
@@ -42,10 +51,10 @@ export function createStore(path) {
           for(const id of action.processIds){if(action.status==='none')delete next.statuses[id];else next.statuses[id]=action.status;}break;
         case 'undo': {
           if(!Number.isSafeInteger(action.historyId))throw Object.assign(new Error('Selecione uma alteração no histórico.'),{status:400});
-          const h=db.prepare('SELECT * FROM history WHERE unit=? AND block=? AND id=?').get(unit,block,action.historyId);
+          const h=q.entry.get(unit,block,action.historyId);
           if(!h) throw new Error('Sem alteração para desfazer');
           if(!sameActor(actor,JSON.parse(h.actor)))throw Object.assign(new Error('Você só pode desfazer alterações feitas pelo seu próprio usuário.'),{status:403});
-          const plan=undoPlan(h,db.prepare('SELECT * FROM history WHERE unit=? AND block=? AND id>? ORDER BY id').all(unit,block,h.id));
+          const plan=undoPlan(h,q.later.all(unit,block,h.id));
           if(plan.reason)throw Object.assign(new Error(plan.reason),{status:409});
           applyUndo(next,plan.patch);action={...action,targetAction:JSON.parse(h.action)};break;
         }
@@ -61,8 +70,8 @@ export function createStore(path) {
       if(action.type==='rename')recorded.newTabName=next.tabs.find(t=>t.id===action.tabId).name;
       if(action.processIds){recorded.processNumbers={};for(const id of action.processIds){const n=action.processNumbers?.[id];if(typeof n==='string'&&/^(?:SEI-)?\d{1,12}[./-]\d{1,12}\/\d{4}$/.test(n))recorded.processNumbers[id]=n;}}
       const v=old.version+1;const snapshot=snapshots(old,next);const before=JSON.stringify(snapshot.before);const after=JSON.stringify(snapshot.after);
-      db.prepare('INSERT INTO blocks VALUES(?,?,?,?) ON CONFLICT(unit,block) DO UPDATE SET version=excluded.version,state=excluded.state').run(unit,block,v,JSON.stringify(next));
-      db.prepare('INSERT INTO history(unit,block,time,actor,action,before,after,version) VALUES(?,?,?,?,?,?,?,?)').run(unit,block,new Date().toISOString(),JSON.stringify(actor),JSON.stringify(recorded),before,after,v);
+      q.save.run(unit,block,v,JSON.stringify(next));
+      q.record.run(unit,block,new Date().toISOString(),JSON.stringify(actor),JSON.stringify(recorded),before,after,v);
       if(!inTransaction)db.exec('COMMIT'); return {version:v,...next};
     }catch(e){if(!inTransaction)db.exec('ROLLBACK');throw e;}
   }

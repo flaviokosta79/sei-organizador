@@ -5,7 +5,7 @@ import {runInNewContext} from 'node:vm';
 
 test('worker usa servico e unidade fixos, sem token, cookies ou configuracao manual',async()=>{
  const token='a'.repeat(43);let listener;const requests=[];
- runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{
+ runInNewContext(readFileSync(new URL('../extension/service-client.js',import.meta.url),'utf8')+';'+readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{
   URL,AbortSignal,importScripts:()=>{},SEI_ORGANIZADOR_CONFIG:{serviceUrl:'https://ext.5cpa.com.br',unitId:'1'},
   chrome:{runtime:{onMessage:{addListener:f=>listener=f}},storage:{local:{get:async()=>({serviceUrl:'http://127.0.0.1:8787',unitId:'9',apiToken:token})}}},
   fetch:async(url,options)=>{requests.push({url:url.toString(),options});return {ok:true,json:async()=>({version:1})};}
@@ -22,7 +22,7 @@ test('worker usa servico e unidade fixos, sem token, cookies ou configuracao man
 
 test('worker traduz respostas que não são JSON em mensagem amigável',async()=>{
  let listener,next;
- runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{
+ runInNewContext(readFileSync(new URL('../extension/service-client.js',import.meta.url),'utf8')+';'+readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{
   URL,AbortSignal,importScripts:()=>{},SEI_ORGANIZADOR_CONFIG:{serviceUrl:'https://ext.5cpa.com.br',unitId:'1'},
   chrome:{runtime:{onMessage:{addListener:f=>listener=f}}},fetch:async()=>next
  });

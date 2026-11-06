@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "SEI Organizador",
-  "version": "0.17.2",
+  "version": "0.18.0",
   "description": "Abas por assunto, situação dos documentos e alertas de novos processos nos blocos internos do SEI.",
   "background": {
     "service_worker": "background.js"
@@ -23,32 +23,6 @@
       "matches": [
         "https://sei.rj.gov.br/sei/controlador.php*"
       ],
-      "js": [
-        "config.js",
-        "users-data.js",
-        "users.js",
-        "scope.js",
-        "history.js",
-        "theme.js",
-        "content.js",
-        "monitor-data.js",
-        "monitor-sounds.js",
-        "monitor-settings.js",
-        "document-data.js",
-        "history-pages.js",
-        "signature-data.js",
-        "signature-monitor.js",
-        "receipts-data.js",
-        "monitor.js"
-      ],
-      "css": [
-        "content.css"
-      ]
-    },
-    {
-      "matches": [
-        "https://sei.rj.gov.br/sei/controlador.php*"
-      ],
       "all_frames": true,
       "js": [
         "config.js",
@@ -61,6 +35,26 @@
         "document.js",
         "send.js",
         "editing.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://sei.rj.gov.br/sei/controlador.php*"
+      ],
+      "js": [
+        "users-data.js",
+        "theme.js",
+        "content.js",
+        "monitor-data.js",
+        "monitor-sounds.js",
+        "monitor-settings.js",
+        "signature-data.js",
+        "signature-monitor.js",
+        "receipts-data.js",
+        "monitor.js"
+      ],
+      "css": [
+        "content.css"
       ]
     }
   ],

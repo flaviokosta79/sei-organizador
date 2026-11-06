@@ -2,18 +2,8 @@
 (() => {
   const key = 'seiWorkScopes';
   const profile = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
-  const valid = (identity) =>
-    identity?.unit === SEI_ORGANIZADOR_CONFIG.unitId &&
-    identity.org === SEI_ORGANIZADOR_CONFIG.org &&
-    typeof identity.login === 'string' &&
-    !!identity.login.trim() &&
-    identity.login.length <= 100;
-  let queue = Promise.resolve();
-  const serial = (fn) => {
-    const next = queue.then(fn);
-    queue = next.catch(() => {});
-    return next;
-  };
+  const valid = seiValidIdentity;
+  const serial = seiCreateQueue();
   async function load() {
     return (await chrome.storage.local.get(key))[key] || {};
   }
@@ -50,6 +40,8 @@
       if (!valid(identity)) throw Error('Abra o SEI na unidade atendida para identificar seu usuário.');
       const id = profile(identity),
         pref = records[id] || { identity, block: null, catalog: [] };
+      const withoutUse = ({ lastUsed, ...value }) => JSON.stringify(value);
+      const before = records[id] ? withoutUse(records[id]) : null;
       if (msg.type === 'scope:remember') {
         const sourceBlock = url.searchParams.get('id_bloco');
         const listing = url.searchParams.get('acao') === 'bloco_interno_listar';
@@ -89,9 +81,12 @@
           throw Error('Escolha um bloco disponível na lista.');
         pref.block = msg.block;
       }
-      pref.lastUsed = Date.now();
-      records[id] = pref;
-      await chrome.storage.local.set({ [key]: records });
+      // lastUsed only orders profiles in the options page; refreshing it hourly avoids a write per page load.
+      if (before !== withoutUse(pref) || Date.now() - (pref.lastUsed || 0) >= 3600000) {
+        pref.lastUsed = Date.now();
+        records[id] = pref;
+        await chrome.storage.local.set({ [key]: records });
+      }
       if (msg.type === 'scope:set') {
         const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
         await Promise.allSettled(tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'scope:changed' })));

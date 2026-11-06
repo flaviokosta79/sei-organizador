@@ -44,7 +44,7 @@ test('presença valida dados, limites, documento, unidade e consultas',()=>{
 
 test('worker rejeita presença fora do editor e não envia links, cookies ou campos extras',async()=>{
  let listener;const requests=[];
- runInNewContext(read('editing-background.js'),{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},URL,AbortSignal,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}}},fetch:async(url,options)=>{requests.push({url:String(url),options});return {ok:true,json:async()=>({ok:true})};}});
+ runInNewContext(read('service-client.js')+';'+read('editing-background.js'),{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},URL,AbortSignal,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}}},fetch:async(url,options)=>{requests.push({url:String(url),options});return {ok:true,json:async()=>({ok:true})};}});
  const send=(msg,url=editorUrl)=>new Promise(r=>listener({identity,type:'editing:heartbeat',session,process:'900',document:'901',number:'555',...msg},{url,tab:{url:base},frameId:0},r));
  assert.ok((await send({},base+'?acao=documento_visualizar')).error);assert.ok((await send({document:'902'})).error);assert.ok((await send({identity:{...identity,unit:'2'}})).error);
  assert.equal(requests.length,0);assert.equal((await send({text:'CONTEUDO_SECRETO',url:editorUrl})).error,undefined);

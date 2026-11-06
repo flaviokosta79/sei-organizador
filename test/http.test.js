@@ -75,3 +75,18 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  assert.equal((await(await apiFetch(receiptUrl)).json()).pending.length,0);
  }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
 });
+test('API HTTP: caractere acentuado dividido entre pacotes do corpo é preservado',async()=>{
+ const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+ const dir=mkdtempSync(join(tmpdir(),'sei-http-'));
+ const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_UNIT_ID:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+ try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
+ const payload=Buffer.from(JSON.stringify({version:0,actor:{name:'Teste'},action:{type:'create',name:'Ação'}}));
+ const cut=payload.indexOf(Buffer.from('ç'))+1;// splits the two UTF-8 bytes of "ç"
+ const {request}=await import('node:http');
+ const state=await new Promise((resolve,reject)=>{
+  const req=request({host:'127.0.0.1',port,path:'/v1/units/1/blocks/2',method:'POST',headers:{'Content-Type':'application/json','Content-Length':payload.length}},res=>{let text='';res.setEncoding('utf8');res.on('data',c=>text+=c);res.on('end',()=>resolve(JSON.parse(text)));});
+  req.on('error',reject);req.write(payload.subarray(0,cut));setTimeout(()=>req.end(payload.subarray(cut)),100);
+ });
+ assert.equal(state.tabs[0].name,'Ação');
+ }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
+});

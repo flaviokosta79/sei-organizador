@@ -14,7 +14,7 @@ function worker(){
  const data={},listeners=[],notices=[],requests=[];
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,openOptionsPage:async()=>{},onMessage:{addListener:fn=>listeners.push(fn)}},storage:{local:{get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))}},tabs:{query:async()=>[{id:1}],sendMessage:async(id,msg)=>notices.push(msg)}};
  const context={chrome,URL,AbortSignal,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},importScripts:()=>{},fetch:async(url,init)=>{requests.push(String(url));return {ok:true,json:async()=>({version:0,tabs:[],assignments:{},statuses:{}})};}};
- runInNewContext(read('scope-background.js')+';'+read('background.js'),context);
+ runInNewContext(read('service-client.js')+';'+read('scope-background.js')+';'+read('background.js'),context);
  const send=(msg,source=url('2'))=>new Promise(resolve=>{for(const listener of listeners)listener(msg,{url:source,tab:{id:1,url:source},frameId:0},resolve);});
  const call=async(msg,source)=>{const result=await send({identity:actor,...msg},source);if(result.error)throw Error(result.error);return result.data;};
  const remember=(id,identity=actor)=>call({identity,type:'scope:remember',blocks:[{id,name:'Bloco '+id}]},url(id));
@@ -134,4 +134,18 @@ test('escolha pelo SEI altera só o usuário atual e rejeita bloco desconhecido 
  assert.equal((await w.store.get(actor)).block,'3');assert.equal((await w.store.get(colleague)).block,'4');
  await assert.rejects(w.call({type:'scope:set',block:'4'},url('2')),/Escolha um bloco/);
  await assert.rejects(w.call({type:'scope:set',block:'3'},'https://evil.test'),/Origem/);
+});
+
+test('troca de bloco recebida durante uma leitura em andamento não é perdida',async()=>{
+ const source=url('2');let release,gets=0;const listeners=[];
+ const dom=new JSDOM('<a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a>',{url:base+'?acao=procedimento_controlar&infra_unidade_atual=1',runScripts:'outside-only'}),w=dom.window;
+ let block='2';
+ w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};
+ w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:async msg=>{gets++;if(gets===1)await new Promise(r=>release=r);return {data:{block,catalog:[{id:block,name:'Bloco '+block}]}};}}};
+ try{
+  w.eval(read('scope.js'));await new Promise(r=>setTimeout(r,10));assert.equal(gets,1);
+  block='3';listeners[0]({type:'scope:changed'},{},()=>{});
+  release();await tick();
+  assert.equal(gets,2,'a troca recebida durante a leitura dispara nova consulta');assert.equal(w.seiWorkScope.block,'3');
+ }finally{w.close();}
 });

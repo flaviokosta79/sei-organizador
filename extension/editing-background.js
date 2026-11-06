@@ -49,14 +49,7 @@
         data.block = pref.block;
       }
       const path = msg.type === 'editing:query' ? 'editing/query' : `processes/${msg.process}/editing`;
-      const response = await fetch(new URL(`/v1/units/${config.unitId}/${path}`, config.serviceUrl), {
-        method: 'POST',
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        signal: AbortSignal.timeout(10000),
-      });
+      const response = await seiServiceFetch(path, { body: data });
       if (!response.ok) throw new Error(`Avisos de edição indisponíveis (HTTP ${response.status}).`);
       return response.json();
     })().then(

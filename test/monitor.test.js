@@ -21,25 +21,26 @@ function reader(fetch){
 const response=html=>new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}});
 const target={block:'2',url:blockUrl};
 const plain=v=>JSON.parse(JSON.stringify(v));
-function worker({local={},session={},sharedFetch,scopeStore}={}){
- const listeners={},notices=[],sounds=[],tabs=[],badges=[];
+function worker({local={},session={},sharedFetch,scopeStore,tabList,tabReply}={}){
+ const listeners={},notices=[],sounds=[],tabs=[],badges=[],writes={local:0,session:0};
  const event=name=>({addListener:fn=>listeners[name]=fn});
+ const counted=(a,name)=>({get:a.get,set:async v=>{writes[name]++;return a.set(v);}});
  const area=data=>({get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))});
  let notifyFails=false,audioFails=false,readyFailures=0,readyAttempts=0,organizer={version:0,statuses:{},history:[]};
  const chrome={
   runtime:{onMessage:event('message'),getURL:p=>'chrome-extension://test/'+p,getContexts:async()=>[],sendMessage:async msg=>{if(msg.type==='monitor:audio-ready'){readyAttempts++;if(readyFailures-->0)throw Error('Ainda iniciando');return {ready:true};}sounds.push(msg);return audioFails?{error:'Sem áudio'}:{ok:true};},openOptionsPage:async()=>{}},
-  storage:{local:area(local),session:area(session)},
+  storage:{local:counted(area(local),'local'),session:counted(area(session),'session')},
   action:{setBadgeText:async b=>badges.push(b.text),setBadgeBackgroundColor:async()=>{},onClicked:event('action')},
   offscreen:{createDocument:async()=>{}},windows:{update:async()=>{}},
   notifications:{create:async(id,data)=>{if(notifyFails)throw Error('Negado');notices.push({id,data});},clear:async()=>true,onClicked:event('notification')},
   alarms:{onAlarm:event('alarm'),get:async()=>null,create:async()=>{}},
-  tabs:{query:async()=>[{id:5,windowId:1}],sendMessage:async(id,msg)=>{tabs.push({id,msg});},create:async data=>tabs.push(data),update:async()=>{},onRemoved:event('removed'),onUpdated:event('updated')}
+  tabs:{query:async()=>tabList||[{id:5,windowId:1}],sendMessage:async(id,msg)=>{tabs.push({id,msg});return tabReply?.(id,msg);},create:async data=>tabs.push(data),update:async()=>{},onRemoved:event('removed'),onUpdated:event('updated')}
  };
- runInNewContext(read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,AbortSignal,fetch:sharedFetch,seiWorkScopeStore:scopeStore,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',...(sharedFetch?{serviceUrl:'https://ext.5cpa.com.br'}:{})}});
+ runInNewContext(read('service-client.js')+';'+read('monitor-sounds.js')+';'+read('monitor-sign.js')+';'+read('monitor-background.js'),{chrome,URL,crypto,Date,setTimeout,AbortSignal,fetch:sharedFetch,seiWorkScopeStore:scopeStore,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',...(sharedFetch?{serviceUrl:'https://ext.5cpa.com.br'}:{})}});
  const send=(msg,{tabId=5,url=base,frameId=0}={})=>msg.type==='api'?Promise.resolve({data:msg.history?organizer.history:{version:organizer.version,statuses:organizer.statuses}}):new Promise(resolve=>listeners.message({identity,...msg},{tab:{id:tabId,url},frameId},resolve));
  const call=async(msg,options)=>{const result=await send(msg,options);if(result.error)throw Error(result.error);return result.data;};
  const poll=options=>call({type:'monitor:sync',poll:true,force:true,registration:{block:'2',url:blockUrl,name:'Teste'}},options);
- return {local,session,listeners,notices,sounds,tabs,badges,send,call,poll,set notifyFails(v){notifyFails=v;},set audioFails(v){audioFails=v;},set readyFailures(v){readyFailures=v;},get readyAttempts(){return readyAttempts;},set organizer(v){organizer=v;}};
+ return {local,session,listeners,notices,sounds,tabs,badges,writes,send,call,poll,set notifyFails(v){notifyFails=v;},set audioFails(v){audioFails=v;},set readyFailures(v){readyFailures=v;},get readyAttempts(){return readyAttempts;},set organizer(v){organizer=v;}};
 }
 
 test('dois navegadores compartilham vistos, rejeitam aberturas falsas e retomam fila offline',async()=>{
@@ -432,4 +433,20 @@ test('rodapé não expande sozinho, distingue alerta de falha e fecha detalhes p
   record.pending=[];record.signPending=[];record.error='Sessão expirada';listeners[0]({type:'monitor:changed'});await settle();
   assert.match(summary.textContent,/atenção/);assert.equal(root.querySelector('section').dataset.error,'true');assert.equal(root.querySelector('section').dataset.new,'false');
  }finally{w.close();}
+});
+
+test('alarme escolhe uma única aba para consultar o SEI e as demais só redesenham',async()=>{
+ const tabList=[{id:1,active:false,url:base+'?acao=procedimento_trabalhar'},{id:2,active:false,url:base},{id:3,active:true,url:base}];
+ const f=worker({tabList,tabReply:(id,msg)=>msg.lead?{accepted:id!==3}:undefined});
+ f.listeners.alarm({name:'sei-block-monitor'});await new Promise(r=>setTimeout(r,10));
+ const leads=f.tabs.filter(t=>t.msg.lead===true).map(t=>t.id);
+ assert.deepEqual(leads,[3,2],'aba ativa primeiro, página de processo por último; para na primeira que aceita');
+ assert.deepEqual(f.tabs.filter(t=>t.msg.lead===false).map(t=>t.id).sort(),[1,3]);
+});
+
+test('sincronização sem mudanças não regrava o storage nem o badge',async()=>{
+ const f=worker();await f.poll();await f.call({type:'monitor:sync'});
+ const before={...f.writes},badges=f.badges.length;
+ await f.call({type:'monitor:sync'});await f.call({type:'monitor:sync'});
+ assert.deepEqual(f.writes,before);assert.equal(f.badges.length,badges);
 });

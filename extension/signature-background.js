@@ -2,26 +2,13 @@
 (() => {
   const storageKey = 'seiCompletedSignatures',
     scanKey = 'seiSignatureScans';
-  let queue = Promise.resolve();
+  const serial = seiCreateQueue();
   const key = (identity, block) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}:${block}`;
   async function records() {
     return (await chrome.storage.local.get(storageKey))[storageKey] || {};
   }
   async function request(block, action, body) {
-    const response = await fetch(
-      new URL(
-        `/v1/units/${SEI_ORGANIZADOR_CONFIG.unitId}/blocks/${block}/signatures/${action}`,
-        SEI_ORGANIZADOR_CONFIG.serviceUrl,
-      ),
-      {
-        method: 'POST',
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
+    const response = await seiServiceFetch(`blocks/${block}/signatures/${action}`, { body, timeout: 15000 });
     if (!response.ok) throw Error(`Assinaturas sem sincronização (HTTP ${response.status}).`);
     return response.json();
   }
@@ -50,20 +37,19 @@
     if (sender.frameId !== 0 || url.origin !== 'https://sei.rj.gov.br' || url.pathname !== '/sei/controlador.php')
       throw Error('Origem não permitida');
     const { identity, block } = msg;
-    if (
-      !/^\d{1,30}$/.test(block || '') ||
-      !identity ||
-      identity.unit !== SEI_ORGANIZADOR_CONFIG.unitId ||
-      identity.org !== SEI_ORGANIZADOR_CONFIG.org ||
-      typeof identity.login !== 'string' ||
-      !identity.login.trim() ||
-      identity.login.length > 100
-    )
-      throw Error('Usuário ou bloco inválido.');
+    if (!/^\d{1,30}$/.test(block || '') || !seiValidIdentity(identity)) throw Error('Usuário ou bloco inválido.');
     await seiWorkScopeStore.requireBlock(identity, block);
     const all = await records(),
       owner = key(identity, block),
       record = all[owner] || { cursor: null, events: [] };
+    // Quiet syncs leave the store untouched; only write when the serialized records differ.
+    let stored = JSON.stringify(all);
+    const persist = async () => {
+      const next = JSON.stringify(all);
+      if (next === stored) return;
+      await chrome.storage.local.set({ [storageKey]: all });
+      stored = next;
+    };
     all[owner] = record;
     if (msg.type === 'signature:ack') {
       await seiCompletedSignatures.ack(identity, block);
@@ -112,7 +98,7 @@
       record.members = response.members;
       record.error = '';
       // Persist the cursor before audio/notifications so retries cannot replay the sound.
-      await chrome.storage.local.set({ [storageKey]: all });
+      await persist();
       if (arrived.length) {
         record.notificationError = '';
         try {
@@ -151,13 +137,12 @@
     } catch (e) {
       record.error = e.message;
     }
-    await chrome.storage.local.set({ [storageKey]: all });
+    await persist();
     return { ...view(record), scan };
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!['signature:sync', 'signature:observe', 'signature:ack', 'signature:done'].includes(msg?.type)) return;
-    const operation = queue.then(() => handle(msg, sender));
-    queue = operation.catch(() => {});
+    const operation = serial(() => handle(msg, sender));
     operation.then(
       (data) => reply({ data }),
       (error) => reply({ error: error.message }),

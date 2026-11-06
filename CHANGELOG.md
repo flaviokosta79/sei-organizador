@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.18.0 — 2026-11-05
+
+- Monitor: o alarme de 1 minuto escolhe uma única aba para consultar o SEI (aba ativa primeiro, páginas de processo por último). Ela confirma na hora se pode consultar; as demais só redesenham. Abas ocultas adiam a atualização até ficarem visíveis. Assinaturas são sincronizadas uma vez por ciclo, e a varredura não repete a consulta de alertas.
+- Storage: monitor, recebidos e assinaturas só gravam quando o conteúdo muda; o badge só é reescrito quando a contagem muda. O bloco de trabalho deixa de gravar a cada página aberta; a data de último uso é renovada no máximo a cada hora.
+- Áudio: a criação do documento offscreen é única mesmo com sons simultâneos de monitor, assinaturas e recebidos, evitando falso "Som indisponível".
+- Manifesto: scripts compartilhados deixam de ser injetados duas vezes no frame principal.
+- Andamento: cada linha é lida uma vez. A reordenação não dispara nova passada, e mudanças dentro das células são ignoradas.
+- Lista do bloco:
+  - contagens de abas e status são feitas em uma passada;
+  - o histórico é indexado antes de desenhar;
+  - o cabeçalho fixo é medido e movido uma vez por frame durante a rolagem.
+- Corrigida perda da troca de bloco quando o aviso chegava durante uma leitura em andamento.
+- Background: endereço do serviço, opções de requisição, fila serial e validação de identidade passam a ser compartilhados (service-client.js). A exigência de HTTPS passa a valer para todas as chamadas à API.
+- API:
+  - corpo JSON decodificado só depois de juntar os pacotes, corrigindo acentos corrompidos quando um caractere caía na divisa entre dois pacotes;
+  - consultas SQLite preparadas uma vez;
+  - verificação de pendências com Set em vez de busca linear;
+  - abertura de processo com bloco só relê esse bloco;
+  - limpeza de presença no máximo a cada 5 s, e o limite de editores conta só sessões ativas;
+  - PRAGMA synchronous=NORMAL e busy_timeout;
+  - falhas do banco respondem 500 e são registradas no log;
+  - desligamento fecha conexões ociosas.
+- 194 testes; 193 passaram. A falha restante ("card prioriza controles…") já existia antes desta versão. Novos testes cobrem acentos divididos entre pacotes, escolha da aba líder, ausência de regravação sem mudança e troca de bloco durante leitura.
+- A API precisa ser reimplantada para as correções do servidor; a extensão é compatível com a API anterior. Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.17.2 — 2026-10-28
 
 - Corrigida leitura quadrática da árvore: documentos, unidades geradoras e assinaturas passam a ter índices, preservando todas as pendências. Árvore analisada é reutilizada no contexto da própria árvore e invalidada se o script nativo mudar.

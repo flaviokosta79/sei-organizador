@@ -428,12 +428,7 @@
   else window.addEventListener('load', resumePolling, { once: true });
   async function sync(poll = true) {
     // Process pages keep their native document frames responsive: do not start SEI scans here.
-    const nativeProcess =
-      !!document.querySelector('#ifrArvore') ||
-      ['procedimento_trabalhar', 'procedimento_visualizar', 'arvore_visualizar', 'documento_visualizar'].includes(
-        new URL(location.href).searchParams.get('acao'),
-      );
-    poll = poll && pollingReady && !nativeProcess;
+    poll = poll && pollingReady && !nativeProcessPage();
     if (busy || stopped) return;
     const next = D.context();
     if (!next) {
@@ -462,7 +457,8 @@
           signatures = { events: [] };
           signatureOwner = owner;
         }
-        if (selected) signatures = await call('signature:sync', { block: selected });
+        // A polling cycle refreshes signatures once, after the block scan (signature:sync with poll).
+        if (selected && !poll) signatures = await call('signature:sync', { block: selected });
       }
       const page = new URL(location.href);
       const process = page.searchParams.get('id_procedimento');
@@ -545,7 +541,7 @@
                 });
               signatures = await call('signature:sync', { block: selected });
               if (result.error) signatures.error = result.error;
-              render(await call('monitor:sync', { poll: false }));
+              render(latestView || view);
             }
           } catch (e) {
             signatures.error = `Assinaturas sem atualização: ${e.message}`;
@@ -566,9 +562,46 @@
       }
     }
   }
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === 'monitor:tick') sync();
-    if (msg?.type === 'monitor:changed') sync(false);
+  // Hidden tabs skip redraws until they are shown again; the background picks one tab to poll.
+  let stale = false,
+    refreshQueued = false;
+  const hidden = () => document.visibilityState === 'hidden';
+  const nativeProcessPage = () =>
+    !!document.querySelector('#ifrArvore') ||
+    ['procedimento_trabalhar', 'procedimento_visualizar', 'arvore_visualizar', 'documento_visualizar'].includes(
+      new URL(location.href).searchParams.get('acao'),
+    );
+  function refresh() {
+    if (hidden()) {
+      stale = true;
+      return;
+    }
+    if (refreshQueued) return;
+    refreshQueued = true;
+    setTimeout(() => {
+      refreshQueued = false;
+      sync(false);
+    }, 0);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!hidden() && stale) {
+      stale = false;
+      sync();
+    }
+  });
+  chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+    if (msg?.type === 'monitor:tick') {
+      if (msg.lead === true) {
+        // Accept the poll only if this tab can actually scan the SEI right now.
+        const accepted = pollingReady && !busy && !stopped && !nativeProcessPage() && !!D.context();
+        reply({ accepted });
+        if (accepted) sync();
+        return;
+      }
+      if (msg.lead === false) refresh();
+      else sync();
+    }
+    if (msg?.type === 'monitor:changed') refresh();
     if (msg?.type === 'monitor:open') {
       if (panel) panel.querySelector('details').open = true;
       else sync();

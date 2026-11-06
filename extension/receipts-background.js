@@ -4,7 +4,7 @@
     sessionKey = 'seiSecretariatReceiptTargets';
   const ownerKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const maxObservationAge = 90000;
-  let queue = Promise.resolve();
+  const serial = seiCreateQueue();
   function address(value, process) {
     const url = new URL(value);
     if (
@@ -24,26 +24,22 @@
       chrome.storage.local.get(localKey),
       chrome.storage.session.get(sessionKey),
     ]);
-    return { local: local[localKey] || {}, session: session[sessionKey] || {} };
+    const data = { local: local[localKey] || {}, session: session[sessionKey] || {} };
+    data.stored = { local: JSON.stringify(data.local), session: JSON.stringify(data.session) };
+    return data;
   }
+  // Writes only the areas that changed; tab navigation and quiet polls usually change nothing.
   async function save(data) {
-    await Promise.all([
-      chrome.storage.local.set({ [localKey]: data.local }),
-      chrome.storage.session.set({ [sessionKey]: data.session }),
-    ]);
+    const local = JSON.stringify(data.local),
+      session = JSON.stringify(data.session),
+      writes = [];
+    if (local !== data.stored?.local) writes.push(chrome.storage.local.set({ [localKey]: data.local }));
+    if (session !== data.stored?.session) writes.push(chrome.storage.session.set({ [sessionKey]: data.session }));
+    await Promise.all(writes);
+    data.stored = { local, session };
   }
   async function shared(body) {
-    const response = await fetch(
-      new URL(`/v1/units/${SEI_ORGANIZADOR_CONFIG.unitId}/secretariat/receipts`, SEI_ORGANIZADOR_CONFIG.serviceUrl),
-      {
-        method: body ? 'POST' : 'GET',
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(15000),
-      },
-    );
+    const response = await seiServiceFetch('secretariat/receipts', { body, timeout: 15000 });
     if (!response.ok)
       throw Error(
         response.status === 409
@@ -240,8 +236,7 @@
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!['receipts:sync', 'receipts:result', 'receipts:done'].includes(msg?.type)) return;
-    const operation = queue.then(() => handle(msg, sender));
-    queue = operation.catch(() => {});
+    const operation = serial(() => handle(msg, sender));
     operation.then(
       (data) => reply({ data }),
       (error) => reply({ error: error.message }),
@@ -256,12 +251,11 @@
     })().catch(() => {});
   });
   const release = (id) => {
-    const operation = queue.then(async () => {
+    serial(async () => {
       const data = await load();
       for (const target of Object.values(data.session)) if (target.lease?.tab === id) delete target.lease;
       await save(data);
-    });
-    queue = operation.catch(() => {});
+    }).catch(() => {});
   };
   chrome.tabs.onRemoved.addListener(release);
   chrome.tabs.onUpdated.addListener((id, change) => {

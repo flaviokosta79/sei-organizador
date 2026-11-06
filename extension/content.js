@@ -267,13 +267,25 @@
       }
       const top = Math.max(0, offset) + 'px';
       if (root.style.getPropertyValue('--so-sticky-top') !== top) root.style.setProperty('--so-sticky-top', top);
-      scheduleTableHeader();
     }
     stickyOffset();
-    listen(window, 'resize', stickyOffset);
-    listen(window, 'scroll', stickyOffset, true);
+    scheduleTableHeader();
+    // Scroll fires per pixel (captured from every scroller): measure and move the header once per frame,
+    // in the same frame, so the floating header never lags a frame behind.
+    let stickyFrame = null;
+    const scheduleSticky = () => {
+      if (stickyFrame !== null || disposed) return;
+      stickyFrame = (window.requestAnimationFrame || window.setTimeout)(() => {
+        stickyFrame = null;
+        if (disposed) return;
+        stickyOffset();
+        updateTableHeader();
+      });
+    };
+    listen(window, 'resize', scheduleSticky);
+    listen(window, 'scroll', scheduleSticky, true);
     if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(stickyOffset);
+      const observer = new ResizeObserver(scheduleSticky);
       cleanups.push(() => observer.disconnect());
       observer.observe(root);
       observer.observe(table);
@@ -673,7 +685,16 @@
         injectCopyButtons(loaded);
         injectStatusMarkers(loaded);
         const ids = new Set(loaded.map((r) => r.id));
-        const links = (id) => (state.assignments[id] || []).filter((t) => valid.has(t));
+        // Each id's valid tabs are computed once; counts below reuse them instead of re-filtering.
+        const linkCache = new Map();
+        const links = (id) => {
+          let value = linkCache.get(id);
+          if (!value) {
+            value = (state.assignments[id] || []).filter((t) => valid.has(t));
+            linkCache.set(id, value);
+          }
+          return value;
+        };
         const empty = [...ids].filter((id) => !links(id).length).length;
         const matchesStatus = (id) =>
           statusFilter === 'all' || !statusKnown() || (state.statuses[id] || 'none') === statusFilter;
@@ -715,13 +736,21 @@
           : `${ids.size} processos carregados nesta página · classificações desconhecidas sem sincronização.`;
         viewing.textContent = `Visualizando: ${!active ? 'todos os processos' : active === unassigned ? 'Sem assunto' : state.tabs.find((t) => t.id === active)?.name || 'todos os processos'}${statusFilter === 'all' ? '' : ' · ' + seiStatusLabels[statusFilter]} · ${loaded.filter((r) => !r.row.hidden).length}/${ids.size} carregados${statusKnown() ? '' : ' · Status indisponível'}`;
         viewing.title = viewing.textContent;
+        const eligible = [...ids].filter(
+          (id) => !active || (active === unassigned ? !links(id).length : links(id).includes(active)),
+        );
+        const byStatus = new Map();
+        if (statusKnown())
+          for (const id of eligible) {
+            const value = state.statuses[id] || 'none';
+            byStatus.set(value, (byStatus.get(value) || 0) + 1);
+          }
         for (const option of toolbar.querySelectorAll('.so-status-filter option')) {
           const base = option.value === 'all' ? 'Todos os status' : seiStatusLabels[option.value];
-          const eligible = [...ids].filter(
-            (id) => !active || (active === unassigned ? !links(id).length : links(id).includes(active)),
-          );
           const count = statusKnown()
-            ? eligible.filter((id) => option.value === 'all' || (state.statuses[id] || 'none') === option.value).length
+            ? option.value === 'all'
+              ? eligible.length
+              : byStatus.get(option.value) || 0
             : '—';
           const text = base + ' (' + count + ')';
           if (option.textContent !== text) option.textContent = text;
@@ -960,6 +989,11 @@
         const items = await historyRequest;
         if (!historyOpen || generation !== historyGeneration) return;
         loading.remove();
+        // Indexed once per render: rows() parses every table link and items can hold 100 entries.
+        const numbers = Object.fromEntries(rows().map((r) => [r.id, r.number]));
+        const undoneIds = new Set(
+          items.filter((item) => item.action.type === 'undo').map((item) => item.action.historyId),
+        );
         for (const h of seiResolveHistory(items, state)) {
           const p = document.createElement('p');
           p.className =
@@ -967,7 +1001,7 @@
             (['create', 'delete', 'assign', 'unassign', 'rename', 'undo', 'status'].includes(h.action.type)
               ? h.action.type
               : 'unknown');
-          const parts = seiHistoryText(h, Object.fromEntries(rows().map((r) => [r.id, r.number]))).split(' · ');
+          const parts = seiHistoryText(h, numbers).split(' · ');
           p.append(parts[0] + ' · ');
           const user = document.createElement('span');
           user.className = 'so-history-user';
@@ -978,7 +1012,7 @@
               : 'Nome completo não disponível neste registro';
           p.append(user, ' · ' + parts.slice(2).join(' · '));
           if (h.undoReason) p.title = h.undoReason;
-          if (items.some((item) => item.action.type === 'undo' && item.action.historyId === h.id)) {
+          if (undoneIds.has(h.id)) {
             const undone = document.createElement('span');
             undone.className = 'so-history-reverted';
             undone.textContent = ' · Desfeita';
@@ -1020,6 +1054,7 @@
       destination.before(root);
       root.after(history);
       stickyOffset();
+      scheduleTableHeader();
     }
     function dispose() {
       if (disposed) return;

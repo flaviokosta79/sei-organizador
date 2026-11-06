@@ -15,6 +15,7 @@
     return send('scope:get');
   };
   globalThis.seiWorkScope = state;
+  let forceQueued = false;
   let busy = false,
     last = '';
   function identity() {
@@ -126,9 +127,12 @@
     const next = identity(),
       found = blocks(),
       key = JSON.stringify([next, found]);
-    if (busy || (!force && key === last)) {
+    if (busy) {
+      // A forced refresh (block changed elsewhere) must run after the current one, not be dropped.
+      if (force) forceQueued = true;
       return;
     }
+    if (!force && key === last) return;
     busy = true;
     last = key;
     const previousIdentity = JSON.stringify(state.identity);
@@ -155,7 +159,10 @@
         document.dispatchEvent(new Event('sei-organizador:restore-process'));
       }
       queueMicrotask(() => {
-        if (JSON.stringify([identity(), blocks()]) !== last) refresh();
+        if (forceQueued) {
+          forceQueued = false;
+          refresh(true);
+        } else if (JSON.stringify([identity(), blocks()]) !== last) refresh();
       });
     }
   }

@@ -1,8 +1,12 @@
 // Unit arrivals are independent of internal-block snapshots and their classification cleanup.
 export function createReceipts(db) {
   db.exec('CREATE TABLE IF NOT EXISTS secretariat_receipts (unit TEXT PRIMARY KEY, version INTEGER NOT NULL, observed INTEGER NOT NULL, pending TEXT NOT NULL)');
+  const q={
+    read:db.prepare('SELECT * FROM secretariat_receipts WHERE unit=?'),
+    save:db.prepare('INSERT INTO secretariat_receipts VALUES(?,?,?,?) ON CONFLICT(unit) DO UPDATE SET version=excluded.version,observed=excluded.observed,pending=excluded.pending'),
+  };
   function read(unit) {
-    const row=db.prepare('SELECT * FROM secretariat_receipts WHERE unit=?').get(unit);
+    const row=q.read.get(unit);
     return row?{version:row.version,observed:row.observed,initialized:true,pending:JSON.parse(row.pending)}:{version:0,observed:0,initialized:false,pending:[]};
   }
   function snapshot(unit,data) {
@@ -14,7 +18,7 @@ export function createReceipts(db) {
       if(old.version!==data.version)throw Object.assign(Error('Consulta de recebidos substituída; aguarde a próxima leitura.'),{status:409});
       const previous=new Map(old.pending.map(p=>[p.id,p])),now=Date.now();
       const pending=data.items.filter(p=>p.pending).map(p=>({id:p.id,number:p.number,token:previous.get(p.id)?.token||crypto.randomUUID(),baseline:previous.get(p.id)?.baseline??!old.initialized}));
-      db.prepare('INSERT INTO secretariat_receipts VALUES(?,?,?,?) ON CONFLICT(unit) DO UPDATE SET version=excluded.version,observed=excluded.observed,pending=excluded.pending').run(unit,old.version+1,now,JSON.stringify(pending));
+      q.save.run(unit,old.version+1,now,JSON.stringify(pending));
       db.exec('COMMIT');
       return {version:old.version+1,observed:now,initialized:true,pending};
     }catch(e){db.exec('ROLLBACK');throw e;}
