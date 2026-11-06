@@ -10,6 +10,9 @@
     scopePending = false;
   let signatures = { events: [] },
     signatureOwner = '';
+  // Newer extension release, if any (asked once per page; the worker caches it for hours).
+  let update = null,
+    updateAsked = false;
   let receipts = { pending: [] },
     receiptOwner = '',
     receiptLimit = 50;
@@ -112,6 +115,7 @@
       p { margin: 4px 0; } ul { margin: 4px 0; padding-left: 18px; }
       a { color: #174c91; } button { font: inherit; cursor: pointer; margin: 3px 6px 3px 0; padding: 3px 6px; }
       .error { color: #a02020; } .muted { color: #526578; } h3 { font-size: 12px; margin: 8px 0 2px; }
+      .so-update { margin: 0 0 8px; padding: 6px 8px; border-left: 3px solid #d39b00; background: #fff7dc; } .so-update h3 { margin-top: 0; }
       @media print { :host { display: none !important; } }
     `;
     panel = node('section');
@@ -161,6 +165,23 @@
     latestView = view;
     settings.mount();
     body.replaceChildren();
+    const upgrade = update?.available && update.url ? update : null;
+    if (upgrade) {
+      const box = node('div', null, body);
+      box.className = 'so-update';
+      node('h3', `Nova versão da extensão: ${upgrade.latest} (instalada: ${upgrade.current})`, box);
+      node(
+        'p',
+        'Baixe o ZIP em R:' +
+          String.fromCharCode(92) +
+          'sei-organizador e siga o LEIA-ME: extraia sobre a mesma pasta da extensão e clique em recarregar em chrome://extensions.',
+        box,
+      );
+      const link = node('a', 'Ver o que mudou', box);
+      link.href = upgrade.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+    }
     const count = view.records.reduce((sum, r) => sum + r.pending.length, 0);
     const signing = view.records.reduce((sum, r) => sum + (r.signPending?.length || 0), 0);
     const completed = signatures.events.length;
@@ -193,9 +214,10 @@
       summary.textContent = `✓ ${completed} ${completed === 1 ? 'documento assinado' : 'documentos assinados'}${count || signing ? ` · ${summary.textContent}` : ''}`;
     if (receiving)
       summary.textContent = `📥 Secretaria · ${receiving} para receber${count || signing || completed ? ` · ${summary.textContent}` : ''}`;
+    if (upgrade) summary.textContent = `⬆ Nova versão ${upgrade.latest} · ${summary.textContent}`;
     summary.setAttribute('aria-live', 'polite');
     panel.dataset.new = String(total > 0);
-    panel.dataset.error = String(hasError);
+    panel.dataset.error = String(hasError || !!upgrade);
     if (count + signing + completed) {
       const ack = node('button', receiving ? 'Marcar demais avisos como vistos' : 'Marcar todos como vistos', body);
       ack.type = 'button';
@@ -439,6 +461,18 @@
   }
   if (document.readyState === 'complete') resumePolling();
   else window.addEventListener('load', resumePolling, { once: true });
+  function askUpdate() {
+    if (updateAsked) return;
+    updateAsked = true;
+    chrome.runtime
+      .sendMessage({ type: 'update:status' })
+      .then((response) => {
+        if (!response?.data?.available) return;
+        update = response.data;
+        if (latestView && !stopped) render(latestView);
+      })
+      .catch(() => {});
+  }
   async function sync(poll = true) {
     // Process pages keep their native document frames responsive: do not start SEI scans here.
     poll = poll && pollingReady && !nativeProcessPage();
@@ -457,6 +491,7 @@
       settings.reset();
       latestView = null;
     }
+    askUpdate();
     busy = true;
     const reg = registration(),
       regKey = key(reg);

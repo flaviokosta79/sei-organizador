@@ -8,6 +8,7 @@ importScripts('monitor-background.js');
 importScripts('signature-background.js');
 importScripts('receipts-background.js');
 importScripts('editing-background.js');
+importScripts('update-check.js');
 // Tabs, the process card and the monitor poll the same block every few seconds: identical reads within
 // a short window share one request. Any write from this browser to the block drops its cached reads.
 // A read that started before a write is never reused afterwards (generation per block).

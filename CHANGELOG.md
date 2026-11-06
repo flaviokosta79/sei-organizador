@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.0 — 2026-11-06
+
+**Extensão (não requer reimplantar a API)**
+
+- Aviso de nova versão disponível:
+  - Como a extensão é instalada por ZIP e o Chrome não a atualiza sozinho, o service worker consulta a última release publicada no GitHub (`api.github.com/repos/flaviokosta79/sei-organizador/releases/latest`). A consulta é feita no máximo a cada 6 h, ou 1 h depois de uma falha, e o resultado fica guardado no navegador.
+  - Quando existe versão mais nova que a instalada, o rodapé do SEI mostra "⬆ Nova versão X", com o indicador amarelo. Os detalhes dizem onde baixar o ZIP (`R:\sei-organizador`), como atualizar e trazem o link "Ver o que mudou".
+  - A consulta não leva cookies, referência nem dados do usuário. Só são aceitos números de versão válidos e endereços de release deste repositório. Só telas do SEI podem perguntar.
+  - Nova permissão de acesso: `https://api.github.com/*`.
+  - O aviso só funciona a partir da 0.23.0: quem está numa versão anterior precisa atualizar uma vez manualmente. Para o aviso aparecer, a release nova precisa ser publicada no GitHub como "Latest".
+
 ## 0.22.4 — 2026-11-06
 
 **Extensão (não requer reimplantar a API)**

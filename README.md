@@ -1,4 +1,4 @@
-# SEI Organizador — 0.22.4
+# SEI Organizador — 0.23.0
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -6,7 +6,7 @@ Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ po
 
 1. Clone o projeto e carregue a pasta `extension` em `chrome://extensions`, com o modo desenvolvedor habilitado. Como alternativa, extraia o ZIP de distribuição em uma pasta e carregue essa pasta, que contém `manifest.json` na raiz.
 
-   **Na unidade (ZIP no disco compartilhado):** cada versão fica em `R:\sei-organizador` como `sei-organizador-extensao-<versão>.zip`, com o passo a passo em `LEIA-ME - instalar e atualizar.txt`. O disco compartilhado bloqueia arquivos `.js`, então a extensão não pode ser carregada direto dele: extraia o ZIP numa pasta do próprio computador (por exemplo `C:\SEI-Organizador\extensao`) e carregue essa pasta. Para atualizar, extraia o ZIP novo **sobre a mesma pasta**, substituindo os arquivos, clique em recarregar no cartão da extensão em `chrome://extensions` e recarregue as abas do SEI. Desde a 0.22.4 o ID é fixo (`koonfhnchakocaeefddpcahmianpcobo`), então trocar de pasta não apaga mais os dados guardados no navegador. A troca para a 0.22.4 apaga esses dados uma única vez.
+   **Na unidade (ZIP no disco compartilhado):** cada versão fica em `R:\sei-organizador` como `sei-organizador-extensao-<versão>.zip`, com o passo a passo em `LEIA-ME - instalar e atualizar.txt`. O disco compartilhado bloqueia arquivos `.js`, então a extensão não pode ser carregada direto dele: extraia o ZIP numa pasta do próprio computador (por exemplo `C:\SEI-Organizador\extensao`) e carregue essa pasta. Para atualizar, extraia o ZIP novo **sobre a mesma pasta**, substituindo os arquivos, clique em recarregar no cartão da extensão em `chrome://extensions` e recarregue as abas do SEI. Desde a 0.22.4 o ID é fixo (`koonfhnchakocaeefddpcahmianpcobo`), então trocar de pasta não apaga mais os dados guardados no navegador. A troca para a 0.22.4 apaga esses dados uma única vez. Desde a 0.23.0, o rodapé do SEI avisa quando há versão mais nova publicada (consulta à última release do GitHub a cada 6 h, sem dados do usuário). Ao publicar uma versão, gere a release no GitHub como "Latest" e coloque o mesmo ZIP em `R:\sei-organizador`.
 
 2. Abra a lista de processos de um bloco interno do SEI na unidade atendida pela extensão.
 3. Após atualizar, recarregue a extensão no Chrome e depois a página do bloco.
@@ -190,7 +190,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.22.3: **230 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.0: **234 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -268,4 +268,4 @@ A melhora completa depende de todos os colegas atualizarem: quem continua na 0.2
 
 ### Estado em produção
 
-Extensão 0.22.4 (ZIP da release v0.22.4 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.22.4 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.0 (ZIP da release v0.23.0 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.0 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
