@@ -137,7 +137,8 @@ test('card mostra inclusão no bloco com data e autor, preservada após sincroni
 });
 
 test('card prioriza controles e distingue chegada, atividade e alertas de outras unidades',async()=>{
- const rows=[hrow('25/10/2026 11:00','SEPM/5°CPA','recebeu','Processo recebido na unidade',true),hrow('25/10/2026 10:00','SEPM/5°CPA','enviou','Processo remetido pela unidade SEPM/ORIGEM'),...historyRows];
+ // Relative to the fixture clock: with fixed dates the own-unit arrival eventually becomes the oldest idle unit.
+ const rows=[hrow(stamp(new Date(fixtureNow-2*60000)),'SEPM/5°CPA','recebeu','Processo recebido na unidade',true),hrow(stamp(new Date(fixtureNow-5*60000)),'SEPM/5°CPA','enviou','Processo remetido pela unidade SEPM/ORIGEM'),...historyRows];
  const f=frame({action:'procedimento_visualizar',rows});try{await f.done;const root=f.badge(),list=root.querySelector('ul');
   const items=[...list.children];assert.ok(items.indexOf(list.querySelector('.block-section'))<items.indexOf(list.querySelector('.activity-section')));
   assert.equal(list.lastElementChild.className,'type-section');assert.equal(root.querySelector('.type-section details').open,false);
