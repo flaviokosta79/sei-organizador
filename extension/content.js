@@ -723,7 +723,7 @@
             !matchesStatus(id);
           row.hidden = hide;
           // Through a click, so the SEI's own handler drops it from hdnInfraItensSelecionados too.
-          if (hide && check?.checked) check.click();
+          if (hide && check?.checked) unselect(check);
         }
         for (const b of tabs.querySelectorAll('[role=tab]')) {
           const key = b.dataset.tab;
@@ -772,6 +772,12 @@
         if (!disposed) tableObserver.observe(table, { childList: true, subtree: true });
       }
     }
+    function unselect(check) {
+      const disabled = check.disabled;
+      check.disabled = false;
+      check.click();
+      check.disabled = disabled;
+    }
     const selectedRows = () => rows().filter((item) => item.check?.checked && !item.row.hidden);
     function updateBatch() {
       const select = toolbar.querySelector('.so-batch-status'),
@@ -790,7 +796,7 @@
       if (event.target.closest?.('#lnkInfraCheck,[onclick*="infraSelecaoMultipla"]'))
         setTimeout(() => {
           if (disposed) return;
-          for (const { row, check } of rows()) if (row.hidden && check?.checked) check.click();
+          for (const { row, check } of rows()) if (row.hidden && check?.checked) unselect(check);
           updateBatch();
         });
       queueMicrotask(updateBatch);

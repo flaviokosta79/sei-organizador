@@ -51,3 +51,14 @@ test('abertura em lote marca vários processos vistos numa única gravação por
   for(const bad of [[],['x'],['20','20'],Array.from({length:1001},(_,i)=>String(i))])assert.throws(()=>a.openedMany('1',bad,actor,'2'),/Processos inválidos/);
  }finally{s.close();}
 });
+
+test('unidade guarda estado de no máximo N blocos; blocos já conhecidos continuam aceitos',()=>{
+ const s=createStore(':memory:');const actor={login:'a',org:'SEPM'};
+ try{
+  for(const block of ['1','2'])s.mutate('1',block,0,actor,{type:'create',name:'A'});
+  s.alerts.snapshot('1','3',{version:0,ids:[]});
+  assert.throws(()=>s.admit('1','4',3),e=>e.status===409&&/Limite de 3 blocos/.test(e.message));
+  for(const block of ['1','2','3'])s.admit('1',block,3);
+  s.admit('2','4',3);
+ }finally{s.close();}
+});

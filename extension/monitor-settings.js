@@ -126,7 +126,11 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     status.textContent = extra?.test ? 'Reproduzindo teste de som…' : 'Salvando configurações…';
     try {
       const view = await call(type, extra);
-      if (JSON.stringify(getIdentity()) !== identity) return;
+      if (JSON.stringify(getIdentity()) !== identity) {
+        if (current === generation)
+          status.textContent = 'O usuário do SEI mudou; confira as configurações e tente novamente.';
+        return;
+      }
       onView(view);
       if (current !== generation) return;
       if (type === 'monitor:chiefs') draft = null;

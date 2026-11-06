@@ -94,3 +94,25 @@ test('API HTTP: caractere acentuado dividido entre pacotes do corpo é preservad
  assert.equal((await batch('1',{processes:[]})).status,400);
  }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
 });
+
+test('API pública (modo de produção): limites, JSON inválido, mensagens úteis e cabeçalhos',async()=>{
+ const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+ const dir=mkdtempSync(join(tmpdir(),'sei-public-'));
+ const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_ALLOW_PUBLIC_ACCESS:'true',SEI_API_TOKEN_HASHES_FILE:'',SEI_UNIT_ID:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+ try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
+  const base=`http://127.0.0.1:${port}/v1/units/1`;
+  const post=(path,body,type='application/json')=>fetch(base+path,{method:'POST',headers:{'Content-Type':type},body:typeof body==='string'?body:JSON.stringify(body)});
+  const read=await fetch(base+'/blocks/2');assert.equal(read.status,200);assert.equal(read.headers.get('x-content-type-options'),'nosniff');
+  assert.equal((await post('/blocks/2','{"version":',)).status,400,'JSON malformado');
+  assert.equal((await post('/blocks/2','x','text/plain')).status,415);
+  assert.equal((await post('/blocks/2',{version:0,actor:{},action:{type:'create',name:'x'.repeat(70000)}})).status,413);
+  assert.equal((await fetch(base+'/blocks/'+'9'.repeat(31))).status,404,'id de bloco longo demais');
+  const tooLong=await post('/blocks/2',{version:0,actor:{login:'a'},action:{type:'create',name:'x'.repeat(81)}});
+  assert.equal(tooLong.status,400);assert.match((await tooLong.json()).error,/1 a 80 caracteres/);
+  const unknown=await post('/blocks/2',{version:0,actor:{login:'a'},action:{type:'rename',tabId:'nada',name:'Novo'}});
+  assert.match((await unknown.json()).error,/não existe mais/);
+  const generic=await post('/blocks/2',{version:0,actor:{login:'a'},action:{type:'inexistente'}});
+  assert.equal((await generic.json()).error,'Não foi possível aplicar a alteração. Verifique os dados.');
+ }finally{const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;rmSync(dir,{recursive:true,force:true});}
+});

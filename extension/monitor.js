@@ -533,7 +533,7 @@
             );
           }
         } finally {
-          if (!stopped) await call('monitor:done', { lease: view.poll.id });
+          await call('monitor:done', { lease: view.poll.id }).catch(() => {});
           controller = null;
         }
       }

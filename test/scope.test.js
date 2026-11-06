@@ -79,7 +79,8 @@ test('opções identificam usuário, mostram blocos e salvam a escolha',async()=
  try{w.eval(read('options.js'));await tick();const select=w.document.querySelector('#block');assert.equal(select.options.length,2);assert.equal(select.value,'2');select.value='3';w.document.querySelector('#save').click();await tick();assert.equal((await state.store.get(actor)).block,'3');assert.match(w.document.querySelector('#status').textContent,/Bloco 3 salvo/);}finally{w.close();}
 });
 
-test('consulta completa limpa só classificações ausentes do mesmo bloco e conserva histórico',()=>{
+test('consulta completa limpa só classificações ausentes do mesmo bloco e conserva histórico',t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
  const store=createStore(':memory:');const user={login:'pessoa',org:'SEPM'};
  try{
   let s=store.mutate('1','2',0,user,{type:'create',name:'Assunto'});const tab=s.tabs[0].id;
@@ -88,6 +89,9 @@ test('consulta completa limpa só classificações ausentes do mesmo bloco e con
   store.mutate('1','3',0,user,{type:'status',status:'urgent',processIds:['100']});
   let snapshot=store.alerts.snapshot('1','2',{version:0,ids:['100','200']});
   assert.throws(()=>store.alerts.snapshot('1','2',{version:0,ids:['200']}),e=>e.status===409);assert.equal(store.read('1','2').statuses['100'],'sign');
+  snapshot=store.alerts.snapshot('1','2',{version:snapshot.version,ids:['200']});
+  assert.equal(store.read('1','2').statuses['100'],'sign','uma leitura só não limpa');
+  t.mock.timers.tick(30000);
   snapshot=store.alerts.snapshot('1','2',{version:snapshot.version,ids:['200']});s=store.read('1','2');
   assert.equal(s.statuses['100'],undefined);assert.equal(s.assignments['100'],undefined);assert.equal(s.statuses['200'],'sign');assert.deepEqual(s.assignments['200'],[tab]);assert.equal(s.tabs.length,1);assert.equal(store.read('1','3').statuses['100'],'urgent');
   const history=store.history('1','2');assert.equal(history[0].action.type,'departed');assert.equal(history[0].undoable,false);
@@ -105,12 +109,19 @@ test('abertura e presença ficam isoladas por bloco mesmo para o mesmo processo'
  }finally{store.close();}
 });
 
-test('primeira consulta completa limpa vínculos antigos ausentes; dados inválidos e chamadas manuais não limpam',()=>{
+test('consulta completa limpa vínculos antigos ausentes após confirmação; dados inválidos e chamadas manuais não limpam',t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
  const store=createStore(':memory:');try{const user={login:'pessoa',org:'SEPM'};let state=store.mutate('1','2',0,user,{type:'status',status:'urgent',processIds:['100']});
   assert.throws(()=>store.alerts.snapshot('1','2',{version:0,ids:['200','200']}));assert.equal(store.read('1','2').statuses['100'],'urgent');
   assert.throws(()=>store.mutate('1','2',state.version,user,{type:'departed',processIds:['100']}));assert.equal(store.read('1','2').statuses['100'],'urgent');
-  store.alerts.snapshot('1','2',{version:0,ids:['200']});state=store.read('1','2');assert.equal(state.statuses['100'],undefined);const count=store.history('1','2').length;
-  store.alerts.snapshot('1','2',{version:1,ids:['200']});assert.equal(store.history('1','2').length,count);
+  let alerts=store.alerts.snapshot('1','2',{version:0,ids:['200']});assert.equal(store.read('1','2').statuses['100'],'urgent');
+  // Back in the next reading: the pending departure is dropped, nothing is cleared later.
+  t.mock.timers.tick(40000);alerts=store.alerts.snapshot('1','2',{version:alerts.version,ids:['100','200']});
+  t.mock.timers.tick(40000);alerts=store.alerts.snapshot('1','2',{version:alerts.version,ids:['200']});assert.equal(store.read('1','2').statuses['100'],'urgent','ausência recomeça a contar');
+  // Two quick forged empty lists (under 30 s) are not enough either.
+  alerts=store.alerts.snapshot('1','2',{version:alerts.version,ids:[]});assert.equal(store.read('1','2').statuses['100'],'urgent');
+  t.mock.timers.tick(40000);alerts=store.alerts.snapshot('1','2',{version:alerts.version,ids:['200']});state=store.read('1','2');assert.equal(state.statuses['100'],undefined);const count=store.history('1','2').length;
+  store.alerts.snapshot('1','2',{version:alerts.version,ids:['200']});assert.equal(store.history('1','2').length,count);
  }finally{store.close();}
 });
 

@@ -45,8 +45,12 @@
     let restoreTimer;
     const restore = () => {
       clearTimeout(restoreTimer);
+      const missing = () => !treeDocument.querySelector('#sei-organizador-documento');
       restoreTimer = setTimeout(() => {
-        if (!treeDocument.querySelector('#sei-organizador-documento') && !documentOpen()) draw();
+        if (!missing()) return;
+        if (!documentOpen()) return draw();
+        // The open document should draw its own card; if it does not within 2 s, show the summary.
+        restoreTimer = setTimeout(() => missing() && draw(), 2000);
       }, 250);
     };
     treeDocument.addEventListener('sei-organizador:restore-process', restore);

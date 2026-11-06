@@ -315,3 +315,14 @@ test('falha passageira volta à aba e ao filtro escolhidos quando a conexão ret
   assert.ok(reads>0);
  }finally{f.dom.window.close();}
 });
+
+test('checkbox oculto desabilitado também sai da seleção nativa',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document,form=d.querySelector('form');
+  const field=d.createElement('input');field.type='hidden';field.id='hdnInfraItensSelecionados';form.append(field);
+  const box=d.querySelector('#chkInfraItem200');box.value='200';
+  box.addEventListener('click',()=>{field.value=box.checked?'200':'';});
+  box.click();assert.equal(field.value,'200');box.disabled=true;
+  Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent==='Assunto').click();
+  assert.equal(box.checked,false);assert.equal(field.value,'');assert.equal(box.disabled,true,'estado desabilitado preservado');
+ }finally{f.dom.window.close();}
+});

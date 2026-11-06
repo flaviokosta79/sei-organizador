@@ -12,9 +12,19 @@ export function createStore(path) {
   const db = new DatabaseSync(path);
   // WAL with NORMAL sync stays durable across app crashes; busy_timeout absorbs short lock waits.
   db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;');
+  // A process leaves the block's organization only when two complete readings at least 30 s apart
+  // miss it: one wrong, partial or forged list can no longer wipe subjects and statuses (not undoable).
+  db.exec('CREATE TABLE IF NOT EXISTS departures (unit TEXT, block TEXT, process TEXT, since INTEGER, PRIMARY KEY(unit,block,process))');
+  const departures={confirmAfter:30000,list:db.prepare('SELECT process,since FROM departures WHERE unit=? AND block=?'),add:db.prepare('INSERT OR IGNORE INTO departures VALUES(?,?,?,?)'),drop:db.prepare('DELETE FROM departures WHERE unit=? AND block=? AND process=?')};
   const alerts=createAlerts(db,{onSnapshot:(unit,block,ids)=>{
-    const current=read(unit,block),present=new Set(ids);
-    const removed=[...new Set([...Object.keys(current.assignments),...Object.keys(current.statuses)])].filter(id=>!present.has(id));
+    const current=read(unit,block),present=new Set(ids),now=Date.now();
+    const missing=new Set([...Object.keys(current.assignments),...Object.keys(current.statuses)].filter(id=>!present.has(id)));
+    const candidates=new Map(departures.list.all(unit,block).map(r=>[r.process,r.since])),removed=[];
+    for(const [id,since] of candidates){
+      if(!missing.has(id))departures.drop.run(unit,block,id);
+      else if(now-since>=departures.confirmAfter){removed.push(id);departures.drop.run(unit,block,id);}
+    }
+    for(const id of missing)if(!candidates.has(id))departures.add.run(unit,block,id,now);
     for(let i=0;i<removed.length;i+=1000)mutate(unit,block,read(unit,block).version,{name:'SEI Organizador',login:'organizador.sistema',org:'SEPM',verified:false},{type:'departed',processIds:removed.slice(i,i+1000)},true);
   }});
   const editing=createEditing(db);
@@ -40,9 +50,9 @@ export function createStore(path) {
         case 'departed':
           if(!inTransaction||!Array.isArray(action.processIds)||!action.processIds.length||action.processIds.length>1000||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id)))throw new Error('Retirada não confirmada');
           for(const id of action.processIds){delete next.assignments[id];delete next.statuses[id];}break;
-        case 'create': if(next.tabs.length>=100) throw new Error('Limite de abas atingido'); next.tabs.push({id:crypto.randomUUID(),name:validName(action.name)}); break;
-        case 'rename': if(!tab) throw new Error('Aba inexistente'); tab.name=validName(action.name); break;
-        case 'delete': if(!tab) throw new Error('Aba inexistente'); next.tabs=next.tabs.filter(t=>t.id!==tab.id); for(const id of Object.keys(next.assignments)){next.assignments[id]=next.assignments[id].filter(t=>t!==tab.id);if(!next.assignments[id].length) delete next.assignments[id];} break;
+        case 'create': if(next.tabs.length>=100) throw bad('Limite de 100 abas atingido neste bloco.'); next.tabs.push({id:crypto.randomUUID(),name:validName(action.name)}); break;
+        case 'rename': if(!tab) throw bad('Esta aba não existe mais. Atualize a página.'); tab.name=validName(action.name); break;
+        case 'delete': if(!tab) throw bad('Esta aba não existe mais. Atualize a página.'); next.tabs=next.tabs.filter(t=>t.id!==tab.id); for(const id of Object.keys(next.assignments)){next.assignments[id]=next.assignments[id].filter(t=>t!==tab.id);if(!next.assignments[id].length) delete next.assignments[id];} break;
         case 'assign': case 'unassign':
           if(!tab||!Array.isArray(action.processIds)||action.processIds.length>1000||!action.processIds.every(id=>typeof id==='string'&&/^\d{1,30}$/.test(id))) throw new Error('Seleção inválida');
           for(const id of action.processIds){const a=new Set(next.assignments[id]||[]);action.type==='assign'?a.add(tab.id):a.delete(tab.id);if(a.size)next.assignments[id]=[...a];else delete next.assignments[id];} break;
@@ -52,7 +62,7 @@ export function createStore(path) {
         case 'undo': {
           if(!Number.isSafeInteger(action.historyId))throw Object.assign(new Error('Selecione uma alteração no histórico.'),{status:400});
           const h=q.entry.get(unit,block,action.historyId);
-          if(!h) throw new Error('Sem alteração para desfazer');
+          if(!h) throw bad('Esta alteração não está mais no histórico.');
           if(!sameActor(actor,JSON.parse(h.actor)))throw Object.assign(new Error('Você só pode desfazer alterações feitas pelo seu próprio usuário.'),{status:403});
           const plan=undoPlan(h,q.later.all(unit,block,h.id));
           if(plan.reason)throw Object.assign(new Error(plan.reason),{status:409});
@@ -117,12 +127,21 @@ export function createStore(path) {
         // whose cursor is past it would never see the new events.
         'DELETE FROM signature_events WHERE signed_at<? AND id<(SELECT MAX(id) FROM signature_events)',
         'DELETE FROM signature_watches WHERE included_at<?',
+        'DELETE FROM departures WHERE since<?',
       ])removed+=db.prepare(sql).run(cutoff).changes;
       db.exec('COMMIT');
       if(removed)historyCache.clear();
       return {removed};
     }catch(e){db.exec('ROLLBACK');throw e;}
   }
-  return {receipts,signatures,editing,alerts,read,mutate,history,maintain,close:()=>db.close()};
+  const blocksIn={known:db.prepare('SELECT 1 FROM blocks WHERE unit=? AND block=? UNION ALL SELECT 1 FROM alert_blocks WHERE unit=? AND block=? LIMIT 1'),count:db.prepare('SELECT COUNT(*) AS n FROM (SELECT block FROM blocks WHERE unit=? UNION SELECT block FROM alert_blocks WHERE unit=?)')};
+  // The API is public: a unit can hold state for at most this many blocks, so the volume cannot be filled.
+  function admit(unit,block,limit=500){
+    if(blocksIn.known.get(unit,block,unit,block))return;
+    if(blocksIn.count.get(unit,unit).n>=limit)throw Object.assign(new Error(`Limite de ${limit} blocos por unidade atingido.`),{status:409});
+  }
+  return {receipts,signatures,editing,alerts,read,mutate,history,maintain,admit,close:()=>db.close()};
 }
-function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw new Error('Nome deve conter 1 a 80 caracteres');return n.trim();}
+function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw bad('O nome da aba deve ter de 1 a 80 caracteres.');return n.trim();}
+// Errors the user can act on: the API shows their message instead of a generic one.
+function bad(message){return Object.assign(new Error(message),{status:400});}

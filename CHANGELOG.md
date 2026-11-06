@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.22.0 — 2026-11-06
+
+**Servidor (requer reimplantar a API)**
+
+- Saída do bloco confirmada:
+  - Um processo só perde assuntos e status quando duas leituras completas, com pelo menos 30 s entre elas, deixam de encontrá-lo. Se ele voltar a aparecer nesse meio-tempo, a contagem recomeça.
+  - Antes, uma única lista vazia, parcial ou forjada apagava toda a organização do bloco, sem desfazer.
+  - Na prática, a limpeza de um processo que saiu do bloco acontece uma rodada depois.
+- Limites:
+  - Ids de bloco têm até 30 dígitos em todas as rotas.
+  - Cada unidade guarda estado de no máximo 500 blocos; os blocos já conhecidos continuam aceitos.
+  - A API é pública, e sem esses limites o volume podia ser enchido.
+- Mensagens úteis:
+  - Erros de validação que o usuário pode corrigir aparecem como são, por exemplo:
+    - "O nome da aba deve ter de 1 a 80 caracteres."
+    - "Limite de 100 abas atingido neste bloco."
+    - "Esta aba não existe mais."
+  - Os demais continuam com a mensagem genérica.
+- Cabeçalhos e conexões:
+  - As respostas levam `X-Content-Type-Options: nosniff`.
+  - O keep-alive passa a 95 s, acima do reaproveitamento de conexões do Traefik, para evitar 502 esporádicos.
+- Docker:
+  - Imagem base fixada por digest.
+  - `HEALTHCHECK` na própria imagem.
+  - `NODE_ENV=production` e temporários do SQLite em `/tmp`.
+- Stack:
+  - Sistema de arquivos raiz só leitura (`read_only`), com `/tmp` em memória (64 MB).
+  - `cap_drop: ALL`.
+  - O app continua gravando apenas no volume `/data`.
+
+**Extensão**
+
+- Ao fechar um documento que não monta card (por exemplo, PDF), o resumo do processo volta após 2 s, em vez de a área ficar vazia.
+- O fim da rodada do monitor é avisado mesmo quando a aba líder sai no meio, e as outras abas se atualizam na hora.
+- Checkbox oculto e desabilitado também sai da seleção nativa do SEI.
+- Configurações: uma troca de usuário durante "Salvando…" deixa uma mensagem clara, em vez de o texto ficar preso.
+- Opções:
+  - Um bloco salvo que não está no catálogo não permite mais salvar vazio; a seleção começa pelo primeiro bloco listado.
+  - "Salvar" fica desabilitado sem bloco.
+
+**Testes**
+
+- 226 testes, todos passando. Os novos cobrem:
+  - API em modo público: 413, 415, JSON malformado, id longo, mensagens e `nosniff`;
+  - confirmação da saída do bloco;
+  - limite de blocos;
+  - página de opções: uma aba só e bloco vazio;
+  - checkbox desabilitado.
+
+**Não alterado**
+
+- Os timers de tempo limite do ritmo terminam sozinhos, no máximo ao fim do prazo de cada leitura. Ficaram como estão.
+
+Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.21.1 — 2026-11-06
 
 - Recebidos da Secretaria:

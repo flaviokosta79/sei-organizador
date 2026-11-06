@@ -20,8 +20,10 @@
       block.append(option);
     }
     if (selected?.block) block.value = selected.block;
+    // A saved block missing from the catalog leaves no selection: start from the first listed block.
+    if (!block.value && block.options.length) block.selectedIndex = 0;
     block.disabled = !block.options.length;
-    save.disabled = block.disabled;
+    save.disabled = block.disabled || !block.value;
     profile.disabled = !profiles.length;
   }
   async function load() {
