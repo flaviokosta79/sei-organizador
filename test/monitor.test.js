@@ -478,15 +478,15 @@ test('vistos em lote: um envio por bloco e retorno a envios individuais com API 
  assert.equal(old[0],'/v1/units/1/processes/opened');assert.equal(old.filter(p=>/processes\/\d+\/opened/.test(p)).length,3);
 });
 
-test('monitor só inicia rodada quando a navegação permite e informa SEI lento ao terminar',async()=>{
+test('monitor só inicia rodada quando a navegação permite e avisa o fim da rodada para o recuo',async()=>{
  let allow=false;const asked=[],reports=[];
- const f=worker({activity:{due:(kind,last)=>{asked.push(kind);return allow;},report:(kind,slow)=>reports.push([kind,slow])}});
+ const f=worker({activity:{due:(kind,last)=>{asked.push(kind);return allow;},report:kind=>reports.push(kind)}});
  const sync=()=>f.call({type:'monitor:sync',poll:true,registration:{block:'2',url:blockUrl,name:'Teste'}});
  assert.equal((await sync()).poll,null);assert.ok(asked.length&&asked.every(k=>k.startsWith('monitor:')));
  allow=true;const view=await sync();assert.ok(view.poll);
  // A forced refresh skips the navigation check.
  allow=false;
- await f.call({type:'monitor:done',lease:view.poll.id,slow:true});
- assert.deepEqual(reports,[[asked[0],true]]);
+ await f.call({type:'monitor:done',lease:view.poll.id});
+ assert.deepEqual(reports,[asked[0]]);
  assert.ok((await f.call({type:'monitor:sync',poll:true,force:true})).poll);
 });

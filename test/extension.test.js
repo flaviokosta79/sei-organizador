@@ -262,3 +262,21 @@ test('renderização própria não dispara segunda varredura completa da tabela'
   assert.match(table.textContent,/Atualizado|Urgente/);
  }finally{f.dom.window.close();}
 });
+
+test('linhas ocultas saem também da seleção nativa enviada pelo SEI, inclusive após selecionar todos',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document,form=d.querySelector('form');
+  // Mirrors infraSelecionarItens: the SEI submits the ids kept in this hidden field, not the checkboxes.
+  const field=d.createElement('input');field.type='hidden';field.id='hdnInfraItensSelecionados';form.append(field);
+  const selected=()=>field.value?field.value.split(','):[];
+  const sync=box=>{const ids=new Set(selected());box.checked?ids.add(box.value):ids.delete(box.value);field.value=[...ids].join(',');};
+  for(const box of d.querySelectorAll('#tblProtocolosBlocos input[type=checkbox]')){box.value=box.id.slice(12);box.addEventListener('click',()=>sync(box));}
+  const all=d.createElement('a');all.id='lnkInfraCheck';d.querySelector('#tblProtocolosBlocos th').append(all);
+  all.addEventListener('click',()=>{for(const box of d.querySelectorAll('#tblProtocolosBlocos input[type=checkbox]')){box.checked=true;sync(box);}});
+  const box200=d.querySelector('#chkInfraItem200');box200.click();assert.deepEqual(selected(),[box200.value]);
+  Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent==='Assunto').click();
+  assert.equal(box200.closest('tr').hidden,true);assert.equal(box200.checked,false);assert.deepEqual(selected(),[],'processo oculto não segue nas ações do SEI');
+  all.click();await new Promise(r=>setTimeout(r,0));await tick();
+  const visible=d.querySelector('#chkInfraItem100');
+  assert.equal(box200.checked,false);assert.deepEqual(selected(),[visible.value]);
+ }finally{f.dom.window.close();}
+});

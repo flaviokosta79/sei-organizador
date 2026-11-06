@@ -273,7 +273,7 @@
       const lease = data.session.leases[owner];
       if (lease?.id === msg.lease && lease.tab === sender.tab.id) {
         delete data.session.leases[owner];
-        globalThis.seiActivity?.report('monitor:' + owner, msg.slow === true);
+        globalThis.seiActivity?.report('monitor:' + owner);
       }
     } else if (msg.type === 'monitor:result') {
       if (globalThis.seiWorkScopeStore) await seiWorkScopeStore.requireBlock(identity, msg.block);

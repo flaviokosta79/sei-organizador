@@ -59,7 +59,7 @@
       const scans = (await chrome.storage.session.get(scanKey))[scanKey] || {};
       if (scans[owner]?.tab === sender.tab.id) {
         scans[owner].until = 0;
-        globalThis.seiActivity?.report('signature:' + owner, msg.slow === true);
+        globalThis.seiActivity?.report('signature:' + owner);
         await chrome.storage.session.set({ [scanKey]: scans });
       }
       return { ok: true };
@@ -136,7 +136,7 @@
           (scans[owner]?.until || 0) <= Date.now()
         ) {
           scan = true;
-          scans[owner] = { started: Date.now(), until: Date.now() + 120000, tab: sender.tab.id };
+          scans[owner] = { started: Date.now(), until: Date.now() + 180000, tab: sender.tab.id };
           await chrome.storage.session.set({ [scanKey]: scans });
         }
       }

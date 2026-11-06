@@ -4,6 +4,12 @@
     sessionKey = 'seiSecretariatReceiptTargets';
   const ownerKey = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const maxObservationAge = 90000;
+  // A snapshot is fresh while no cycle could have been expected yet (cycles wait for navigation
+  // and slow down with a slow SEI), plus 90 s for the cycle itself.
+  const observationLimit = (owner) =>
+    globalThis.seiActivity
+      ? Math.max(maxObservationAge, seiActivity.longestGap('receipts:' + owner) + maxObservationAge)
+      : maxObservationAge;
   const serial = seiCreateQueue();
   function address(value, process) {
     const url = new URL(value);
@@ -48,7 +54,7 @@
       );
     return response.json();
   }
-  function apply(record, state) {
+  function apply(record, state, maxAge = maxObservationAge) {
     if (
       !Number.isSafeInteger(state.version) ||
       state.version < 0 ||
@@ -73,7 +79,7 @@
     )
       throw Error('Resposta de recebidos inválida ou desatualizada.');
     const age = Date.now() - state.observed;
-    const fresh = state.initialized && state.observed > 0 && age >= -30000 && age <= maxObservationAge;
+    const fresh = state.initialized && state.observed > 0 && age >= -30000 && age <= maxAge;
     const known = new Set(record.known || []);
     const arrived =
       !fresh || record.known === null ? [] : state.pending.filter((p) => !p.baseline && !known.has(p.token));
@@ -156,7 +162,7 @@
     if (msg.type === 'receipts:done') {
       if (target.lease?.id === msg.lease && target.lease.tab === sender.tab.id) {
         delete target.lease;
-        globalThis.seiActivity?.report('receipts:' + owner, msg.slow === true);
+        globalThis.seiActivity?.report('receipts:' + owner);
       }
       await save(data);
       return view(record, target);
@@ -165,7 +171,7 @@
       if (msg.url) target.url = address(msg.url);
       let poll = null;
       try {
-        const arrived = apply(record, await shared());
+        const arrived = apply(record, await shared(), observationLimit(owner));
         record.error = record.stale
           ? 'Leitura de recebidos antiga; aguardando confirmação recente no SEI. Aviso sonoro suspenso.'
           : '';
@@ -224,7 +230,7 @@
             complete: true,
             items: msg.items.map(({ id, number, pending }) => ({ id, number, pending })),
           });
-          const arrived = apply(record, state);
+          const arrived = apply(record, state, observationLimit(owner));
           target.url = url;
           target.links = links;
           record.error = '';

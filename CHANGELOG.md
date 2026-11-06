@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.20.1 — 2026-11-06
+
+Correções da 0.20.0 e da seleção nativa nas abas.
+
+- Seleção nativa:
+  - O que mudou: ao trocar de aba de assunto ou de filtro, as linhas ocultas são desmarcadas pelo próprio clique do SEI. Assim, saem também do `hdnInfraItensSelecionados`.
+  - O problema: antes, o processo ficava desmarcado na tela, mas continuava sendo enviado nas ações nativas, como "Retirar do bloco".
+  - "Selecionar todos" do SEI também desmarca em seguida as linhas ocultas.
+- Uma leitura de fundo por vez em todas as abas: o service worker distribui a vez de leitura do SEI.
+  - Cada leitura é espaçada pelo tempo da última resposta (de 1 a 10 s) e espera a navegação assentar, no máximo 5 s.
+  - Na 0.20.0, abas diferentes podiam ler o SEI ao mesmo tempo.
+- Tempos limite contam só a leitura:
+  - O limite de 15 s por requisição e os limites totais (bloco 120 s, Controle de Processos 170 s, assinaturas 110 s) não descontam mais a espera pela vez.
+  - Na 0.20.0, com o SEI lento, a leitura estourava o prazo antes de sair.
+  - O prazo da varredura de assinaturas passou de 120 para 180 s.
+- Recebidos não aparecem mais como "Leitura antiga… aviso sonoro suspenso" só porque a rodada foi adiada pela navegação ou pelo SEI lento.
+  - A tolerância passa a ser o maior intervalo normal entre rodadas, mais 90 s.
+  - Rodadas adiadas pela navegação passam a acontecer no máximo a cada 2 min, e não mais a cada 5 min.
+- Recuo com o SEI lento:
+  - A medição é feita no service worker, valendo para todas as abas.
+  - O intervalo maior fica guardado na sessão do navegador e sobrevive ao reinício do service worker.
+  - Sem medições suficientes, o intervalo não muda.
+- Cancelar uma leitura durante a espera pela vez agora a interrompe na hora.
+- 208 testes, todos passando. Novos testes cobrem:
+  - uma leitura por vez entre abas;
+  - o tempo limite sem a espera;
+  - o cancelamento;
+  - o recuo guardado entre reinícios;
+  - a tolerância dos recebidos;
+  - a seleção nativa das linhas ocultas.
+- Somente extensão. Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.20.0 — 2026-11-06
 
 Páginas do SEI mais rápidas com a extensão carregada. As leituras de fundo (blocos monitorados, assinaturas e Controle de Processos) usam a mesma sessão do SEI que a navegação, e o SEI atende uma requisição por vez por sessão. Por isso essas leituras agora dão passagem à navegação.

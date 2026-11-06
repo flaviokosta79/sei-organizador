@@ -410,7 +410,7 @@
     } finally {
       if (lease) {
         controller = null;
-        await call('receipts:done', { lease, slow: globalThis.seiPacedFetch?.slow?.() === true }).catch(() => {});
+        await call('receipts:done', { lease }).catch(() => {});
       }
     }
   }
@@ -516,8 +516,7 @@
             );
           }
         } finally {
-          if (!stopped)
-            await call('monitor:done', { lease: view.poll.id, slow: globalThis.seiPacedFetch?.slow?.() === true });
+          if (!stopped) await call('monitor:done', { lease: view.poll.id });
           controller = null;
         }
       }
@@ -532,7 +531,10 @@
             const result = await seiSignatureScanner.scan(
               identity,
               selected,
-              AbortSignal.any([controller.signal, AbortSignal.timeout(110000)]),
+              AbortSignal.any([
+                controller.signal,
+                globalThis.seiPacedFetch?.timeout(110000) || AbortSignal.timeout(110000),
+              ]),
             );
             if (!stopped && selected === seiWorkScope.block && key(D.context()) === scanIdentity) {
               for (let index = 0; index < result.observations.length; index += 200)
@@ -549,9 +551,7 @@
             if (!scopePending) render(latestView || view);
           } finally {
             controller = null;
-            await call('signature:done', { block: selected, slow: globalThis.seiPacedFetch?.slow?.() === true }).catch(
-              () => {},
-            );
+            await call('signature:done', { block: selected }).catch(() => {});
           }
         }
       }

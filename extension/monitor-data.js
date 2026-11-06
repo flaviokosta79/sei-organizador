@@ -1,6 +1,12 @@
 // Read-only SEI requests. A snapshot is accepted only after every unfiltered page was read.
 globalThis.seiBlockMonitor = (() => {
   const origin = 'https://sei.rj.gov.br';
+  // Paced in the SEI page (pace.js): timeouts count only reading time, not the wait for a slot.
+  const timedFetch = (url, init, timeout) =>
+    globalThis.seiPacedFetch
+      ? seiPacedFetch(url, { ...init, timeout })
+      : fetch(url, { ...init, signal: AbortSignal.any([init.signal, AbortSignal.timeout(timeout)]) });
+  const activeTimeout = (ms) => globalThis.seiPacedFetch?.timeout(ms) || AbortSignal.timeout(ms);
   function address(value, block, base = location.href) {
     const url = new URL(value, base);
     if (
@@ -62,14 +68,18 @@ globalThis.seiBlockMonitor = (() => {
     };
   }
   async function snapshot(target, signal) {
-    signal = AbortSignal.any([signal, AbortSignal.timeout(120000)]);
+    signal = AbortSignal.any([signal, activeTimeout(120000)]);
     const read = async (url, body) => {
-      const response = await (globalThis.seiPacedFetch || fetch)(address(url, target.block), {
-        credentials: 'same-origin',
-        redirect: 'error',
-        signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
-        ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {}),
-      });
+      const response = await timedFetch(
+        address(url, target.block),
+        {
+          credentials: 'same-origin',
+          redirect: 'error',
+          signal,
+          ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {}),
+        },
+        15000,
+      );
       if (!response.ok) throw new Error(`SEI respondeu HTTP ${response.status}`);
       const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
       return parse(

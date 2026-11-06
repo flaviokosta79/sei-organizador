@@ -99,11 +99,11 @@ test('pendências de recebimento persistem após reiniciar o banco',()=>{
  try{const state=store.receipts.snapshot(unit,data(0,[item('10')]));store.close();store=createStore(join(dir,'db.sqlite'));assert.deepEqual(store.receipts.read(unit),state);}finally{store.close();rmSync(dir,{recursive:true,force:true});}
 });
 
-function browser(store,{local={},session={}}={}){
+function browser(store,{local={},session={},activity}={}){
  const listeners={},notices=[],sounds=[],opened=[];let offline=false,scope='1396',muted=false,notificationFails=false,audioFails=false;
  const event=name=>({addListener:fn=>listeners[name]=fn});const area=value=>({get:async key=>({[key]:key==='seiBlockAlerts'?{sound:!muted}:structuredClone(value[key])}),set:async v=>Object.assign(value,structuredClone(v))});
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:event('message')},storage:{local:area(local),session:area(session)},notifications:{create:async(id,data)=>{if(notificationFails)throw Error('negado');notices.push({id,data});},onClicked:event('notification')},tabs:{create:async v=>opened.push(v.url),onRemoved:event('removed'),onUpdated:event('updated')}};
- runInNewContext(read('service-client.js')+';'+read('receipts-background.js'),{chrome,URL,crypto,Date,AbortSignal,SEI_ORGANIZADOR_CONFIG:{unitId:unit,org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(a,b)=>{if(scope!==b)throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>{if(audioFails)throw Error('áudio bloqueado');sounds.push(id);},fetch:async(url,options)=>{if(offline)throw Error('Offline');try{const state=options.body?store.receipts.snapshot(unit,JSON.parse(options.body)):store.receipts.read(unit);return {ok:true,json:async()=>state};}catch(e){return {ok:false,status:e.status||400};}}});
+ runInNewContext(read('service-client.js')+';'+read('receipts-background.js'),{chrome,URL,crypto,Date,AbortSignal,seiActivity:activity,SEI_ORGANIZADOR_CONFIG:{unitId:unit,org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(a,b)=>{if(scope!==b)throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>{if(audioFails)throw Error('áudio bloqueado');sounds.push(id);},fetch:async(url,options)=>{if(offline)throw Error('Offline');try{const state=options.body?store.receipts.snapshot(unit,JSON.parse(options.body)):store.receipts.read(unit);return {ok:true,json:async()=>state};}catch(e){return {ok:false,status:e.status||400};}}});
  const call=async(type,extra={},sender={tab:{url:control,id:1},frameId:0})=>{const result=await new Promise(resolve=>listeners.message({type,identity,...extra},sender,resolve));if(result.error)throw Error(result.error);return result.data;};
  const sync=(extra={})=>call('receipts:sync',{url:control,...extra});
  const poll=async(items)=>{const target=(await sync({poll:true})).poll;assert.ok(target);try{return await call('receipts:result',{lease:target.id,complete:true,items,url:control});}finally{await call('receipts:done',{lease:target.id});}};
@@ -225,5 +225,18 @@ test('processo antigo já recebido desaparece após confirmação sem som ou not
   a.due();await a.poll([item('20',false)]);
   const view=await b.sync();assert.equal(view.pending.length,0);assert.equal(view.stale,false);
   assert.equal(a.sounds.length,0);assert.equal(b.sounds.length,0);assert.equal(a.notices.length,0);assert.equal(b.notices.length,0);
+ }finally{store.close();}
+});
+
+test('leitura de recebidos só é antiga depois do maior intervalo normal entre rodadas',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
+ const store=createStore(':memory:'),reports=[];
+ const activity={due:()=>true,report:kind=>reports.push(kind),longestGap:kind=>{assert.match(kind,/^receipts:/);return 120000;}};
+ const a=browser(store,{activity});
+ try{
+  await a.poll([item('10')]);assert.equal(reports.length,1);
+  // Navigation or a slow SEI may delay the next cycle up to 2 min: 150 s later the reading is still fresh.
+  t.mock.timers.tick(150000);let view=await a.sync();assert.equal(view.stale,false);assert.equal(view.error,'');
+  t.mock.timers.tick(61000);view=await a.sync();assert.equal(view.stale,true);assert.match(view.error,/antiga/);
  }finally{store.close();}
 });

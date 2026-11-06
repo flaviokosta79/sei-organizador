@@ -712,7 +712,8 @@
             (ready && !!active && (active === unassigned ? links(id).length > 0 : !links(id).includes(active))) ||
             !matchesStatus(id);
           row.hidden = hide;
-          if (hide && check) check.checked = false;
+          // Through a click, so the SEI's own handler drops it from hdnInfraItensSelecionados too.
+          if (hide && check?.checked) check.click();
         }
         for (const b of tabs.querySelectorAll('[role=tab]')) {
           const key = b.dataset.tab;
@@ -775,6 +776,13 @@
     listen(form, 'change', updateBatch);
     listen(form, 'click', (event) => {
       if (event.target.closest?.('a[href*="id_procedimento="]')) return;
+      // The native select-all also marks hidden rows; unmark them the same way as the filter does.
+      if (event.target.closest?.('#lnkInfraCheck,[onclick*="infraSelecaoMultipla"]'))
+        setTimeout(() => {
+          if (disposed) return;
+          for (const { row, check } of rows()) if (row.hidden && check?.checked) check.click();
+          updateBatch();
+        });
       queueMicrotask(updateBatch);
     });
     function render() {

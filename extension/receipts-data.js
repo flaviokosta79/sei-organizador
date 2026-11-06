@@ -7,6 +7,12 @@ globalThis.seiSecretariatData = (() => {
     'processoVisualizadoSigiloso',
   ];
   const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
+  // Paced in the SEI page (pace.js): timeouts count only reading time, not the wait for a slot.
+  const timedFetch = (url, init, timeout) =>
+    globalThis.seiPacedFetch
+      ? seiPacedFetch(url, { ...init, timeout })
+      : fetch(url, { ...init, signal: AbortSignal.any([init.signal, AbortSignal.timeout(timeout)]) });
+  const activeTimeout = (ms) => globalThis.seiPacedFetch?.timeout(ms) || AbortSignal.timeout(ms);
   function address(value, base = location.href) {
     const url = new URL(value, base);
     if (
@@ -99,17 +105,21 @@ globalThis.seiSecretariatData = (() => {
     return { items, total, start, end, page, criteria, form, url: address(form.getAttribute('action'), base) };
   }
   async function snapshot(value, signal) {
-    signal = AbortSignal.any([signal, AbortSignal.timeout(170000)]);
+    signal = AbortSignal.any([signal, activeTimeout(170000)]);
     async function read(value, data) {
       const url = address(value);
-      const response = await (globalThis.seiPacedFetch || fetch)(url, {
-        credentials: 'same-origin',
-        redirect: 'error',
-        signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
-        ...(data
-          ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: data }
-          : {}),
-      });
+      const response = await timedFetch(
+        url,
+        {
+          credentials: 'same-origin',
+          redirect: 'error',
+          signal,
+          ...(data
+            ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: data }
+            : {}),
+        },
+        15000,
+      );
       if (!response.ok) throw Error(`SEI respondeu HTTP ${response.status}.`);
       const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
       return {

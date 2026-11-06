@@ -1,6 +1,11 @@
 // Native electronic signatures, independent of the Organizer's manual "Assinar" status.
 globalThis.seiSignatureData = (() => {
   const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
+  // Paced in the SEI page (pace.js): timeouts count only reading time, not the wait for a slot.
+  const timedFetch = (url, init, timeout) =>
+    globalThis.seiPacedFetch
+      ? seiPacedFetch(url, { ...init, timeout })
+      : fetch(url, { ...init, signal: AbortSignal.any([init.signal, AbortSignal.timeout(timeout)]) });
   const id = (v) => /^\d{1,30}$/.test(v || '');
   function address(value, base = location.href, actions) {
     const url = new URL(value, base);
@@ -15,12 +20,16 @@ globalThis.seiSignatureData = (() => {
   }
   async function page(value, signal, body, base) {
     const url = address(value, base);
-    const response = await (globalThis.seiPacedFetch || fetch)(url, {
-      credentials: 'same-origin',
-      redirect: 'error',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
-      ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {}),
-    });
+    const response = await timedFetch(
+      url,
+      {
+        credentials: 'same-origin',
+        redirect: 'error',
+        signal,
+        ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {}),
+      },
+      15000,
+    );
     if (!response.ok) throw Error(`SEI respondeu HTTP ${response.status}.`);
     const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
     return {
