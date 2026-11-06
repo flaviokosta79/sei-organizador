@@ -1,4 +1,4 @@
-# SEI Organizador — 0.22.0
+# SEI Organizador — 0.22.3
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -187,7 +187,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.22.0: **226 testes passaram**. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.22.3: **230 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -245,6 +245,24 @@ Medição de 2026-11-06 no Chromium, com a extensão carregada, as páginas reai
 
 A extensão acrescenta cerca de 30 a 60 ms ao abrir o Controle de Processos e a tela do processo. Um bloco interno com 1.000 processos leva cerca de 0,4 s a mais para abrir; é o principal ponto pendente de otimização. A leitura de históricos para assinaturas e os tempos reais do SEI não entraram na simulação. Os scripts ficam em `artifacts/perf/`, fora do Git.
 
+### Medição no SEI real (0.22.0 a 0.22.3)
+
+Em 2026-11-06, a navegação foi medida no SEI-RJ real, com uma sessão autenticada e o bloco 1343. O mesmo navegador alternou rodadas com e sem a extensão, ligando e desligando a extensão entre elas. O roteiro abre Controle de Processos, Blocos Internos, o bloco de trabalho, um processo (que abre em outra aba) e dois documentos da árvore, com pausas de 3 a 7 s.
+
+- **0.22.0**: em quase toda rodada com extensão, Blocos Internos travou por cerca de 35 s. A causa era a leitura de fundo da lista de Blocos de Assinatura: uma das páginas levava cerca de 35 s. Como o SEI atende um pedido por vez em cada sessão, o clique seguinte do usuário esperou o mesmo tempo. Exemplo medido: leitura da extensão aos 247 s, clique aos 248 s e resposta 33,9 s depois. As chamadas à API própria e o processamento no navegador não tiveram efeito. Numa rodada sem extensão logo depois de rodadas com a 0.22.0, Blocos Internos também travou 3 vezes por 35 s; a causa dessas travas não foi confirmada (efeito residual na sessão ou lentidão do próprio SEI).
+- **0.22.2**: a lista deixou de ser lida. Em 72 navegações, não houve nenhuma trava, e os tempos ficaram iguais com e sem a extensão.
+- **0.22.3**: em 120 navegações, a extensão leu 20 andamentos para o alerta de assinatura (0,4 a 1,0 s cada), cedendo a vez à navegação; só um clique coincidiu com uma leitura (+0,15 s). As chamadas à API própria caíram de cerca de 37 para 15 por minuto por navegador.
+
+| Tela (mediana, 0.22.3) | Com extensão | Sem extensão |
+| ---------------------- | ------------ | ------------ |
+| Controle de Processos  | 0,47 s       | 0,44 s       |
+| Blocos Internos        | 0,61 s       | 0,53 s       |
+| Bloco de trabalho      | 0,23 s       | 0,18 s       |
+| Tela do processo       | 1,19 s       | 1,16–1,34 s  |
+| Documento da árvore    | 0,29 s       | 0,28–0,30 s  |
+
+A melhora completa depende de todos os colegas atualizarem: quem continua na 0.22.0 ainda faz a leitura pesada da lista de Blocos de Assinatura e trava a própria sessão. O roteiro de medição fica em `artifacts/perf/real5.mjs`, fora do Git, e pede um login no navegador de teste.
+
 ### Estado em produção
 
-Extensão 0.22.0 e API 0.22.0, implantadas em 2026-11-06 (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.22.3 (ZIP da release v0.22.3) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.22.3 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
