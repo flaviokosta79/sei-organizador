@@ -26,14 +26,18 @@ test('retenção mantém as 300 alterações mais recentes por bloco e 60 dias d
   s.alerts.opened('1','30',{login:'a',org:'SEPM'});s.alerts.opened('1','31',{login:'a',org:'SEPM'},'2');
   const sig=s.signatures;const member={login:'smoke',org:'SEPM'};sig.sync('1','2',{actor:member,after:null});
   const observed={process:'10',document:'11',number:'555',signatureBlock:'99',includedAt:now-60000,includedBy:{login:'smoke',name:'Smoke'},signature:{time:now,signer:{login:'chefe',name:'Chefe'}}};
-  assert.equal(sig.observe('1','2',{actor:member,observations:[observed]}).accepted,1);
+  assert.equal(sig.observe('1','2',{actor:member,observations:[observed,{...observed,document:'12'}]}).accepted,2);
+  const newest=sig.sync('1','2',{actor:member,after:null}).cursor;
   const before=s.history('1','2');
   assert.deepEqual(s.maintain(now+day),{removed:5},'só o excedente do bloco 2; dados recentes preservados');
   assert.equal(s.history('1','3').length,1);assert.deepEqual(s.history('1','2').map(h=>h.id),before.map(h=>h.id),'tela de histórico inalterada');
   assert.equal(s.read('1','2').version,305,'estado atual não muda');
-  const removed=s.maintain(now+61*day).removed;assert.equal(removed,4,'2 aberturas, 1 assinatura e 1 acompanhamento antigos');
-  assert.equal(sig.sync('1','2',{actor:member,after:0}).events.length,0);
+  const removed=s.maintain(now+61*day).removed;assert.equal(removed,5,'2 aberturas, 1 assinatura e 2 acompanhamentos antigos');
+  // The newest event stays, so SQLite never hands its id out again to a new signature.
+  assert.deepEqual(sig.sync('1','2',{actor:member,after:0}).events.map(e=>e.id),[newest]);
   assert.equal(s.maintain(now+61*day).removed,0,'idempotente');
+  sig.observe('1','2',{actor:member,observations:[{...observed,document:'13'}]});
+  const next=sig.sync('1','2',{actor:member,after:newest});assert.equal(next.events.length,1);assert.ok(next.events[0].id>newest);
  }finally{s.close();}
 });
 

@@ -22,10 +22,36 @@
   if (action === 'procedimento_visualizar' && document !== treeDocument) return;
   // The tree owns the fallback. Closing a document restores the process summary.
   if (document === treeDocument && !globalThis.seiProcessCardLifecycle) {
-    const restore = () => showCard().catch((e) => console.error('SEI Organizador: resumo indisponível', e));
+    const draw = () => showCard().catch((e) => console.error('SEI Organizador: resumo indisponível', e));
+    // Leaving a document fires this just before the next one loads: wait a moment and skip it when
+    // another document has (or is about to get) its card, instead of building one only to discard it.
+    const documentOpen = () => {
+      try {
+        const outer = top.getElementById('ifrVisualizacao');
+        const frames = [outer, outer?.contentDocument?.getElementById('ifrConteudoVisualizacao')];
+        return frames.some((frame) => {
+          const href = frame?.contentWindow?.location.href;
+          if (!href || !href.startsWith('https://')) return false;
+          const page = new URL(href);
+          return (
+            page.searchParams.get('acao') === 'documento_visualizar' &&
+            /^\d+$/.test(page.searchParams.get('id_documento') || '')
+          );
+        });
+      } catch {
+        return false;
+      }
+    };
+    let restoreTimer;
+    const restore = () => {
+      clearTimeout(restoreTimer);
+      restoreTimer = setTimeout(() => {
+        if (!treeDocument.querySelector('#sei-organizador-documento') && !documentOpen()) draw();
+      }, 250);
+    };
     treeDocument.addEventListener('sei-organizador:restore-process', restore);
     // Only a back/forward cache restore; pageshow also fires on the first load.
-    window.addEventListener('pageshow', (event) => event.persisted && restore());
+    window.addEventListener('pageshow', (event) => event.persisted && draw());
     globalThis.seiProcessCardLifecycle = { restore };
   }
   const previous = treeDocument.querySelector('#sei-organizador-documento');
@@ -248,8 +274,10 @@
     );
   };
   const refreshers = [];
+  const lifetime = new AbortController();
   const dispose = () => {
     disposed = true;
+    lifetime.abort();
     pageController.abort();
     clearInterval(timer);
     top.removeEventListener('sei-organizador:history-ready', receiveHistory);
@@ -258,6 +286,12 @@
   const active = () => !disposed && host.isConnected;
   top.addEventListener('sei-organizador:history-ready', receiveHistory);
   host.addEventListener('sei-organizador:dispose-card', dispose, { once: true });
+  // The card lives in the tree frame even when a document frame built it; scope.js of this frame
+  // disposes and redraws only its own card when the work block or the user changes.
+  globalThis.seiOwnCard = {
+    host,
+    redraw: processView ? null : () => showCard().catch((e) => console.error('SEI Organizador: card indisponível', e)),
+  };
   window.addEventListener(
     'pagehide',
     () => {
@@ -268,7 +302,7 @@
         ui.dispatchEvent(event);
       }
     },
-    { once: true },
+    { once: true, signal: lifetime.signal },
   );
   let collapsed = false;
   try {

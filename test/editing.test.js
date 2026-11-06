@@ -110,3 +110,16 @@ test('documento de visualização não instala observador ou temporizador de pre
   assert.equal(observers,0);assert.equal(f.intervals.length,0);assert.equal(f.calls.length,0);
  }finally{f.close();}
 });
+
+test('encerrar a edição nunca ultrapassa um aviso ainda em envio da mesma sessão',async()=>{
+ let listener,release;const order=[];
+ const slow=new Promise(r=>release=r);
+ runInNewContext(read('service-client.js')+';'+read('editing-background.js'),{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},URL,AbortSignal,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}}},fetch:async(url,options)=>{const body=JSON.parse(options.body);order.push(body.stop?'stop':'start');if(!body.stop)await slow;order.push(body.stop?'stop-done':'start-done');return {ok:true,json:async()=>({ok:true})};}});
+ const send=msg=>new Promise(r=>listener({identity,type:'editing:heartbeat',session,process:'900',document:'901',number:'555',...msg},{url:editorUrl,tab:{url:base},frameId:0},r));
+ const first=send({}),stop=send({stop:true});
+ await new Promise(r=>setTimeout(r,20));assert.deepEqual(order,['start'],'stop espera o aviso anterior');
+ release();await first;await stop;
+ assert.deepEqual(order,['start','start-done','stop','stop-done']);
+ const other=send({session:'outra'});const query=new Promise(r=>listener({identity,type:'editing:query',processIds:['900']},{url:base+'?acao=rel_bloco_protocolo_listar&infra_unidade_atual=1',tab:{url:base},frameId:0},r));
+ assert.ok(await other);assert.ok(await query);
+});

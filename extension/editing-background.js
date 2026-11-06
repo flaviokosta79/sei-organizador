@@ -1,8 +1,18 @@
 // Ephemeral presence: no offline replay and no document contents or authenticated URLs.
 (() => {
+  // Heartbeats of one editor session go out in order: a "stop" never overtakes a heartbeat still in
+  // flight, which would re-create the presence for 90 s after the editor was closed.
+  const sessions = new Map();
+  const ordered = (key, task) => {
+    if (!key) return task();
+    const run = (sessions.get(key) || Promise.resolve()).catch(() => {}).then(task);
+    sessions.set(key, run);
+    run.finally(() => sessions.get(key) === run && sessions.delete(key)).catch(() => {});
+    return run;
+  };
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!['editing:heartbeat', 'editing:query'].includes(msg?.type)) return;
-    (async () => {
+    ordered(msg.type === 'editing:heartbeat' && typeof msg.session === 'string' ? msg.session : null, async () => {
       const config = SEI_ORGANIZADOR_CONFIG,
         page = new URL(sender.url || sender.tab?.url || 'about:blank');
       if (page.origin !== 'https://sei.rj.gov.br' || page.pathname !== '/sei/controlador.php')
@@ -52,7 +62,7 @@
       const response = await seiServiceFetch(path, { body: data });
       if (!response.ok) throw new Error(`Avisos de edição indisponíveis (HTTP ${response.status}).`);
       return response.json();
-    })().then(
+    }).then(
       (data) => reply({ data }),
       (error) => reply({ error: error.message }),
     );

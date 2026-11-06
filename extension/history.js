@@ -36,7 +36,12 @@ globalThis.seiHistoryText = (h, numbers = {}) => {
     delete: `excluiu a pasta ${folder}`,
     assign: `atribuiu processo(s) ${processes} na pasta ${folder}`,
     unassign: `retirou processo(s) ${processes} da pasta ${folder}`,
-    departed: `limpou status e assuntos dos processos retirados do bloco: ${processes}`,
+    // One entry may cover up to 1,000 processes leaving the block at once.
+    departed: `limpou status e assuntos dos processos retirados do bloco: ${
+      (a.processIds || []).length > 20
+        ? `${processes.split(', ').slice(0, 20).join(', ')} e mais ${a.processIds.length - 20}`
+        : processes
+    }`,
     undo: a.targetAction
       ? `desfez: ${seiHistoryText({ ...h, action: a.targetAction }, numbers)
           .split(' · ')

@@ -66,9 +66,9 @@ test('cabeçalho original acompanha altura da barra e limite da tabela sem dupli
  const f=fixture();try{await tick();const w=f.dom.window,d=w.document,t=d.querySelector('table'),header=t.rows[0],root=d.querySelector('#sei-organizador');
  const all=d.createElement('input');all.type='checkbox';all.id='native-select-all';header.cells[0].append(all);let clicks=0;all.addEventListener('click',()=>clicks++);
  let barBottom=120,tableTop=-300,tableBottom=1000;root.getBoundingClientRect=()=>({bottom:barBottom});t.getBoundingClientRect=()=>({top:tableTop,bottom:tableBottom});header.getBoundingClientRect=()=>({height:30});Object.defineProperty(header,'offsetTop',{value:0});
- const recalc=async()=>{w.dispatchEvent(new w.Event('scroll'));await tick();};await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'420px');
- barBottom=160;w.dispatchEvent(new w.Event('resize'));await tick();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'460px');
- tableBottom=180;await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'450px');tableTop=200;tableBottom=900;await recalc();assert.equal(t.style.getPropertyValue('--so-table-header-shift'),'0px');
+ const recalc=async()=>{w.dispatchEvent(new w.Event('scroll'));await tick();};await recalc();assert.equal(t.rows[0].style.getPropertyValue('--so-table-header-shift'),'420px');
+ barBottom=160;w.dispatchEvent(new w.Event('resize'));await tick();assert.equal(t.rows[0].style.getPropertyValue('--so-table-header-shift'),'460px');
+ tableBottom=180;await recalc();assert.equal(t.rows[0].style.getPropertyValue('--so-table-header-shift'),'450px');tableTop=200;tableBottom=900;await recalc();assert.equal(t.rows[0].style.getPropertyValue('--so-table-header-shift'),'0px');
  assert.equal(t.rows[0],header);assert.equal(d.querySelectorAll('#native-select-all').length,1);assert.equal(header.querySelectorAll('.so-floating-header').length,8);all.click();assert.equal(clicks,1);assert.equal(all.checked,true);
  }finally{f.dom.window.close();}
 });
@@ -198,8 +198,8 @@ test('mensagens de erro persistem após sincronizar e sucesso usa estilo própri
  w.prompt=()=>'Novo assunto';const create=()=>Array.from(d.querySelectorAll('#sei-organizador button')).find(b=>b.textContent==='+ Criar assunto').click();
  f.sync();await tick();
  post=async()=>({error:'Estado atualizado por outro colega. Recarregue e tente novamente.'});create();await tick();await tick();
- assert.match(message().textContent,/outro colega/);assert.equal(message().dataset.kind,'error');
- f.sync();await tick();assert.match(message().textContent,/outro colega/);assert.equal(message().dataset.kind,'error');
+ assert.match(message().textContent,/outro colega/i);assert.equal(message().dataset.kind,'error');
+ f.sync();await tick();assert.match(message().textContent,/outro colega/i);assert.equal(message().dataset.kind,'error');
  post=async()=>{state={...state,version:2,tabs:[...state.tabs,{id:'b',name:'Novo assunto'}]};return {data:state};};create();await tick();await tick();
  assert.equal(message().textContent,'Alteração salva.');assert.equal(message().dataset.kind,'success');
  offline=true;f.sync();await tick();assert.match(message().textContent,/^Sem sincronização/);assert.equal(message().dataset.kind,'sync');
@@ -278,5 +278,40 @@ test('linhas ocultas saem também da seleção nativa enviada pelo SEI, inclusiv
   all.click();await new Promise(r=>setTimeout(r,0));await tick();
   const visible=d.querySelector('#chkInfraItem100');
   assert.equal(box200.checked,false);assert.deepEqual(selected(),[visible.value]);
+ }finally{f.dom.window.close();}
+});
+
+test('conflito com colega repete uma vez atribuição e status sobre o estado novo; menu rolando não fecha',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document;
+  let state={version:1,tabs:[{id:'a',name:'Assunto'}],assignments:{},statuses:{}};const posts=[];
+  w.chrome.runtime.sendMessage=async msg=>{
+   if(msg.history)return {data:[]};
+   if(msg.body){posts.push(msg.body);if(msg.body.version!==state.version)return {error:'Estado atualizado por outro colega. Recarregue e tente novamente.'};state={...state,version:state.version+1,assignments:{'100':['a']}};return {data:state};}
+   return {data:state};
+  };
+  f.sync();await tick();
+  state={...state,version:2}; // a colleague saved in between
+  const target=d.querySelector('#chkInfraItem100').closest('tr');
+  target.dispatchEvent(new w.MouseEvent('contextmenu',{bubbles:true,cancelable:true}));
+  const menu=d.querySelector('[role=menu]');menu.dispatchEvent(new w.Event('scroll'));assert.ok(d.querySelector('[role=menu]'),'rolar o próprio menu não o fecha');
+  d.querySelector('[role=menuitemcheckbox]').click();await tick();await tick();
+  assert.deepEqual(posts.map(p=>p.version),[1,2],'repetiu uma vez com a versão nova');
+  assert.match(d.querySelector('#sei-organizador>p[role=status]').textContent,/Alteração salva/);
+ }finally{f.dom.window.close();}
+});
+
+test('falha passageira volta à aba e ao filtro escolhidos quando a conexão retorna',async()=>{
+ const f=fixture();try{await tick();const w=f.dom.window,d=w.document;
+  let state={version:1,tabs:[{id:'a',name:'Assunto'}],assignments:{'100':['a']},statuses:{}},offline=false,reads=0;
+  w.chrome.runtime.sendMessage=async msg=>{if(offline)return {error:'Falha simulada'};if(msg.history)return {data:[]};reads++;return {data:state};};
+  f.sync();await tick();
+  Array.from(d.querySelectorAll('[role=tab]')).find(b=>b.textContent.startsWith('Assunto')).click();
+  assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,true);
+  offline=true;f.sync();await tick();
+  assert.equal(d.querySelector('[data-tab=general]').getAttribute('aria-selected'),'true');assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,false);
+  const root=d.querySelector('#sei-organizador');const before=root.innerHTML;f.sync();await tick();assert.equal(root.innerHTML,before,'sem redesenhar enquanto continua offline');
+  offline=false;state={...state,version:2};f.sync();await tick();
+  assert.equal(d.querySelector('[data-tab=a]').getAttribute('aria-selected'),'true');assert.equal(d.querySelector('#chkInfraItem200').closest('tr').hidden,true);
+  assert.ok(reads>0);
  }finally{f.dom.window.close();}
 });

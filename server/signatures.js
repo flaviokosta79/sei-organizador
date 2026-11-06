@@ -8,7 +8,7 @@ export function createSignatures(db) {
     CREATE UNIQUE INDEX IF NOT EXISTS signature_event_once ON signature_events(unit,block,process,document,json_extract(signer,'$.login'),signed_at); COMMIT;`);
   const q={
     group:db.prepare('INSERT OR IGNORE INTO signature_groups VALUES(?,?,?)'),
-    member:db.prepare('INSERT INTO signature_members VALUES(?,?,?,?) ON CONFLICT(unit,org,login) DO UPDATE SET block=excluded.block'),
+    member:db.prepare('INSERT INTO signature_members VALUES(?,?,?,?) ON CONFLICT(unit,org,login) DO UPDATE SET block=excluded.block WHERE block IS NOT excluded.block'),
     latest:db.prepare('SELECT COALESCE(MAX(id),0) AS id FROM signature_events WHERE unit=? AND block=?'),
     events:db.prepare('SELECT * FROM signature_events WHERE unit=? AND block=? AND id>? ORDER BY id LIMIT 100'),
     members:db.prepare('SELECT login FROM signature_members WHERE unit=? AND org=? AND block=?'),

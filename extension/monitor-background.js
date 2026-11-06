@@ -492,7 +492,8 @@
       }
     } else throw new Error('Operação inválida');
     await save(data, owner);
-    if (['monitor:result', 'monitor:opened', 'monitor:ack', 'monitor:sound', 'monitor:chiefs'].includes(msg.type)) {
+    // Results arrive one per block; tabs redraw once, when the cycle ends.
+    if (['monitor:done', 'monitor:opened', 'monitor:ack', 'monitor:sound', 'monitor:chiefs'].includes(msg.type)) {
       const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
       await Promise.allSettled(
         tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'monitor:changed' }, { frameId: 0 })),

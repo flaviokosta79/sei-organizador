@@ -490,3 +490,12 @@ test('monitor só inicia rodada quando a navegação permite e avisa o fim da ro
  assert.deepEqual(reports,[asked[0]]);
  assert.ok((await f.call({type:'monitor:sync',poll:true,force:true})).poll);
 });
+
+test('abas redesenham uma vez por rodada, não a cada bloco lido',async()=>{
+ const f=worker();const changed=()=>f.tabs.filter(t=>t.msg?.type==='monitor:changed').length;
+ const view=await f.poll();
+ await f.call({type:'monitor:result',block:'2',lease:view.poll.id,items:[item('10')]});
+ assert.equal(changed(),0,'resultado de bloco não avisa as abas');
+ await f.call({type:'monitor:done',lease:view.poll.id});
+ assert.equal(changed(),1);
+});

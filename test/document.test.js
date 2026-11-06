@@ -192,7 +192,7 @@ function frame({autoLoad=true,scope,action='documento_visualizar',processId='900
  const storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
  const timers=new Map();let timerId=0;
  const listeners={};const fakeWindow={addEventListener:(type,fn)=>{listeners[type]=fn;}};fakeWindow.top={document:topDoc};
- const context={window:fakeWindow,document:docDom.window.document,location:docDom.window.location,URL,URLSearchParams,AbortSignal,AbortController,TextDecoder,Response,DOMParser:docDom.window.DOMParser,fetch,chrome,sessionStorage:storage,localStorage:storage,setTimeout,console,
+ const context={window:fakeWindow,document:docDom.window.document,location:docDom.window.location,URL,URLSearchParams,AbortSignal,AbortController,TextDecoder,Response,DOMParser:docDom.window.DOMParser,fetch,chrome,sessionStorage:storage,localStorage:storage,setTimeout,clearTimeout,console,
   setInterval:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearInterval:id=>timers.delete(id),
   SEI_ORGANIZADOR_CONFIG:{serviceUrl:'https://ext.5cpa.com.br',unitId:'1',org:'SEPM'},seiDocumentData:data};
  if(scope)context.seiWorkScope=scope;
@@ -433,6 +433,9 @@ test('selecionar documento mantém um card e voltar restaura o resumo com sincro
  assert.equal(process.timers.size,0);assert.equal(doc.tree.querySelectorAll('#sei-organizador-documento').length,1);
  assert.equal(doc.tree.querySelector('#sei-organizador-documento').dataset.mode,'document');assert.match(doc.badge().textContent,/Pessoa Um \(Coronel\)/);
  doc.leave();await settle();
+ // The summary waits a moment for a next document before being rebuilt.
+ assert.equal(process.tree.querySelectorAll('#sei-organizador-documento').length,0);
+ await new Promise(r=>setTimeout(r,300));await settle();
  assert.equal(process.tree.querySelectorAll('#sei-organizador-documento').length,1);assert.equal(process.tree.querySelector('#sei-organizador-documento').dataset.mode,'process');
  assert.match(process.badge().textContent,/Última movimentação/);assert.doesNotMatch(process.badge().textContent,/Assinatura✔|Assinatura✎/);
  assert.equal(process.timers.size,1);assert.equal(doc.timers.size,0);process.leave();

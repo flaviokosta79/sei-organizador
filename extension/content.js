@@ -243,8 +243,9 @@
         Math.min(root.getBoundingClientRect().bottom - naturalTop, rect.bottom - height - naturalTop),
       );
       const shift = offset + 'px';
-      if (table.style.getPropertyValue('--so-table-header-shift') !== shift)
-        table.style.setProperty('--so-table-header-shift', shift);
+      // On the header row only: on the table it would restyle every cell of every row each frame.
+      if (header.style.getPropertyValue('--so-table-header-shift') !== shift)
+        header.style.setProperty('--so-table-header-shift', shift);
       for (const cell of header.cells)
         if (!cell.classList.contains('so-floating-header')) cell.classList.add('so-floating-header');
     }
@@ -377,12 +378,20 @@
         closeMenu(true);
       }
     });
-    listen(window, 'scroll', () => closeMenu(), true);
+    listen(
+      window,
+      'scroll',
+      (event) => !(event.target?.nodeType && contextMenu?.contains(event.target)) && closeMenu(),
+      true,
+    );
     listen(window, 'resize', () => closeMenu());
     const processNumber = (a) => a.textContent.replace(/\s+/g, ' ').trim();
     const copyControls = new WeakMap();
+    // Parsed once per table change (the table observer clears it), not on every click or menu.
+    let rowCache = null;
     function rows() {
-      return Array.from(table.querySelectorAll('tr')).flatMap((row) => {
+      if (rowCache) return rowCache;
+      return (rowCache = Array.from(table.querySelectorAll('tr')).flatMap((row) => {
         const a = row.querySelector('a[href*="id_procedimento="]');
         if (!a) return [];
         try {
@@ -393,7 +402,7 @@
         } catch {
           return [];
         }
-      });
+      }));
     }
     function injectCopyButtons(loaded) {
       for (const { link } of loaded) {
@@ -680,6 +689,7 @@
       if (disposed) return;
       tableObserver.disconnect();
       try {
+        rowCache = null;
         const loaded = rows(),
           valid = new Set(state.tabs.map((t) => t.id));
         injectColumns(loaded);
@@ -785,8 +795,15 @@
         });
       queueMicrotask(updateBatch);
     });
+    const focusKey = (e) =>
+      `${e.tagName}|${e.className}|${e.dataset?.tab || ''}|${e.tagName === 'SELECT' ? '' : e.textContent}`;
     function render() {
       if (disposed) return;
+      const kept = toolbar.querySelector('.so-batch-status')?.value || '',
+        focused =
+          document.activeElement && (toolbar.contains(document.activeElement) || tabs.contains(document.activeElement))
+            ? focusKey(document.activeElement)
+            : null;
       closeMenu();
       if (active && active !== unassigned && !state.tabs.some((t) => t.id === active)) active = null;
       tabs.replaceChildren();
@@ -864,6 +881,9 @@
           processIds: selected.map((row) => row.id),
           processNumbers: Object.fromEntries(selected.map((row) => [row.id, row.number])),
         });
+        const chosen = toolbar.querySelector('.so-batch-status');
+        if (chosen) chosen.value = '';
+        updateBatch();
       });
       apply.classList.add('so-batch-apply');
       toolbar.append(batch, apply);
@@ -876,6 +896,11 @@
       updateHistoryToggle();
       for (const b of history.querySelectorAll('.so-undo-record'))
         b.disabled = busy || !ready || b.dataset.undoable !== 'true';
+      if (kept && seiStatusLabels[kept]) batch.value = kept;
+      if (focused)
+        [...tabs.querySelectorAll('button'), ...toolbar.querySelectorAll('button,select')]
+          .find((e) => focusKey(e) === focused && !e.disabled)
+          ?.focus({ preventScroll: true });
       filter();
       updateBatch();
     }
@@ -939,7 +964,8 @@
       if (result.error) throw new Error(result.error);
       return result.data;
     }
-    let refreshing = false;
+    let refreshing = false,
+      resumeView = null;
     async function refresh() {
       if (busy || refreshing || disposed) return;
       refreshing = true;
@@ -947,19 +973,41 @@
         const next = await api();
         if (disposed || busy) return;
         if (ready && next.version === state.version) return;
+        // An open menu would be closed by a redraw: apply the colleague's change on the next poll.
+        if (ready && contextMenu) return;
+        const changed = next.version !== state.version;
         if (next.version >= state.version) state = next;
         ready = true;
+        if (resumeView) {
+          // Back online: return to the tab and filter the user had before the failure.
+          if (
+            resumeView.active === null ||
+            resumeView.active === unassigned ||
+            state.tabs.some((t) => t.id === resumeView.active)
+          )
+            active = resumeView.active;
+          statusFilter = resumeView.statusFilter;
+          resumeView = null;
+        }
         if (!statusKnown()) statusFilter = 'all';
         render();
+        if (changed && historyOpen) showHistory();
         if (status.dataset.kind === 'sync') setStatus('');
       } catch (e) {
         if (disposed) return;
+        const message = 'Sem sincronização: ' + e.message + ' · Geral preservado.';
+        if (!ready) {
+          // Already offline: no redraw every 10 s.
+          if (status.textContent !== message) setStatus(message, 'sync');
+          return;
+        }
         closeMenu();
+        resumeView = { active, statusFilter };
         ready = false;
         active = null;
         statusFilter = 'all';
         render();
-        setStatus('Sem sincronização: ' + e.message + ' · Geral preservado.', 'sync');
+        setStatus(message, 'sync');
       } finally {
         refreshing = false;
       }
@@ -969,19 +1017,37 @@
       busy = true;
       setStatus('');
       render();
+      let saved = false;
       try {
-        const next = await api({ body: { version: state.version, actor, action } });
+        let next;
+        try {
+          next = await api({ body: { version: state.version, actor, action } });
+        } catch (e) {
+          // A colleague saved first. Assigning, removing and setting a status mean the same on the
+          // newer state, so they are retried once on it instead of being lost.
+          if (disposed || !conflict(e) || !['assign', 'unassign', 'status'].includes(action.type)) throw e;
+          state = await api();
+          if (disposed) return;
+          next = await api({ body: { version: state.version, actor, action } });
+        }
         if (disposed) return;
         state = next;
+        saved = true;
         setStatus('Alteração salva.', 'success');
       } catch (e) {
-        if (!disposed) setStatus(e.message);
+        if (!disposed)
+          setStatus(
+            conflict(e) ? 'Outro colega alterou este bloco ao mesmo tempo; confira e tente novamente.' : e.message,
+          );
       } finally {
         busy = false;
         render();
       }
-      await refresh();
+      if (saved) {
+        if (historyOpen) showHistory();
+      } else await refresh();
     }
+    const conflict = (e) => /outro colega/i.test(e?.message || '');
     async function showHistory() {
       historyOpen = true;
       const generation = ++historyGeneration;
@@ -1007,7 +1073,7 @@
           const p = document.createElement('p');
           p.className =
             'so-history-entry so-history-' +
-            (['create', 'delete', 'assign', 'unassign', 'rename', 'undo', 'status'].includes(h.action.type)
+            (['create', 'delete', 'assign', 'unassign', 'rename', 'undo', 'status', 'departed'].includes(h.action.type)
               ? h.action.type
               : 'unknown');
           const parts = seiHistoryText(h, numbers).split(' · ');
@@ -1046,7 +1112,23 @@
       }
     }
     // Our own DOM writes must not trigger another full table pass.
-    const tableObserver = new MutationObserver(filter);
+    // Text changes inside our controls, and labels other scripts put beside links (presence, "Novo"),
+    // never change what this pass produces. Anything else (rows, our controls removed) re-runs it.
+    const widgets = '[data-so-column],.so-copy-feedback,.so-status-marker,.so-editing-presence,.so-new-process-label',
+      labels = '.so-editing-presence,.so-new-process-label';
+    const extensionMutation = (record) => {
+      const element = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+      if (element?.closest?.(widgets)) return true;
+      const nodes = [...record.addedNodes, ...record.removedNodes];
+      return (
+        !!nodes.length && nodes.every((node) => (node.nodeType === 1 ? node.matches(labels) : !node.textContent.trim()))
+      );
+    };
+    const tableObserver = new MutationObserver((records) => {
+      if (records.every(extensionMutation)) return;
+      rowCache = null;
+      filter();
+    });
     observe(tableObserver, table, { childList: true, subtree: true });
     render();
     refresh();
@@ -1055,6 +1137,7 @@
       if (!disposed && !document.hidden) refresh();
     }, 10000);
     cleanups.push(() => clearInterval(timer));
+    listen(document, 'visibilitychange', () => !document.hidden && refresh());
     function restore() {
       const destination =
         document.querySelector('#divInfraAreaPaginacaoSuperior') ||
@@ -1078,7 +1161,7 @@
         .querySelectorAll('[data-so-column],.so-copy-number,.so-copy-feedback,.so-status-marker')
         .forEach((e) => e.remove());
       table.querySelectorAll('.so-floating-header').forEach((e) => e.classList.remove('so-floating-header'));
-      table.style.removeProperty('--so-table-header-shift');
+      for (const row of table.rows) row.style.removeProperty('--so-table-header-shift');
       table.classList.remove('so-organized-table');
       table.parentElement?.classList.remove('so-table-scroll');
       table.querySelectorAll('[class]').forEach((e) => {

@@ -149,3 +149,16 @@ test('troca de bloco recebida durante uma leitura em andamento não é perdida',
   assert.equal(gets,2,'a troca recebida durante a leitura dispara nova consulta');assert.equal(w.seiWorkScope.block,'3');
  }finally{w.close();}
 });
+
+test('falha passageira ao ler o bloco de trabalho é tentada de novo, sem exigir recarregar a página',async()=>{
+ const state=worker();await state.remember('2');
+ const source=url('2');let failures=1,asked=0;
+ const dom=new JSDOM('<a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a>',{url:source,runScripts:'outside-only'}),w=dom.window;
+ w.SEI_ORGANIZADOR_CONFIG={unitId:'1',org:'SEPM'};
+ w.chrome={runtime:{onMessage:{addListener:()=>{}},sendMessage:async msg=>{asked++;if(failures-->0)return {error:'Service worker reiniciando'};return state.send(msg,source);}}};
+ try{
+  w.eval(read('scope.js'));await tick();assert.equal(w.seiWorkScope.block,null);
+  await new Promise(r=>setTimeout(r,2200));
+  assert.equal(w.seiWorkScope.block,'2');assert.equal(asked,2);
+ }finally{w.close();}
+});

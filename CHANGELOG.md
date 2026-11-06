@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.21.0 — 2026-11-06
+
+**Funcionamento**
+- Restauração de backup do servidor:
+  - Recebidos e alertas de "Assinar" deixam de travar quando o serviço volta com versões menores.
+  - Na segunda leitura seguida com versão menor, a base é refeita sem alerta. Os avisos seguintes voltam a funcionar.
+- Servidor, limpeza dos 60 dias:
+  - A limpeza mantém sempre a assinatura mais recente.
+  - Sem isso, o SQLite reaproveitava o id dela e novas assinaturas podiam não gerar alerta.
+  - Requer reimplantar a API.
+
+**Desempenho**
+- Monitor: as abas redesenham uma vez por rodada, ao terminar, e não a cada bloco lido. Com 20 blocos, eram cerca de 20 rajadas de chamadas à API por aba visível em cada ciclo.
+- Servidor: `signatures/sync` não regrava o vínculo do usuário quando o bloco não mudou. Requer reimplantar a API.
+- Card do processo:
+  - Ao trocar de documento, o resumo do processo não é mais montado e descartado em seguida. A árvore espera 250 ms e só o recria se nenhum documento estiver aberto.
+  - Os listeners de cada card saem junto com ele, sem acumular na janela da árvore.
+- Andamento guardado na sessão:
+  - Entradas vencidas (60 s) são removidas e no máximo 3 ficam guardadas, por meio de um índice.
+  - Sobras de versões anteriores são apagadas.
+  - Antes, o armazenamento da sessão do SEI podia esgotar.
+- Página do bloco:
+  - O deslocamento do cabeçalho fixo fica na linha do cabeçalho. Na tabela, ele recalculava o estilo de todas as células a cada quadro de rolagem.
+  - As linhas são lidas uma vez por mudança da tabela, não a cada clique.
+  - Mudanças de texto nos próprios controles ("Copiado") e rótulos de outros módulos ("Novo", presença de edição) não disparam outra passada completa.
+- Tema: só folhas de estilo carregadas reavaliam o tema, não cada imagem ou script.
+- Bloco de trabalho em memória no service worker: as requisições à API e à presença de edição não leem mais o armazenamento inteiro a cada vez. A memória é invalidada quando os dados mudam.
+
+**Uso**
+- Menu de contexto não fecha quando o próprio menu rola.
+- A atualização de 10 s mantém o status escolhido em "Status dos selecionados…" e o foco do teclado. Com um menu aberto, a mudança de um colega espera a próxima atualização.
+- Conflito com colega:
+  - Atribuir, retirar assunto e mudar status são repetidos uma vez sobre o estado novo, em vez de se perderem.
+  - Nas demais ações, a mensagem passa a ser "confira e tente novamente", sem mandar recarregar.
+- Falha passageira de conexão:
+  - Ao reconectar, volta para a aba e o filtro escolhidos.
+  - Enquanto continua offline, a página não é redesenhada a cada 10 s.
+- O histórico aberto se atualiza após uma alteração ou a mudança de um colega. Depois de salvar, não há mais uma leitura extra.
+- Ao voltar a uma aba do SEI, os dados do bloco são atualizados na hora.
+- Presença de edição:
+  - O aviso de "encerrou" nunca chega antes de um aviso ainda em envio. Antes, o colega podia aparecer editando por até 90 s depois de fechar.
+  - A troca de bloco consulta uma vez, não duas.
+  - Processos que entram na tela durante uma consulta são consultados logo em seguida.
+- Bloco de trabalho:
+  - Uma falha passageira é tentada de novo após 2, 4 e 6 s.
+  - Trocar de bloco não derruba o card do documento aberto: cada frame refaz só o próprio card.
+- Histórico: entradas "limpou status… retirados do bloco" ganham estilo próprio e mostram os 20 primeiros processos e quantos faltam.
+
+**Não alterado**
+- A coluna Assunto continua sendo removida e recriada ao alternar Geral/assunto. Mudar isso mexe no layout e no colgroup da tabela, e o ganho é pequeno.
+- O parâmetro `force` do monitor continua: os testes o usam para forçar a rodada.
+
+**Testes e atualização**
+- 217 testes, todos passando. Os novos cobrem:
+  - restauração de backup em recebidos e "Assinar";
+  - id preservado na limpeza;
+  - redesenho único por rodada;
+  - espera do resumo do processo;
+  - limite e limpeza do andamento na sessão;
+  - ordem dos avisos de edição;
+  - repetição no conflito;
+  - menu que rola;
+  - volta à aba após reconexão;
+  - nova tentativa do bloco de trabalho;
+  - resumo das saídas do bloco.
+- A extensão funciona com a API atual. Os dois ajustes de servidor valem após reimplantar. Depois de atualizar, recarregar todas as abas do SEI.
+
 ## 0.20.1 — 2026-11-06
 
 Correções da 0.20.0 e da seleção nativa nas abas.

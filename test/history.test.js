@@ -35,3 +35,12 @@ test('snapshots recuperam rótulo de registros sem tabName',()=>{
 });
 
 
+
+test('saída do bloco com muitos processos mostra os 20 primeiros e quantos faltam',()=>{
+ const ctx=globalThis;
+ const ids=Array.from({length:25},(_,i)=>String(100+i));
+ const text=ctx.seiHistoryText({time:'2026-11-06T12:00:00Z',actor:{login:'organizador.sistema'},action:{type:'departed',processIds:ids}});
+ assert.match(text,/Identificador interno 119 e mais 5$/);assert.doesNotMatch(text,/Identificador interno 120/);
+ const few=ctx.seiHistoryText({time:'2026-11-06T12:00:00Z',actor:{login:'x'},action:{type:'departed',processIds:['1','2']}});
+ assert.match(few,/Identificador interno 1, Identificador interno 2$/);
+});

@@ -32,7 +32,16 @@ test('histórico concorrente ou resposta antiga não altera referência de assin
  const record={};helper.update(record,snapshot(4,{}),items,true);const previous=JSON.stringify(record);
  assert.throws(()=>helper.update(record,snapshot(4,{'100':'sign'},[event(5)]),items,true),/mudaram/);
  assert.throws(()=>helper.update(record,snapshot(3,{'100':'sign'},[]),items,true),/desatualizada/);
- assert.equal(JSON.stringify(record),previous);
+ assert.equal(JSON.stringify({...record,signRegressed:undefined}),previous);
+});
+
+test('versão menor duas vezes seguidas (serviço restaurado de backup) refaz a referência sem alertar',()=>{
+ const record={};helper.update(record,snapshot(9,{'100':'sign'},[event(9)]),items,true);
+ assert.throws(()=>helper.update(record,snapshot(2,{'100':'sign','200':'sign'},[event(2,'200')]),items,true),/desatualizada/);
+ assert.equal(helper.update(record,snapshot(2,{'100':'sign','200':'sign'},[event(2,'200')]),items,true).length,0,'sem alerta ao refazer');
+ assert.equal(record.signVersion,2);assert.equal(record.signRegressed,undefined);
+ helper.update(record,snapshot(3,{'100':'urgent','200':'sign'},[event(2,'200')]),items,true);
+ assert.equal(helper.update(record,snapshot(4,{'100':'sign','200':'sign'},[event(4,'100'),event(2,'200')]),items,true).length,1,'segue alertando depois');
 });
 
 test('inserção de processo com status Assinar antigo não é tratada como mudança de status',()=>{

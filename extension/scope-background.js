@@ -4,8 +4,20 @@
   const profile = (identity) => `${identity.unit}:${identity.org}:${identity.login.trim().toLowerCase()}`;
   const valid = seiValidIdentity;
   const serial = seiCreateQueue();
+  // Every API and presence request checks the work block: read the stored profiles once and keep them
+  // until they change (this worker's own writes, or another context through storage.onChanged).
+  let cache = null;
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area === 'local' && key in changes) cache = null;
+  });
   async function load() {
-    return (await chrome.storage.local.get(key))[key] || {};
+    const pending = (cache ||= chrome.storage.local.get(key).then((stored) => stored[key] || {}));
+    try {
+      return structuredClone(await pending);
+    } catch (e) {
+      if (cache === pending) cache = null;
+      throw e;
+    }
   }
   async function get(identity) {
     if (!valid(identity)) throw Error('Unidade ou usuário inválido');
@@ -85,7 +97,9 @@
       if (before !== withoutUse(pref) || Date.now() - (pref.lastUsed || 0) >= 3600000) {
         pref.lastUsed = Date.now();
         records[id] = pref;
+        cache = null;
         await chrome.storage.local.set({ [key]: records });
+        cache = null;
       }
       if (msg.type === 'scope:set') {
         const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });

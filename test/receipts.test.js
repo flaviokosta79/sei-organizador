@@ -240,3 +240,16 @@ test('leitura de recebidos só é antiga depois do maior intervalo normal entre 
   t.mock.timers.tick(61000);view=await a.sync();assert.equal(view.stale,true);assert.match(view.error,/antiga/);
  }finally{store.close();}
 });
+
+test('serviço restaurado de backup (versão menor) refaz a base sem alertar em vez de travar',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
+ const store=createStore(':memory:'),a=browser(store);
+ try{
+  await a.poll([item('10')]);
+  // The service now answers with a lower version than this browser has seen.
+  for(const record of Object.values(a.local.seiSecretariatReceipts))record.version+=50;
+  let view=await a.sync();assert.match(view.error,/desatualizada/);
+  view=await a.sync();assert.equal(view.error,'');assert.equal(a.sounds.length,0,'base refeita sem alerta');
+  a.due();view=await a.poll([item('10'),item('11')]);assert.equal(view.error,'');assert.equal(a.sounds.length,1,'chegadas seguintes voltam a avisar');
+ }finally{store.close();}
+});

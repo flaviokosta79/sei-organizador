@@ -290,6 +290,11 @@
   background: #edf1f4;
   border-color: #647786;
 }
+#so-history-panel .so-history-departed {
+  color: #5b4a12;
+  background: #faf5e4;
+  border-color: #a08a35;
+}
 #so-history-panel .so-history-status {
   color: #155c61;
   background: #eaf7f7;

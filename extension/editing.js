@@ -340,7 +340,13 @@
       error = e.message;
     } finally {
       busy = false;
-      if (!stopped) paint();
+      if (!stopped) {
+        paint();
+        if (JSON.stringify([context(), targets().ids]) !== key) {
+          clearTimeout(scheduled);
+          scheduled = setTimeout(refresh, 100);
+        }
+      }
     }
   }
   function scan() {
@@ -396,8 +402,8 @@
     cached = null;
     targetKey = '';
     await release();
+    // scan() schedules the query for the new block; a direct refresh() here would repeat it.
     scan();
-    refresh();
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {

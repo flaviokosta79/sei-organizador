@@ -113,7 +113,9 @@ export function createStore(path) {
       for(const sql of [
         'DELETE FROM process_views WHERE opened<?',
         'DELETE FROM process_block_views WHERE opened<?',
-        'DELETE FROM signature_events WHERE signed_at<?',
+        // Keeps the newest event: without AUTOINCREMENT, SQLite would hand its id out again and clients
+        // whose cursor is past it would never see the new events.
+        'DELETE FROM signature_events WHERE signed_at<? AND id<(SELECT MAX(id) FROM signature_events)',
         'DELETE FROM signature_watches WHERE included_at<?',
       ])removed+=db.prepare(sql).run(cutoff).changes;
       db.exec('COMMIT');

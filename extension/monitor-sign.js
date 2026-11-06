@@ -18,8 +18,13 @@ globalThis.seiSignAlerts = {
       throw new Error('Histórico e status mudaram durante a consulta.');
     if (Math.max(0, ...organizer.history.map((h) => h.version)) !== organizer.version)
       throw new Error('Histórico e status mudaram durante a consulta.');
-    if (record.signVersion !== undefined && organizer.version < record.signVersion)
-      throw new Error('Consulta de assinatura desatualizada.');
+    if (record.signVersion !== undefined && organizer.version < record.signVersion) {
+      // Twice in a row: the service was restored from a backup. Rebuild the baseline without alerts.
+      record.signRegressed = (record.signRegressed || 0) + 1;
+      if (record.signRegressed < 2) throw new Error('Consulta de assinatura desatualizada.');
+      for (const key of ['signVersion', 'signKnown', 'signObserved', 'signCursor']) delete record[key];
+    }
+    delete record.signRegressed;
     const present = new Map(items.map((item) => [item.id, item]));
     const current = items.filter((item) => organizer.statuses[item.id] === 'sign').map((item) => item.id);
     const previous = new Set(record.signKnown || []);

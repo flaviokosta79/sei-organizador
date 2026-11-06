@@ -96,14 +96,15 @@ globalThis.seiApplyTheme = (root) => {
       attributes: true,
       attributeFilter: ['href', 'media', 'disabled'],
     });
-  document.addEventListener('load', schedule, true);
+  const styleLoad = (event) => event.target?.matches?.('link[rel~="stylesheet" i],style') && schedule();
+  document.addEventListener('load', styleLoad, true);
   window.addEventListener('pageshow', schedule);
   update();
   const dispose = () => {
     disposed = true;
     attributes.disconnect();
     headObserver.disconnect();
-    document.removeEventListener('load', schedule, true);
+    document.removeEventListener('load', styleLoad, true);
     window.removeEventListener('pageshow', schedule);
     window.removeEventListener('pagehide', dispose);
   };

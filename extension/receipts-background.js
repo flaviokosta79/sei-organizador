@@ -55,6 +55,15 @@
     return response.json();
   }
   function apply(record, state, maxAge = maxObservationAge) {
+    // A lower version twice in a row means the service was restored from a backup: start again from
+    // its state, without alerts, instead of rejecting every reading from then on.
+    if (Number.isSafeInteger(state?.version) && state.version >= 0 && state.version < record.version) {
+      record.regressed = (record.regressed || 0) + 1;
+      if (record.regressed < 2) throw Error('Resposta de recebidos inválida ou desatualizada.');
+      record.version = state.version;
+      record.known = null;
+    }
+    delete record.regressed;
     if (
       !Number.isSafeInteger(state.version) ||
       state.version < 0 ||

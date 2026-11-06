@@ -15,7 +15,9 @@
     return send('scope:get');
   };
   globalThis.seiWorkScope = state;
-  let forceQueued = false;
+  let forceQueued = false,
+    retries = 0,
+    retryTimer;
   let busy = false,
     last = '';
   function identity() {
@@ -144,19 +146,27 @@
         : { block: null, catalog: [] };
       state.block = pref.block;
       state.catalog = pref.catalog;
+      retries = 0;
     } catch {
       state.block = null;
+      if (next && retries < 3) {
+        retries++;
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => refresh(true), 2000 * retries);
+      }
     } finally {
       busy = false;
       resolveReady();
       if (previous !== state.block || previousIdentity !== JSON.stringify(next)) {
-        const card = document.querySelector('#sei-organizador-documento');
+        const own = globalThis.seiOwnCard,
+          card = own?.host?.isConnected ? own.host : null;
         if (card) {
           card.dispatchEvent(new Event('sei-organizador:dispose-card'));
           card.remove();
         }
         window.dispatchEvent(new Event('sei-organizador:scope'));
-        document.dispatchEvent(new Event('sei-organizador:restore-process'));
+        if (card && own.redraw) own.redraw();
+        else document.dispatchEvent(new Event('sei-organizador:restore-process'));
       }
       queueMicrotask(() => {
         if (forceQueued) {
@@ -188,6 +198,7 @@
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('pagehide', () => {
+    clearTimeout(retryTimer);
     observer.disconnect();
     clearTimeout(refreshTimer);
     refreshTimer = null;

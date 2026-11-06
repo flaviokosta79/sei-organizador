@@ -106,6 +106,35 @@ globalThis.seiFullHistory = {
   key(process, actor) {
     return `seiOrganizador:fullHistory:v1:${SEI_ORGANIZADOR_CONFIG.unitId}:${actor.org}:${actor.login.toLowerCase()}:${process}`;
   },
+  // Histories are reused for 60 s only. The SEI's own session storage is shared with us, so expired
+  // ones are removed and at most 3 are kept (an index avoids parsing the large entries to prune).
+  indexKey: 'seiOrganizador:fullHistory:index',
+  index() {
+    try {
+      const index = JSON.parse(sessionStorage.getItem(this.indexKey));
+      if (Array.isArray(index)) return index.filter((e) => typeof e?.key === 'string' && Number.isFinite(e.time));
+    } catch {}
+    return null;
+  },
+  prune(own) {
+    const prefix = 'seiOrganizador:fullHistory:v1:',
+      now = Date.now();
+    let index = this.index();
+    if (!index) {
+      // First write with the index: drop entries left by earlier versions.
+      const legacy = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key?.startsWith(prefix) && key !== own) legacy.push(key);
+      }
+      for (const key of legacy) sessionStorage.removeItem(key);
+      index = [];
+    }
+    const others = index.filter((e) => e.key !== own),
+      kept = others.filter((e) => now - e.time < 60000).slice(-2);
+    for (const e of others) if (!kept.includes(e)) sessionStorage.removeItem(e.key);
+    sessionStorage.setItem(this.indexKey, JSON.stringify(kept));
+  },
   read(process, actor) {
     try {
       const saved = JSON.parse(sessionStorage.getItem(this.key(process, actor)));
@@ -116,8 +145,15 @@ globalThis.seiFullHistory = {
   },
   write(process, actor, page, top) {
     if (!page.complete || page.partial) return;
+    const own = this.key(process, actor);
     try {
-      sessionStorage.setItem(this.key(process, actor), JSON.stringify({ time: Date.now(), page }));
+      this.prune(own);
+    } catch {}
+    try {
+      sessionStorage.setItem(own, JSON.stringify({ time: Date.now(), page }));
+      const index = this.index().filter((entry) => entry.key !== own);
+      index.push({ key: own, time: Date.now() });
+      sessionStorage.setItem(this.indexKey, JSON.stringify(index));
     } catch {}
     if (top) {
       const event = top.createEvent('CustomEvent');
