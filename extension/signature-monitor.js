@@ -1,26 +1,18 @@
 // All authenticated URLs stay in this page/session, never in the shared service.
+// Only the histories of processes the user already opened are read. The list of Blocos de Assinatura
+// is not read: in the real SEI one of its pages took about 35 s, and the session (one request at a
+// time) held the user's next click for that long. A document "inserido no bloco" in the history is
+// enough: only documents go to signature (or meeting) blocks; processes go to internal blocks.
 globalThis.seiSignatureScanner = (() => {
   const D = seiSignatureData;
   let owner = '',
-    processCursor = 0,
-    blockCursor = 0,
-    lastList = 0;
-  let blocks = new Map(),
-    processes = new Map();
-  let knownBlocks = new Set();
+    processCursor = 0;
+  let processes = new Map();
   const save = () => {
     try {
       sessionStorage.setItem(
         'seiSignatureScanner:' + owner,
-        JSON.stringify({
-          blocks: [...blocks],
-          processes: [...processes],
-          knownBlocks: [...knownBlocks],
-          processCursor,
-          blockCursor,
-          // Kept across navigations: the block list is re-read every 2 min, not on every page.
-          lastList,
-        }),
+        JSON.stringify({ processes: [...processes], processCursor }),
       );
     } catch {}
   };
@@ -38,16 +30,11 @@ globalThis.seiSignatureScanner = (() => {
     const next = JSON.stringify([identity, block]);
     if (next !== owner) {
       owner = next;
-      blocks = new Map();
       processes = new Map();
       processCursor = 0;
-      blockCursor = 0;
-      lastList = 0;
-      knownBlocks = new Set();
       try {
         const saved = JSON.parse(sessionStorage.getItem('seiSignatureScanner:' + owner));
         if (saved) {
-          blocks = new Map(saved.blocks);
           processes = new Map(
             saved.processes.filter(([, url]) => {
               try {
@@ -58,10 +45,7 @@ globalThis.seiSignatureScanner = (() => {
               }
             }),
           );
-          knownBlocks = new Set(saved.knownBlocks);
           processCursor = saved.processCursor || 0;
-          blockCursor = saved.blockCursor || 0;
-          lastList = Math.min(Number(saved.lastList) || 0, Date.now());
         }
       } catch {}
     }
@@ -75,25 +59,7 @@ globalThis.seiSignatureScanner = (() => {
       const href = anchor?.getAttribute('onclick').match(/'([^']*procedimento_consultar_historico[^']*)'/)?.[1];
       if (href) remember(href, tree.location.href);
     } catch {}
-    if (Date.now() - lastList >= 120000) {
-      const link = document.querySelector('a[href*="acao=bloco_assinatura_listar"]');
-      if (!link) throw Error('Abra uma tela do SEI com o menu Blocos de Assinatura para iniciar o acompanhamento.');
-      const result = await D.list(link.getAttribute('href'), '#tblBlocos', ['bloco_assinatura_listar'], signal);
-      progress?.();
-      const found = new Map();
-      for (const row of result.rows) {
-        const link = row.querySelector('a[href*="acao=rel_bloco_protocolo_listar"][href*="id_bloco="]');
-        if (!link) continue;
-        const url = D.address(link.getAttribute('href'), result.url, ['rel_bloco_protocolo_listar']);
-        const id = url.searchParams.get('id_bloco');
-        if (/^\d{1,30}$/.test(id || '')) found.set(id, url.href);
-      }
-      blocks = found;
-      for (const id of found.keys()) knownBlocks.add(id);
-      lastList = Date.now();
-    }
     const errors = [];
-    // Only history URLs obtained from pages the user has already opened are polled.
     const observations = [],
       processItems = [...processes];
     save();
@@ -102,7 +68,7 @@ globalThis.seiSignatureScanner = (() => {
       try {
         const doc = await D.history(url, process, signal);
         progress?.();
-        observations.push(...D.observations(doc, process, knownBlocks, unit));
+        observations.push(...D.observations(doc, process, null, unit));
       } catch (e) {
         errors.push(e.message);
       }
@@ -112,7 +78,6 @@ globalThis.seiSignatureScanner = (() => {
       observations,
       error: errors.length ? `Acompanhamento parcial: ${errors[0]}` : '',
       processes: processes.size,
-      blocks: blocks.size,
     };
   }
   return { scan };

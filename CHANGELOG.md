@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.22.2 — 2026-11-06
+
+**Extensão (não requer reimplantar a API)**
+
+- A lista de Blocos de Assinatura não é mais lida:
+  - Em 6 de 13 tentativas no SEI real, uma das páginas dessa lista levou cerca de 35 s. Como o SEI atende um pedido por vez em cada sessão, o clique seguinte do usuário (Blocos Internos, por exemplo) esperou o mesmo tempo. Medido em 2026-11-06: leitura da extensão aos 247 s, clique do usuário aos 248 s e resposta só 33,9 s depois.
+  - O bloco de assinatura agora vem do próprio andamento do processo. Só documentos entram em blocos de assinatura ou de reunião ("Documento … inserido no bloco N"). Processos entram em blocos internos ("Processo inserido no bloco N") e continuam ignorados. O resultado na amostra real de andamento é idêntico ao da versão anterior.
+  - Um documento incluído em bloco de reunião e depois assinado também gera o aviso de assinatura.
+  - O acompanhamento lê apenas os andamentos dos processos já abertos pelo usuário, como antes.
+- Substitui a 0.22.1, que só espaçava a leitura da lista (a cada 15 minutos, com espera após falha) e não chegou a ser publicada.
+
+## 0.22.1 — 2026-11-06
+
+**Extensão (não requer reimplantar a API)**
+
+- Lista de Blocos de Assinatura lida com muito menos frequência:
+  - O acompanhamento de assinaturas lia todos os blocos de assinatura da unidade a cada 2 minutos, em cada aba. No SEI real, essa consulta passou de 15 s em 6 de 13 tentativas. O SEI continua processando o pedido mesmo depois que a extensão desiste.
+  - Agora a lista é lida no máximo a cada 15 minutos, uma vez para todas as abas do navegador. As abas compartilham só o horário e os números dos blocos, nunca endereços autenticados.
+  - Depois de uma falha ou estouro de tempo, a próxima tentativa espera 30 min, depois 60 min e, a partir daí, 2 h. Uma leitura bem-sucedida volta ao intervalo normal.
+  - Se a lista falhar, o acompanhamento continua com os blocos já conhecidos e avisa no painel.
+  - Sem nenhum bloco conhecido, os andamentos não são lidos, porque nenhum deles poderia gerar alerta.
+  - Ao abrir a tela Blocos de Assinatura, os blocos exibidos entram no acompanhamento sem leitura extra.
+- Medição no SEI real (2026-11-06, 6 rodadas alternando com e sem a extensão): servidor do SEI com os mesmos tempos com e sem a extensão, nenhuma tarefa longa no navegador e chamadas à API própria sem efeito no SEI. Blocos Internos teve travas de cerca de 35 s nas duas situações, inclusive com a extensão desligada.
+
 ## 0.22.0 — 2026-11-06
 
 **Servidor (requer reimplantar a API)**

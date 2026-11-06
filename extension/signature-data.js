@@ -37,69 +37,6 @@ globalThis.seiSignatureData = (() => {
       url,
     };
   }
-  // Iterate every page without changing the user's form or accepting filtered/incomplete results.
-  async function list(value, tableId, actions, signal) {
-    let source = await page(address(value, location.href, actions), signal);
-    const initialForm = source.doc.querySelector(tableId)?.closest('form');
-    if (!initialForm) throw Error('Lista de assinatura indisponível.');
-    const bodyFor = (form) => {
-      const body = new URLSearchParams();
-      for (const field of form.querySelectorAll('input[name],select[name]')) {
-        if (field.disabled || ['button', 'submit', 'radio', 'file'].includes(field.type)) continue;
-        if (field.type === 'checkbox' && !field.name.startsWith('chkSinEstado')) continue;
-        body.set(field.name, field.value);
-      }
-      for (const name of [
-        'txtPalavrasPesquisaBloco',
-        'txtPalavrasPesquisaRelBlocoProtocolo',
-        'selGrupoBloco',
-        'selUnidadeGeradora',
-      ])
-        if (body.has(name)) body.set(name, '');
-      if (body.has('hdnMeusBlocos')) body.set('hdnMeusBlocos', 'T');
-      body.set('hdnInfraItensSelecionados', '');
-      body.set('hdnInfraItemId', '');
-      return body;
-    };
-    const initialBody = bodyFor(initialForm);
-    initialBody.set('hdnInfraPaginaAtual', '0');
-    source = await page(address(initialForm.getAttribute('action'), source.url, actions), signal, initialBody);
-    const found = [],
-      seen = new Set();
-    let expected;
-    for (let index = 0; index < 50; index++) {
-      const table = source.doc.querySelector(tableId),
-        form = table?.closest('form');
-      if (!table || !form) throw Error('Lista de assinatura indisponível; verifique a sessão do SEI.');
-      if (Number(form.querySelector('[name="hdnInfraPaginaAtual"]')?.value || 0) !== index)
-        throw Error('Página de assinatura não confirmada.');
-      for (const field of form.querySelectorAll(
-        '[name^="txtPalavrasPesquisa"],select[name="selGrupoBloco"],select[name="selUnidadeGeradora"]',
-      ))
-        if (field.value.trim()) throw Error('A lista de assinatura continua filtrada.');
-      if (form.querySelector('[name="hdnMeusBlocos"]')?.value === 'M')
-        throw Error('A lista está restrita aos blocos atribuídos a um usuário.');
-      const total = seiDocumentData.recordCount(table);
-      if (total === null || total > 10000 || (expected !== undefined && total !== expected))
-        throw Error('Lista de assinatura incompleta ou alterada durante a leitura.');
-      expected = total;
-      const rows = [...table.rows].filter((r) => r.querySelector('td'));
-      const fingerprint = rows.map((r) => clean(r.textContent)).join('|');
-      if (seen.has(fingerprint)) throw Error('Paginação de assinatura repetida.');
-      seen.add(fingerprint);
-      found.push(...rows);
-      if (found.length === expected) return { rows: found, url: source.url };
-      if (!rows.length || found.length > expected) break;
-      const input = form.querySelector('[name="hdnInfraPaginaAtual"]');
-      if (!input || Number(input.value) !== index) throw Error('Paginação de assinatura não reconhecida.');
-      const body = bodyFor(form);
-      body.set('hdnInfraPaginaAtual', String(index + 1));
-      body.set('hdnInfraItensSelecionados', '');
-      body.set('hdnInfraItemId', '');
-      source = await page(address(form.getAttribute('action'), source.url, actions), signal, body);
-    }
-    throw Error('Não foi possível ler todas as páginas de assinatura.');
-  }
   function observations(doc, process, signatureBlocks, unit) {
     if (!id(process)) throw Error('Processo inválido.');
     const history = seiDocumentData.parseHistory(doc);
@@ -125,7 +62,8 @@ globalThis.seiSignatureData = (() => {
       if (
         entry &&
         seiDocumentData.sigla(cells[1].textContent) === seiDocumentData.sigla(unit) &&
-        signatureBlocks.has(entry[2])
+        // null: every block a document was put into (signature or meeting blocks; never internal ones).
+        (!signatureBlocks || signatureBlocks.has(entry[2]))
       ) {
         const key = `${document}:${entry[2]}`;
         if (entry[1] === 'retirado do') {
@@ -190,5 +128,5 @@ globalThis.seiSignatureData = (() => {
     if (!parsed.complete || parsed.partial) throw Error('Histórico incompleto; aguardando próxima leitura.');
     return source.doc;
   }
-  return { address, page, list, observations, history };
+  return { address, page, observations, history };
 })();

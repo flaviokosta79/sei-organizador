@@ -77,6 +77,9 @@ test('amostra real identifica inclusão, assinatura e nome do assinante mesmo ap
   const doc=new w.DOMParser().parseFromString(html,'text/html');
   const result=D.observations(doc,'150184527',new Set(['14350','2653']),'SEPM/5°CPA');
   const event=result.find(o=>o.number==='144413782'&&o.signature);assert.ok(event);assert.equal(event.signature.signer.login,'daniele.farias');assert.equal(event.signature.signer.name,'Daniele Ezequiel Farias da Silva');assert.equal(event.signatureBlock,'14350');
+  // Without the signature block list the real history gives the same result: "Processo inserido no bloco 1343" is ignored.
+  const open=D.observations(doc,'150184527',null,'SEPM/5°CPA');
+  assert.deepEqual(JSON.parse(JSON.stringify(open)),JSON.parse(JSON.stringify(result)));assert.ok(!open.some(o=>o.signatureBlock==='1343'));
  }finally{dom.window.close();}
 });
 
@@ -104,37 +107,40 @@ test('dois navegadores recebem som e alerta uma vez, vistos são individuais e o
  }finally{store.close();}
 });
 
-test('scanner percorre telas nativas, confirma andamento e preserva acompanhamento ao navegar',async()=>{
- const load=name=>new TextDecoder('windows-1252').decode(readFileSync(new URL('../referencias/amostras/'+name,import.meta.url)));
- const {dom,w,D}=reader('120000124');
- const calls=[];let signatureList=load('lista-blocos-assinatura.html');
+test('scanner lê só andamentos já abertos, sem a lista de blocos de assinatura, e preserva acompanhamento ao navegar',async()=>{
+ const {w,D}=reader('120000124');
+ const calls=[];
  w.document.body.innerHTML='<a id="lnkInfraUnidade">SEPM/P3</a><a href="?acao=bloco_assinatura_listar&infra_unidade_atual=120000124">Assinatura</a>';
  const process='147797799';
  w.fetch=async(url,options={})=>{
   const u=new URL(url),action=u.searchParams.get('acao');calls.push({action,body:options.body});
-  let html;
-  if(action==='bloco_assinatura_listar')html=signatureList;
-  else if(action==='rel_bloco_protocolo_listar')html=load('bloco-assinatura.html').replaceAll('1420987',u.searchParams.get('id_bloco'));
-  else if(action==='procedimento_trabalhar')html=`<iframe id="ifrArvore" src="?acao=procedimento_visualizar&id_procedimento=${process}&infra_unidade_atual=120000124"></iframe>`;
-  else if(action==='procedimento_visualizar')html=`<a onclick="consultar('controlador.php?acao=procedimento_consultar_historico&id_procedimento=${process}&infra_unidade_atual=120000124')">Andamento</a>`;
-  else if(action==='procedimento_consultar_historico')html=history([['10:03',signing],['10:01',insertion.replaceAll('99','1420987')]]);
-  else throw Error(action);
-  return new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}});
+  if(action!=='procedimento_consultar_historico')throw Error(action);
+  return new Response(history([['10:03',signing],['10:01',insertion.replaceAll('99','1420987')]]),{headers:{'content-type':'text/html; charset=utf-8'}});
  };
  try{
   const frame=w.document.createElement('iframe');frame.id='ifrArvore';w.document.body.append(frame);frame.contentDocument.body.innerHTML=`<a onclick="consultar('${base}?acao=procedimento_consultar_historico&id_procedimento=${process}&infra_unidade_atual=120000124')">Andamento</a>`;
   w.eval(read('signature-monitor.js'));let result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
-  assert.equal(result.error,'');assert.equal(result.blocks,15);assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));
-  assert.equal(calls.filter(c=>c.action==='rel_bloco_protocolo_listar').length,0);assert.ok(!calls.some(c=>['procedimento_trabalhar','procedimento_visualizar','documento_visualizar'].includes(c.action)));
-  const post=calls.find(c=>c.action==='bloco_assinatura_listar'&&c.body);assert.equal(post.body.get('hdnMeusBlocos'),'T');assert.equal(post.body.get('txtPalavrasPesquisaBloco'),'');assert.equal(post.body.get('chkSinEstadoConcluido'),'on');
-  assert.ok(w.sessionStorage.getItem('seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2'])));
-  signatureList=signatureList.replace(/<table\s+id="tblBlocos"[\s\S]*?<\/table>/,'<table id="tblBlocos"><caption>Lista (0 registros)</caption><tr><th>Número</th></tr></table>');
-  // A navigation within 2 min reuses the saved block list instead of reading it again.
-  const listed=calls.filter(c=>c.action==='bloco_assinatura_listar').length;
-  w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);assert.equal(result.blocks,15);assert.equal(calls.filter(c=>c.action==='bloco_assinatura_listar').length,listed);
-  const key='seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2']),saved=JSON.parse(w.sessionStorage.getItem(key));assert.ok(saved.lastList>0);w.sessionStorage.setItem(key,JSON.stringify({...saved,lastList:Date.now()-120000}));
-  w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);assert.equal(result.blocks,0);assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));
+  assert.equal(result.error,'');assert.equal(result.processes,1);
+  const found=result.observations.find(o=>o.signature?.signer.login==='chefe');assert.ok(found);assert.equal(found.signatureBlock,'1420987');
+  // Only the history is read: no signature block list, no block or process page.
+  assert.deepEqual([...new Set(calls.map(c=>c.action))],['procedimento_consultar_historico']);
+  const key='seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2']);assert.ok(w.sessionStorage.getItem(key));
+  // Another page of the same tab (no tree) keeps following the process saved in the session.
+  frame.remove();w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
+  assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));
+  assert.ok(!calls.some(c=>c.action==='bloco_assinatura_listar'));
   assert.throws(()=>D.address(base+'?acao=documento_assinar&infra_unidade_atual=120000124',undefined,['rel_bloco_protocolo_listar']),/inválido/);
+ }finally{w.close();}
+});
+
+test('sem lista de blocos, inclusão de processo em bloco interno não vira acompanhamento de assinatura',()=>{
+ const {w,D}=reader('1');
+ try{
+  const processInsertion='Processo inserido no bloco <a href="?id_bloco=1343">1343</a>';
+  const doc=new w.DOMParser().parseFromString(history([['10:03',signing],['10:01',processInsertion]]),'text/html');
+  assert.equal(D.observations(doc,'10',null,'SEPM/P3').length,0);
+  const withDocument=new w.DOMParser().parseFromString(history([['10:03',signing],['10:01',insertion]]),'text/html');
+  const result=D.observations(withDocument,'10',null,'SEPM/P3');assert.ok(result.some(o=>o.signature&&o.signatureBlock==='99'));
  }finally{w.close();}
 });
 
@@ -153,3 +159,4 @@ test('rodapé mostra documento e assinante sem exigir registro de um bloco abert
   [...root.querySelectorAll('button')].find(b=>b.textContent==='Marcar assinaturas como vistas').click();await new Promise(r=>setTimeout(r,90));assert.doesNotMatch(root.textContent,/Documento 555/);
  }finally{w.close();}
 });
+
