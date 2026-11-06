@@ -1,10 +1,13 @@
-# SEI Organizador — 0.22.3
+# SEI Organizador — 0.22.4
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
 ## Instalação
 
 1. Clone o projeto e carregue a pasta `extension` em `chrome://extensions`, com o modo desenvolvedor habilitado. Como alternativa, extraia o ZIP de distribuição em uma pasta e carregue essa pasta, que contém `manifest.json` na raiz.
+
+   **Na unidade (ZIP no disco compartilhado):** cada versão fica em `R:\sei-organizador` como `sei-organizador-extensao-<versão>.zip`, com o passo a passo em `LEIA-ME - instalar e atualizar.txt`. O disco compartilhado bloqueia arquivos `.js`, então a extensão não pode ser carregada direto dele: extraia o ZIP numa pasta do próprio computador (por exemplo `C:\SEI-Organizador\extensao`) e carregue essa pasta. Para atualizar, extraia o ZIP novo **sobre a mesma pasta**, substituindo os arquivos, clique em recarregar no cartão da extensão em `chrome://extensions` e recarregue as abas do SEI. Desde a 0.22.4 o ID é fixo (`koonfhnchakocaeefddpcahmianpcobo`), então trocar de pasta não apaga mais os dados guardados no navegador. A troca para a 0.22.4 apaga esses dados uma única vez.
+
 2. Abra a lista de processos de um bloco interno do SEI na unidade atendida pela extensão.
 3. Após atualizar, recarregue a extensão no Chrome e depois a página do bloco.
 
@@ -265,4 +268,4 @@ A melhora completa depende de todos os colegas atualizarem: quem continua na 0.2
 
 ### Estado em produção
 
-Extensão 0.22.3 (ZIP da release v0.22.3) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.22.3 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.22.4 (ZIP da release v0.22.4 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.22.4 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

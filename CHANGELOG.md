@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.22.4 — 2026-11-06
+
+**Extensão (não requer reimplantar a API)**
+
+- Identidade fixa da extensão:
+  - O `manifest.json` passa a ter uma chave pública (`key`). Com ela, o ID da extensão é sempre `koonfhnchakocaeefddpcahmianpcobo`, de qualquer pasta de onde for carregada.
+  - Antes, o Chrome calculava o ID pelo caminho da pasta, e cada computador tinha um ID diferente. Mudar a pasta de lugar apagava os dados guardados no navegador.
+  - Atualizar extraindo o ZIP novo sobre a mesma pasta, ou trocar a pasta de lugar, mantém os dados do navegador. Uma pasta no disco compartilhado não serve para carregar a extensão: o servidor de arquivos da unidade bloqueia arquivos `.js` e `.mp3`. O ZIP de cada versão fica em `R:\sei-organizador`.
+  - **Na primeira instalação da 0.22.4, cada navegador perde uma única vez os dados guardados nele**, porque o ID muda: bloco de trabalho escolhido, lista de chefes de seção, avisos marcados como vistos e preferências do card. O bloco é escolhido de novo automaticamente ao abrir um bloco interno, e a lista de chefes precisa ser informada outra vez. Classificações, status, assuntos e vistos compartilhados ficam no servidor e não são afetados.
+  - A chave privada fica fora do Git (`artifacts/keys/`); ela só é necessária para gerar um `.crx` assinado ou publicar com o mesmo ID.
+
 ## 0.22.3 — 2026-11-06
 
 **Extensão (não requer reimplantar a API)**
@@ -120,6 +131,7 @@ Após atualizar, recarregar todas as abas do SEI.
 ## 0.21.0 — 2026-11-06
 
 **Funcionamento**
+
 - Restauração de backup do servidor:
   - Recebidos e alertas de "Assinar" deixam de travar quando o serviço volta com versões menores.
   - Na segunda leitura seguida com versão menor, a base é refeita sem alerta. Os avisos seguintes voltam a funcionar.
@@ -129,6 +141,7 @@ Após atualizar, recarregar todas as abas do SEI.
   - Requer reimplantar a API.
 
 **Desempenho**
+
 - Monitor: as abas redesenham uma vez por rodada, ao terminar, e não a cada bloco lido. Com 20 blocos, eram cerca de 20 rajadas de chamadas à API por aba visível em cada ciclo.
 - Servidor: `signatures/sync` não regrava o vínculo do usuário quando o bloco não mudou. Requer reimplantar a API.
 - Card do processo:
@@ -146,6 +159,7 @@ Após atualizar, recarregar todas as abas do SEI.
 - Bloco de trabalho em memória no service worker: as requisições à API e à presença de edição não leem mais o armazenamento inteiro a cada vez. A memória é invalidada quando os dados mudam.
 
 **Uso**
+
 - Menu de contexto não fecha quando o próprio menu rola.
 - A atualização de 10 s mantém o status escolhido em "Status dos selecionados…" e o foco do teclado. Com um menu aberto, a mudança de um colega espera a próxima atualização.
 - Conflito com colega:
@@ -166,10 +180,12 @@ Após atualizar, recarregar todas as abas do SEI.
 - Histórico: entradas "limpou status… retirados do bloco" ganham estilo próprio e mostram os 20 primeiros processos e quantos faltam.
 
 **Não alterado**
+
 - A coluna Assunto continua sendo removida e recriada ao alternar Geral/assunto. Mudar isso mexe no layout e no colgroup da tabela, e o ganho é pequeno.
 - O parâmetro `force` do monitor continua: os testes o usam para forçar a rodada.
 
 **Testes e atualização**
+
 - 217 testes, todos passando. Os novos cobrem:
   - restauração de backup em recebidos e "Assinar";
   - id preservado na limpeza;
@@ -350,12 +366,10 @@ Páginas do SEI mais rápidas com a extensão carregada. As leituras de fundo (b
 - 167 testes passaram; sintaxe e formatação aprovadas. Inclui os dois HTMLs reais, seis páginas/217 processos, fluxo completo do painel, dois navegadores, reinício, falhas, reenvio, silenciamento, isolamento de classificações e restrição ao bloco 1396. Conferência de uma nova chegada na sessão real do SEI pendente.
 - API implantada pela stack 18 do Portainer, com backup íntegro, volume e 278 registros de histórico preservados. Editor e administração disponíveis, atualização completed, container healthy e oito módulos conferidos por SHA-256. Rotas de recebidos validadas por HTTPS.
 
-
 ## 0.15.1 — 2026-10-27
 
 - Removida a faixa “Organizador ativo somente no bloco” e o botão de escolha das páginas de outros blocos. A escolha continua nas opções da extensão; o Organizador permanece restrito ao bloco escolhido, preservando os controles nativos dos demais.
 - Ajuste somente na extensão, compatível com a API 0.15.0, sem reimplantação do serviço.
-
 
 ## 0.15.0 — 2026-10-27
 
