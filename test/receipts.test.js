@@ -253,3 +253,31 @@ test('serviço restaurado de backup (versão menor) refaz a base sem alertar em 
   a.due();view=await a.poll([item('10'),item('11')]);assert.equal(view.error,'');assert.equal(a.sounds.length,1,'chegadas seguintes voltam a avisar');
  }finally{store.close();}
 });
+
+test('lista de recebidos numa página só vem sem intervalo na legenda e é aceita',async()=>{
+ const single=(total,{page=0}={})=>fixture(0,{total,pending:true}).replace(/ - \d+ a \d+\):/,'):').replace('name="hdnRecebidosPaginaAtual" value="0"',`name="hdnRecebidosPaginaAtual" value="${page}"`);
+ const {dom,w,D}=reader(async()=>response(single(12)));
+ try{
+  const doc=new w.DOMParser().parseFromString(single(12),'text/html');assert.match(doc.querySelector('caption').textContent,/\(12 registros\):/);
+  const page=D.parse(doc,control);assert.equal(page.start,1);assert.equal(page.end,12);assert.equal(page.items.length,12);
+  const result=await D.snapshot(control,new AbortController().signal);assert.equal(result.complete,true);assert.equal(result.items.length,12);assert.equal(result.items.filter(p=>p.pending).length,1);
+  assert.throws(()=>D.parse(new w.DOMParser().parseFromString(single(12,{page:1}),'text/html'),control),/Página de recebidos/);
+  assert.throws(()=>D.parse(new w.DOMParser().parseFromString(single(12).replace(/<tr[^>]*id="P\d+"[\s\S]*?<\/tr>/,''),'text/html'),control),/incompleta/);
+ }finally{dom.window.close();}
+});
+
+test('leitura longa de recebidos renova a reserva a cada página e não é recusada ao terminar',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:1800000000000});
+ const store=createStore(':memory:'),a=browser(store);
+ try{
+  await a.poll([]);a.due();
+  const target=(await a.sync({poll:true})).poll;assert.ok(target);
+  for(let i=0;i<4;i++){t.mock.timers.tick(60000);await a.call('receipts:progress',{lease:target.id});}
+  const view=await a.call('receipts:result',{lease:target.id,complete:true,items:[item('10')],url:control});
+  assert.equal(view.error,'','240 s depois, a reserva renovada ainda vale');
+  await a.call('receipts:done',{lease:target.id});
+  a.due();const other=(await a.sync({poll:true})).poll;assert.ok(other);
+  t.mock.timers.tick(181000);
+  await assert.rejects(a.call('receipts:result',{lease:other.id,complete:true,items:[item('10')],url:control}),/substituída/,'sem renovação, vence como antes');
+ }finally{store.close();}
+});

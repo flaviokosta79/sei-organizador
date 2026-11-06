@@ -34,7 +34,7 @@ globalThis.seiSignatureScanner = (() => {
       if (e.message.startsWith('Limite')) throw e;
     }
   };
-  async function scan(identity, block, signal) {
+  async function scan(identity, block, signal, progress) {
     const next = JSON.stringify([identity, block]);
     if (next !== owner) {
       owner = next;
@@ -79,6 +79,7 @@ globalThis.seiSignatureScanner = (() => {
       const link = document.querySelector('a[href*="acao=bloco_assinatura_listar"]');
       if (!link) throw Error('Abra uma tela do SEI com o menu Blocos de Assinatura para iniciar o acompanhamento.');
       const result = await D.list(link.getAttribute('href'), '#tblBlocos', ['bloco_assinatura_listar'], signal);
+      progress?.();
       const found = new Map();
       for (const row of result.rows) {
         const link = row.querySelector('a[href*="acao=rel_bloco_protocolo_listar"][href*="id_bloco="]');
@@ -100,6 +101,7 @@ globalThis.seiSignatureScanner = (() => {
       const [process, url] = processItems[processCursor++ % processItems.length];
       try {
         const doc = await D.history(url, process, signal);
+        progress?.();
         observations.push(...D.observations(doc, process, knownBlocks, unit));
       } catch (e) {
         errors.push(e.message);

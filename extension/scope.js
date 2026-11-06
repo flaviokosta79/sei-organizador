@@ -113,7 +113,11 @@
       url.searchParams.get('acao') !== 'bloco_interno_listar'
     )
       throw Error('Lista de blocos não reconhecida.');
-    const response = await fetch(url, { credentials: 'same-origin', signal: AbortSignal.timeout(15000) });
+    // Paced like the other background reads when the page has pace.js (top frame).
+    const init = { credentials: 'same-origin', redirect: 'error' };
+    const response = globalThis.seiPacedFetch
+      ? await seiPacedFetch(url, { ...init, timeout: 15000 })
+      : await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw Error('Não foi possível consultar os blocos do SEI.');
     const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
     const doc = new DOMParser().parseFromString(

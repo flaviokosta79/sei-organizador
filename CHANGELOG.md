@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.21.1 — 2026-11-06
+
+- Recebidos da Secretaria:
+  - Listas que cabem numa página voltam a ser lidas. O SEI só mostra o intervalo (" - 1 a 40") na legenda quando há mais de uma página. Antes, com 40 recebidos ou menos, a leitura falhava em toda rodada e os pendentes ficavam congelados.
+  - Uma lista sem intervalo só é aceita na primeira página e com todos os processos presentes.
+- Leituras longas renovam a reserva:
+  - Valem para blocos, recebidos e assinaturas. A cada página lida (no máximo a cada 20 s), a reserva de 180 s é renovada.
+  - Antes, com o SEI lento, a leitura podia terminar depois da reserva e ser recusada como "substituída" em toda rodada.
+  - Nas assinaturas, a reserva vencida também permitia uma varredura paralela em outra aba.
+- Ritmo das leituras:
+  - A vez só é devolvida depois de receber a página inteira, não só os cabeçalhos. A medição de lentidão passa a incluir o corpo.
+  - Esperas sobrepostas na mesma aba contam uma vez só no tempo limite. Antes, uma sobreposição deixava um timer rodando sem fim.
+  - Os listeners de espera são removidos ao fim de cada espera.
+- Opções:
+  - "Atualizar" pede a lista de blocos a uma única aba do SEI: a ativa primeiro, a seguinte só se a primeira falhar. Antes, todas as abas consultavam ao mesmo tempo.
+  - A leitura segue o ritmo das demais leituras de fundo e não aceita redirecionamento.
+- 221 testes, todos passando. Os novos cobrem:
+  - legenda sem intervalo;
+  - renovação da reserva de recebidos e do monitor;
+  - esperas sobrepostas;
+  - vez devolvida só após o corpo.
+- Somente extensão. Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.21.0 — 2026-11-06
 
 **Funcionamento**

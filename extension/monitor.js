@@ -376,6 +376,15 @@
       if (label.previousElementSibling !== link) link.after(label);
     }
   }
+  // Reads wait for their turn (pace.js), so a long read renews its lease instead of losing it.
+  const keepLease = (type, extra) => {
+    let last = Date.now();
+    return () => {
+      if (Date.now() - last < 20000) return;
+      last = Date.now();
+      call(type, extra).catch(() => {});
+    };
+  };
   async function syncReceipts(poll) {
     const selected = globalThis.seiWorkScope?.block;
     if (!globalThis.seiSecretariatData || selected !== '1396') {
@@ -398,7 +407,11 @@
         controller = new AbortController();
         let result;
         try {
-          result = await seiSecretariatData.snapshot(target.url, controller.signal);
+          result = await seiSecretariatData.snapshot(
+            target.url,
+            controller.signal,
+            keepLease('receipts:progress', { lease }),
+          );
         } catch (e) {
           result = { error: e.message };
         }
@@ -481,7 +494,11 @@
             if (stopped || key(D.context()) !== key(identity)) break;
             let result;
             try {
-              result = await D.snapshot(target, controller.signal);
+              result = await D.snapshot(
+                target,
+                controller.signal,
+                keepLease('monitor:progress', { lease: view.poll.id }),
+              );
             } catch (e) {
               result = { error: e.message };
             }
@@ -535,6 +552,7 @@
                 controller.signal,
                 globalThis.seiPacedFetch?.timeout(110000) || AbortSignal.timeout(110000),
               ]),
+              keepLease('signature:progress', { block: selected }),
             );
             if (!stopped && selected === seiWorkScope.block && key(D.context()) === scanIdentity) {
               for (let index = 0; index < result.observations.length; index += 200)

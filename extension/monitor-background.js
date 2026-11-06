@@ -269,6 +269,14 @@
       await save(data, owner);
       return { ...view(data, owner), poll };
     }
+    if (msg.type === 'monitor:progress') {
+      const lease = data.session.leases[owner];
+      if (lease?.id === msg.lease && lease.tab === sender.tab.id && lease.until >= Date.now()) {
+        lease.until = Date.now() + 180000;
+        await save(data, owner);
+      }
+      return view(data, owner);
+    }
     if (msg.type === 'monitor:done') {
       const lease = data.session.leases[owner];
       if (lease?.id === msg.lease && lease.tab === sender.tab.id) {
@@ -507,6 +515,7 @@
         'monitor:sync',
         'monitor:result',
         'monitor:done',
+        'monitor:progress',
         'monitor:opened',
         'monitor:ack',
         'monitor:sound',

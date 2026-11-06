@@ -499,3 +499,14 @@ test('abas redesenham uma vez por rodada, não a cada bloco lido',async()=>{
  await f.call({type:'monitor:done',lease:view.poll.id});
  assert.equal(changed(),1);
 });
+
+test('leitura longa de bloco renova a reserva do monitor',async t=>{
+ const f=worker();const view=await f.poll();
+ const lease=f.session.seiBlockMonitorSession?.leases||Object.values(f.session).find(v=>v?.leases)?.leases;
+ const entry=Object.values(lease)[0];const until=entry.until;
+ await new Promise(r=>setTimeout(r,5));
+ await f.call({type:'monitor:progress',lease:view.poll.id});
+ const renewed=Object.values(Object.values(f.session).find(v=>v?.leases).leases)[0].until;assert.ok(renewed>until);
+ await f.call({type:'monitor:progress',lease:'outra'});
+ assert.equal(Object.values(Object.values(f.session).find(v=>v?.leases).leases)[0].until,renewed,'reserva alheia não é renovada');
+});

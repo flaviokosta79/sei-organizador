@@ -67,7 +67,7 @@ globalThis.seiBlockMonitor = (() => {
       filtered: !!form.querySelector('#txtPalavrasPesquisaRelBlocoProtocolo')?.value.trim(),
     };
   }
-  async function snapshot(target, signal) {
+  async function snapshot(target, signal, progress) {
     signal = AbortSignal.any([signal, activeTimeout(120000)]);
     const read = async (url, body) => {
       const response = await timedFetch(
@@ -82,11 +82,13 @@ globalThis.seiBlockMonitor = (() => {
       );
       if (!response.ok) throw new Error(`SEI respondeu HTTP ${response.status}`);
       const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
-      return parse(
+      const page = parse(
         new DOMParser().parseFromString(new TextDecoder(charset).decode(await response.arrayBuffer()), 'text/html'),
         target.block,
         url,
       );
+      progress?.();
+      return page;
     };
     let page = await read(target.url);
     if (page.filtered || page.page !== 0) {

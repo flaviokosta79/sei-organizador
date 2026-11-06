@@ -5,26 +5,28 @@
 globalThis.seiPacedFetch = (() => {
   const navigationLimit = 5000, // per request, waiting for the user's navigation
     slotLimit = 30000; // per request, waiting for other tabs' reads; then read anyway
+  // Time during which at least one read of this page was waiting (overlapping waits count once).
   let waited = 0,
+    waiting = 0,
     waitingSince = 0;
+  const waitedNow = () => waited + (waiting ? Date.now() - waitingSince : 0);
   const sleep = (ms, signal) =>
     new Promise((resolve, reject) => {
       if (signal?.aborted) return reject(signal.reason);
-      const timer = setTimeout(resolve, ms);
-      signal?.addEventListener(
-        'abort',
-        () => {
-          clearTimeout(timer);
-          reject(signal.reason);
-        },
-        { once: true },
-      );
+      const abort = () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      };
+      const timer = setTimeout(() => {
+        signal?.removeEventListener('abort', abort);
+        resolve();
+      }, ms);
+      signal?.addEventListener('abort', abort, { once: true });
     });
-  const waitedNow = () => waited + (waitingSince ? Date.now() - waitingSince : 0);
   async function acquire(signal) {
-    const started = Date.now();
+    const since = Date.now();
     let navigation = 0;
-    waitingSince = started;
+    if (!waiting++) waitingSince = since;
     try {
       for (;;) {
         signal?.throwIfAborted();
@@ -38,22 +40,28 @@ globalThis.seiPacedFetch = (() => {
           return null;
         }
         if (!answer || answer.id) return answer?.id || null;
-        if (Date.now() - started >= slotLimit) return null;
-        const wait = Math.min(Math.max(Number(answer.wait) || 0, 50), 1000);
-        if (answer.navigation) navigation += wait;
-        await sleep(wait, signal);
+        if (Date.now() - since >= slotLimit) return null;
+        const pause = Math.min(Math.max(Number(answer.wait) || 0, 50), 1000);
+        if (answer.navigation) navigation += pause;
+        await sleep(pause, signal);
       }
     } finally {
-      waited += Date.now() - waitingSince;
-      waitingSince = 0;
+      if (!--waiting) waited += Date.now() - waitingSince;
     }
   }
+  // The slot is released only after the body arrived: the SEI is busy until the page is sent.
   async function paced(url, { timeout, ...init } = {}) {
     const id = await acquire(init.signal);
     const signal = timeout ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)].filter(Boolean)) : init.signal;
     const started = Date.now();
     try {
-      return await fetch(url, { ...init, signal });
+      const response = await fetch(url, { ...init, signal });
+      const body = [101, 204, 205, 304].includes(response.status) ? null : await response.arrayBuffer();
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
     } finally {
       if (id) chrome.runtime.sendMessage({ type: 'sei:slot-done', id, latency: Date.now() - started }).catch(() => {});
     }
@@ -66,7 +74,7 @@ globalThis.seiPacedFetch = (() => {
     const check = () => {
       const active = Date.now() - start - (waitedNow() - base);
       if (active >= limit) controller.abort(new DOMException('signal timed out', 'TimeoutError'));
-      else setTimeout(check, limit - active);
+      else setTimeout(check, Math.min(limit - active, limit));
     };
     setTimeout(check, limit);
     return controller.signal;

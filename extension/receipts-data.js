@@ -67,14 +67,17 @@ globalThis.seiSecretariatData = (() => {
       if (field(prefix + SEI_ORGANIZADOR_CONFIG.unitId) !== '') throw Error('A lista de recebidos continua filtrada.');
     const count = clean(table.caption?.textContent).match(/\(([\d.]+) registros?(?:\s*-\s*([\d.]+) a ([\d.]+))?\)/i);
     if (!count) throw Error('Quantidade de recebidos não confirmada.');
-    const total = Number(count[1].replaceAll('.', '')),
-      start = Number(count[2]?.replaceAll('.', '') || 0),
-      end = Number(count[3]?.replaceAll('.', '') || 0);
+    // The SEI shows the range (" - 1 a 40") only when the list has more than one page.
+    const ranged = count[2] !== undefined,
+      total = Number(count[1].replaceAll('.', '')),
+      start = ranged ? Number(count[2].replaceAll('.', '')) : total ? 1 : 0,
+      end = ranged ? Number(count[3].replaceAll('.', '')) : total;
     if (!Number.isSafeInteger(total) || total > 10000 || (total > 0 && (!start || end < start || end > total)))
       throw Error('Quantidade de recebidos inválida ou acima de 10.000.');
     const page = Number(field('hdnRecebidosPaginaAtual'));
     if (!Number.isSafeInteger(page) || page < 0 || field('hdnRecebidosPaginaAtual') === undefined)
       throw Error('Página de recebidos não reconhecida.');
+    if (!ranged && total && page !== 0) throw Error('Página de recebidos não reconhecida.');
     const items = [],
       rows = [...table.querySelectorAll('tr')].filter((row) => row.querySelector('td'));
     for (const row of rows) {
@@ -104,7 +107,7 @@ globalThis.seiSecretariatData = (() => {
     if (typeof criteria !== 'string' || !criteria) throw Error('Critérios da listagem não confirmados.');
     return { items, total, start, end, page, criteria, form, url: address(form.getAttribute('action'), base) };
   }
-  async function snapshot(value, signal) {
+  async function snapshot(value, signal, progress) {
     signal = AbortSignal.any([signal, activeTimeout(170000)]);
     async function read(value, data) {
       const url = address(value);
@@ -122,6 +125,7 @@ globalThis.seiSecretariatData = (() => {
       );
       if (!response.ok) throw Error(`SEI respondeu HTTP ${response.status}.`);
       const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
+      progress?.();
       return {
         doc: new DOMParser().parseFromString(
           new TextDecoder(charset).decode(await response.arrayBuffer()),

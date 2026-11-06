@@ -55,6 +55,14 @@
       await seiCompletedSignatures.ack(identity, block);
       return { ...view(record), events: [] };
     }
+    if (msg.type === 'signature:progress') {
+      const scans = (await chrome.storage.session.get(scanKey))[scanKey] || {};
+      if (scans[owner]?.tab === sender.tab.id && scans[owner].until > Date.now()) {
+        scans[owner].until = Date.now() + 180000;
+        await chrome.storage.session.set({ [scanKey]: scans });
+      }
+      return { ok: true };
+    }
     if (msg.type === 'signature:done') {
       const scans = (await chrome.storage.session.get(scanKey))[scanKey] || {};
       if (scans[owner]?.tab === sender.tab.id) {
@@ -147,7 +155,12 @@
     return { ...view(record), scan };
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
-    if (!['signature:sync', 'signature:observe', 'signature:ack', 'signature:done'].includes(msg?.type)) return;
+    if (
+      !['signature:sync', 'signature:observe', 'signature:ack', 'signature:done', 'signature:progress'].includes(
+        msg?.type,
+      )
+    )
+      return;
     const operation = serial(() => handle(msg, sender));
     operation.then(
       (data) => reply({ data }),

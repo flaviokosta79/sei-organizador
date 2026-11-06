@@ -45,10 +45,16 @@
     refresh.disabled = true;
     status.classList.remove('error');
     try {
+      // One SEI tab reads the block list (all tabs share the SEI session, which answers one request at
+      // a time): the active one first, the next only if it could not.
       const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
-      await Promise.allSettled(
-        tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'scope:catalog-request' }, { frameId: 0 })),
-      );
+      tabs.sort((a, b) => b.active - a.active || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+      for (const tab of tabs) {
+        const answer = await chrome.tabs
+          .sendMessage(tab.id, { type: 'scope:catalog-request' }, { frameId: 0 })
+          .catch(() => null);
+        if (answer?.ok) break;
+      }
       await load();
     } catch (error) {
       status.textContent = error.message;

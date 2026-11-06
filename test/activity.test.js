@@ -35,8 +35,8 @@ function background(c=clock(),stored={}){
 }
 function tab(b,{latency=100}={}){
  const c=b.clock,requests=[];
- const context={Date:{now:c.now},setTimeout:c.setTimeout,clearTimeout:c.clearTimeout,AbortController,AbortSignal,DOMException,
-  fetch:(url)=>{const r={url,start:c.now()};requests.push(r);return new Promise(resolve=>c.setTimeout(()=>{r.end=c.now();resolve({ok:true});},typeof latency==='function'?latency(url):latency));},
+ const context={Date:{now:c.now},setTimeout:c.setTimeout,clearTimeout:c.clearTimeout,AbortController,AbortSignal,DOMException,Response,
+  fetch:(url)=>{const r={url,start:c.now()};requests.push(r);return new Promise(resolve=>c.setTimeout(()=>{r.end=c.now();resolve(new Response('ok'));},typeof latency==='function'?latency(url):latency));},
   chrome:{runtime:{sendMessage:async msg=>b.send(msg)}}};
  runInNewContext(read('pace.js'),context);
  return {fetch:context.seiPacedFetch,requests};
@@ -118,7 +118,9 @@ test('manifesto avisa navegação no início de cada frame e só as leituras de 
  assert.match(read('background.js'),/importScripts\('activity-background.js'\)[\s\S]*importScripts\('monitor-background.js'\)/);
  for(const f of ['monitor-data.js','receipts-data.js','signature-data.js'])assert.match(read(f),/seiPacedFetch\(url, \{ \.\.\.init, timeout \}\)/);
  // User-requested reads (process card, history pages) are never delayed.
- for(const f of ['document.js','history-pages.js','scope.js'])assert.doesNotMatch(read(f),/seiPacedFetch/);
+ for(const f of ['document.js','history-pages.js'])assert.doesNotMatch(read(f),/seiPacedFetch/);
+ // The options page's block-list refresh is a background read too.
+ assert.match(read('scope.js'),/seiPacedFetch\(url/);assert.doesNotMatch(read('options.js'),/Promise.allSettled/);
 });
 
 test('aviso de navegação é enviado no início, ao sair, ao clicar e ao terminar de carregar',()=>{
@@ -129,4 +131,24 @@ test('aviso de navegação é enviado no início, ao sair, ao clicar e ao termin
  now+=600;listeners.pointerdown();now+=600;listeners.keydown({key:'a'});listeners.keydown({key:'Enter'});
  now+=600;listeners.beforeunload();now+=600;listeners.load();
  assert.equal(messages.length,5);assert.ok(messages.every(m=>m.type==='sei:activity'));
+});
+
+test('esperas sobrepostas na mesma aba não quebram o tempo limite e a vez só volta depois do corpo',async()=>{
+ const b=background(),c=b.clock,holder=tab(b,{latency:4000}),t=tab(b,{latency:100});
+ holder.fetch('ocupada');await c.run(()=>holder.requests.length===1);
+ const limit=t.fetch.timeout(2000);let done=0;
+ t.fetch('a').then(()=>done++);t.fetch('b').then(()=>done++);
+ await c.run(()=>done===2);
+ assert.equal(limit.aborted,false,'esperas não contam');
+ const before=c.now();await c.run(()=>limit.aborted,60000);
+ assert.ok(c.now()-before<=2100,'dispara depois de ~2 s de leitura, sem laço infinito');
+ // Body arriving 3 s after the headers keeps the slot: the next read starts only after it.
+ const slowBody={requests:[]};
+ const ctx={Date:{now:c.now},setTimeout:c.setTimeout,clearTimeout:c.clearTimeout,AbortController,AbortSignal,DOMException,Response,
+  fetch:async url=>{slowBody.requests.push({url,start:c.now()});return {status:200,statusText:'OK',headers:new Headers(),arrayBuffer:()=>new Promise(r=>c.setTimeout(()=>{slowBody.end=c.now();r(new ArrayBuffer(1));},3000))};},
+  chrome:{runtime:{sendMessage:async msg=>b.send(msg)}}};
+ runInNewContext(read('pace.js'),ctx);
+ let finished=0;ctx.seiPacedFetch('corpo').then(()=>finished++);const next=tab(b);next.fetch('depois').then(()=>finished++);
+ await c.run(()=>finished===2);
+ assert.ok(next.requests[0].start>=slowBody.end+1000,'próxima leitura espera o corpo e o intervalo');
 });

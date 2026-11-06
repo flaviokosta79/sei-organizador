@@ -168,6 +168,13 @@
       target = data.session[owner] || { links: {}, lastPoll: 0 };
     data.local[owner] = record;
     data.session[owner] = target;
+    if (msg.type === 'receipts:progress') {
+      if (target.lease?.id === msg.lease && target.lease.tab === sender.tab.id && target.lease.until >= Date.now()) {
+        target.lease.until = Date.now() + 180000;
+        await save(data);
+      }
+      return view(record, target);
+    }
     if (msg.type === 'receipts:done') {
       if (target.lease?.id === msg.lease && target.lease.tab === sender.tab.id) {
         delete target.lease;
@@ -255,7 +262,7 @@
     throw Error('Mensagem de recebimento inválida.');
   }
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
-    if (!['receipts:sync', 'receipts:result', 'receipts:done'].includes(msg?.type)) return;
+    if (!['receipts:sync', 'receipts:result', 'receipts:done', 'receipts:progress'].includes(msg?.type)) return;
     const operation = serial(() => handle(msg, sender));
     operation.then(
       (data) => reply({ data }),
