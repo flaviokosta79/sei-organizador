@@ -239,14 +239,20 @@
     const age = recent ? ` · atividade há ${Math.max(0, Math.floor((now - entry.activityAt) / 1000))} s` : '';
     return `✏️ ${who} · ${recent ? 'edição recente' : 'editor aberto'} · ${doc}${age}`;
   }
-  function paint() {
-    const { rows, host } = targets(),
-      identity = context();
+  // Callers that already read the page pass targets/context in, so a scan reads the DOM once.
+  function paint(found = targets(), identity = context()) {
+    const { rows, host } = found;
     const now = cached ? cached.serverTime + (Date.now() - receivedAt) : Date.now();
     const entries = identity ? (cached?.entries || []).filter((entry) => entry.expiresAt > now) : [];
+    const byProcess = new Map();
+    for (const entry of entries) {
+      const list = byProcess.get(entry.process);
+      if (list) list.push(entry);
+      else byProcess.set(entry.process, [entry]);
+    }
     for (const { id, cell } of rows) {
       if (!cell) continue;
-      const items = entries.filter((e) => e.process === id),
+      const items = byProcess.get(id) || [],
         text = items.map((e) => description(e, now)).join('\n');
       let label = cell.querySelector('.so-editing-presence');
       if (!text) {
@@ -264,6 +270,8 @@
       const visible = text + (error ? '\nÚltima consulta; sincronização indisponível.' : '');
       if (label.textContent !== visible) label.textContent = visible;
     }
+    // Our own labels must not trigger another scan of the page.
+    observer.takeRecords();
     const root = host?.shadowRoot,
       list = root?.querySelector('ul');
     if (!list) return;
@@ -271,7 +279,7 @@
       root.querySelector('.editing-presence')?.remove();
       return;
     }
-    const items = entries.filter((e) => e.process === host.dataset.process),
+    const items = byProcess.get(host.dataset.process) || [],
       text = items.map((e) => description(e, now)).join('\n');
     let panel = root.querySelector('.editing-presence');
     if (!text && !error) {
@@ -339,14 +347,15 @@
     if (stopped) return;
     scanEditor();
     const identity = context(),
-      { ids } = targets();
+      found = targets(),
+      { ids } = found;
     if (!identity) {
       cached = null;
-      paint();
+      paint(found, identity);
       return;
     }
     const key = JSON.stringify([identity, ids]);
-    paint();
+    paint(found, identity);
     if (ids.length && key !== targetKey && !busy) {
       targetKey = key;
       clearTimeout(scheduled);

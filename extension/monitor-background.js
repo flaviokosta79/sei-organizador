@@ -9,7 +9,10 @@
   const sharedEnabled = !!SEI_ORGANIZADOR_CONFIG.serviceUrl;
   async function shared(path, body) {
     const response = await seiServiceFetch(path, { body });
-    if (!response.ok) throw new Error(`Leitura compartilhada indisponível (HTTP ${response.status}).`);
+    if (!response.ok)
+      throw Object.assign(new Error(`Leitura compartilhada indisponível (HTTP ${response.status}).`), {
+        status: response.status,
+      });
     const state = await response.json();
     if (
       path.endsWith('/alerts') &&
@@ -27,12 +30,40 @@
       .filter(([id, entry]) => !entry.seen || (entry.baseline && localPending.has(id)))
       .map(([id]) => ({ id, number: numbers[id] || id }));
   }
+  // Openings are sent in batches per block; an older API without the batch route gets one request per process.
+  let batchUnsupported = false;
   async function flushOpened(data, identity) {
     if (!sharedEnabled) return;
+    const groups = new Map();
     for (const [key, item] of Object.entries(data.local.openQueue || {})) {
       if (item.owner !== identityKey(identity)) continue;
-      await shared(`processes/${item.id}/opened`, { actor: identity, block: item.block ?? data.workBlock });
-      delete data.local.openQueue[key];
+      const block = item.block ?? data.workBlock;
+      const group = groups.get(block ?? '') || { block, entries: [] };
+      group.entries.push([key, item]);
+      groups.set(block ?? '', group);
+    }
+    for (const { block, entries } of groups.values()) {
+      if (!batchUnsupported)
+        try {
+          for (let i = 0; i < entries.length; i += 1000) {
+            const chunk = entries.slice(i, i + 1000);
+            await shared('processes/opened', {
+              actor: identity,
+              block,
+              processes: [...new Set(chunk.map(([, item]) => item.id))],
+            });
+            for (const [key] of chunk) delete data.local.openQueue[key];
+          }
+          continue;
+        } catch (e) {
+          if (e.status !== 404 && e.status !== 405) throw e;
+          batchUnsupported = true;
+        }
+      for (const [key, item] of entries) {
+        if (!data.local.openQueue[key]) continue;
+        await shared(`processes/${item.id}/opened`, { actor: identity, block });
+        delete data.local.openQueue[key];
+      }
     }
   }
   const chiefs = (data) => data.local.chiefs?.[chiefKey] || [];
@@ -393,30 +424,35 @@
         if (data.workBlock === undefined || recordKey === `${owner}:${data.workBlock}`)
           record.pending = record.pending.filter((p) => p.id !== msg.process);
     } else if (msg.type === 'monitor:ack') {
-      for (const [key, target] of Object.entries(data.session.targets))
-        if (
+      const acked = Object.keys(data.session.targets).filter((key) => {
+        const target = data.session.targets[key];
+        return (
           target.owner === owner &&
           (data.workBlock === undefined || target.block === data.workBlock) &&
           (!msg.block || msg.block === target.block)
-        ) {
-          if (data.local.records[key]) {
-            if (sharedEnabled) {
-              data.local.openQueue ??= {};
-              for (const item of data.local.records[key].pending)
-                data.local.openQueue[`${owner}:${data.workBlock || ''}:${item.id}`] = {
-                  owner,
-                  id: item.id,
-                  block: data.workBlock,
-                };
-              await save(data, owner);
-              await flushOpened(data, identity);
-            }
-            data.local.records[key].pending = [];
-            data.local.records[key].signPending = [];
-          }
-          await chrome.notifications.clear(`sei-block:${key}`);
-          await chrome.notifications.clear(`sei-sign:${key}`);
+        );
+      });
+      // Queue every acknowledged process, persist once and send one batch; clear only after it is shared.
+      if (sharedEnabled) {
+        data.local.openQueue ??= {};
+        for (const key of acked)
+          for (const item of data.local.records[key]?.pending || [])
+            data.local.openQueue[`${owner}:${data.workBlock || ''}:${item.id}`] = {
+              owner,
+              id: item.id,
+              block: data.workBlock,
+            };
+        await save(data, owner);
+        await flushOpened(data, identity);
+      }
+      for (const key of acked) {
+        if (data.local.records[key]) {
+          data.local.records[key].pending = [];
+          data.local.records[key].signPending = [];
         }
+        await chrome.notifications.clear(`sei-block:${key}`);
+        await chrome.notifications.clear(`sei-sign:${key}`);
+      }
     } else if (msg.type === 'monitor:sound') {
       if (msg.soundId !== undefined) {
         if (!seiAlertSounds.some((item) => item.id === msg.soundId)) throw new Error('Áudio inválido.');

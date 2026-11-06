@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.19.0 — 2026-11-05
+
+- Vistos em lote: "Marcar como visto" envia todos os processos do bloco numa única requisição (`POST /processes/opened`, até 1.000 por envio), em vez de uma por processo. A fila é gravada e enviada uma vez, e as pendências só são limpas depois do envio. Com a API anterior, a extensão volta a enviar um por um.
+- Leituras compartilhadas: abas, card do processo e monitor do mesmo navegador usam uma única consulta ao estado e ao histórico do bloco por janela de 4 s, com cópias independentes. Uma gravação no bloco invalida o cache, e leituras iniciadas antes dela não são reaproveitadas.
+- Presença de edição: entradas indexadas por processo, página lida uma vez por varredura, e os próprios rótulos não disparam nova varredura.
+- Leitura do usuário logado uniforme entre os módulos; o login é normalizado em minúsculas na origem.
+- Retenção no servidor (política aprovada pelo usuário):
+  - mantém as 300 alterações mais recentes do histórico por bloco (a tela mostra 100);
+  - mantém 60 dias de aberturas de processo e de acompanhamento de assinaturas;
+  - roda na inicialização e uma vez por dia; o estado atual dos blocos não é alterado.
+- Mantidos por decisão do usuário: o áudio confirma ao terminar o som, e a lista de blocos de assinatura é relida a cada página.
+- 198 testes; 197 passaram. A falha restante ("card prioriza controles…") já existia antes da 0.18.0. Novos testes cobrem retenção, abertura em lote (servidor, HTTP e extensão, com retorno à API anterior) e cache de leituras com invalidação.
+- A API precisa ser reimplantada para o lote e a retenção; a extensão funciona com a API 0.18.0. Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.18.0 — 2026-11-05
 
 - Monitor: o alarme de 1 minuto escolhe uma única aba para consultar o SEI (aba ativa primeiro, páginas de processo por último). Ela confirma na hora se pode consultar; as demais só redesenham. Abas ocultas adiam a atualização até ficarem visíveis. Assinaturas são sincronizadas uma vez por ciclo, e a varredura não repete a consulta de alertas.

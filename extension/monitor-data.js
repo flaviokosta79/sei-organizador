@@ -15,7 +15,8 @@ globalThis.seiBlockMonitor = (() => {
   }
   function context() {
     const user = document.querySelector('#lnkUsuarioSistema');
-    const actor = user?.title.match(/^(.+)\s+\(([^/()]+)\/([^()]+)\)$/);
+    // Same reading of "Nome (login/ÓRGÃO)" as scope.js/editing.js/document-data.js.
+    const actor = user?.title.match(/^(.+?)\s*\(([^/()]+)\/([^()]+)\)$/);
     const unit = new URL(user?.getAttribute('href') || location.href, location.href).searchParams.get(
       'infra_unidade_atual',
     );

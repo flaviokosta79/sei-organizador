@@ -51,6 +51,7 @@ test('dois navegadores compartilham vistos, rejeitam aberturas falsas e retomam 
   try{
    const match=path.match(/blocks\/(\d+)\/alerts/);let data;
    if(match)data=body?store.alerts.snapshot('1',match[1],body):store.alerts.read('1',match[1]);
+   else if(path.endsWith('/processes/opened'))data=store.alerts.openedMany('1',body.processes,body.actor);
    else data=store.alerts.opened('1',path.match(/processes\/(\d+)\/opened/)[1],body.actor);
    return {ok:true,json:async()=>data};
   }catch(e){return {ok:false,status:e.status||400};}
@@ -449,4 +450,30 @@ test('sincronização sem mudanças não regrava o storage nem o badge',async()=
  const before={...f.writes},badges=f.badges.length;
  await f.call({type:'monitor:sync'});await f.call({type:'monitor:sync'});
  assert.deepEqual(f.writes,before);assert.equal(f.badges.length,badges);
+});
+
+test('vistos em lote: um envio por bloco e retorno a envios individuais com API anterior',async()=>{
+ const store=createStore(':memory:');const paths=[];let legacy=false;
+ const sharedFetch=async(url,options={})=>{
+  const path=new URL(url).pathname;paths.push(path);const body=options.body?JSON.parse(options.body):null;
+  try{
+   const match=path.match(/blocks\/(\d+)\/alerts/);let data;
+   if(match)data=body?store.alerts.snapshot('1',match[1],body):store.alerts.read('1',match[1]);
+   else if(path.endsWith('/processes/opened')){if(legacy)return {ok:false,status:404};data=store.alerts.openedMany('1',body.processes,body.actor);}
+   else data=store.alerts.opened('1',path.match(/processes\/(\d+)\/opened/)[1],body.actor);
+   return {ok:true,json:async()=>data};
+  }catch(e){return {ok:false,status:e.status||400};}
+ };
+ const run=async()=>{
+  const f=worker({sharedFetch});const {poll}=await f.poll();
+  await f.call({type:'monitor:result',block:'2',lease:poll.id,items:[],sharedVersion:poll.targets[0].sharedVersion});
+  await f.call({type:'monitor:done',lease:poll.id});const second=await f.poll();
+  await f.call({type:'monitor:result',block:'2',lease:second.poll.id,items:[item('100'),item('200'),item('300')],sharedVersion:second.poll.targets[0].sharedVersion});
+  paths.length=0;const view=await f.call({type:'monitor:ack'});
+  assert.equal(view.records[0].pending.length,0);assert.deepEqual(f.local.seiBlockAlerts.openQueue,{});
+  return paths.filter(p=>p.includes('/processes/'));
+ };
+ assert.deepEqual(await run(),['/v1/units/1/processes/opened']);
+ legacy=true;const old=await run();
+ assert.equal(old[0],'/v1/units/1/processes/opened');assert.equal(old.filter(p=>/processes\/\d+\/opened/.test(p)).length,3);
 });

@@ -88,5 +88,9 @@ test('API HTTP: caractere acentuado dividido entre pacotes do corpo é preservad
   req.on('error',reject);req.write(payload.subarray(0,cut));setTimeout(()=>req.end(payload.subarray(cut)),100);
  });
  assert.equal(state.tabs[0].name,'Ação');
+ const batch=(unit,body)=>fetch(`http://127.0.0.1:${port}/v1/units/${unit}/processes/opened`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ assert.equal((await batch('1',{processes:['10','20'],block:'2',actor:{login:'a',org:'SEPM'}})).status,200);
+ assert.equal((await batch('9',{processes:['10']})).status,403);
+ assert.equal((await batch('1',{processes:[]})).status,400);
  }finally{const done=new Promise(r=>child.once('exit',r));child.kill();await done;rmSync(dir,{recursive:true,force:true});}
 });

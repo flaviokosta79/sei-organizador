@@ -38,21 +38,33 @@ export function createAlerts(db,{onSnapshot=()=>{}}={}) {
       const next={version:old.version+1,observed:Date.now(),entries};save(unit,block,next);return next;
     });
   }
-  function opened(unit,process,actor,block) {
-    if(!validId(process))throw Error('Processo inválido');
+  // Several processes (e.g. "mark block as seen") are recorded in one transaction, reading each block once.
+  function openedMany(unit,processes,actor,block) {
+    if(!Array.isArray(processes)||!processes.length||processes.length>1000||!processes.every(validId)||new Set(processes).size!==processes.length)throw Error('Processos inválidos');
     if(block!==undefined&&!validId(block))throw Error('Bloco inválido');
     return transaction(()=>{
-      if(block===undefined)q.openUnit.run(unit,process,Date.now(),JSON.stringify(actor));
-      else q.openBlock.run(unit,block,process,Date.now(),JSON.stringify(actor));
+      const now=Date.now(),who=JSON.stringify(actor);
+      for(const process of processes){
+        if(block===undefined)q.openUnit.run(unit,process,now,who);
+        else q.openBlock.run(unit,block,process,now,who);
+      }
       // A block-scoped opening only touches that block; avoid parsing every other block's entries.
       const targets=block===undefined?q.blocks.all(unit).map(r=>r.block):[block];
       for(const target of targets){
-        const state=read(unit,target);const entry=state.entries?.[process];
-        if(entry&&(!entry.seen||entry.baseline)){entry.seen=true;entry.baseline=false;state.version++;save(unit,target,state);}
+        const state=read(unit,target);let changed=false;
+        for(const process of processes){
+          const entry=state.entries?.[process];
+          if(entry&&(!entry.seen||entry.baseline)){entry.seen=true;entry.baseline=false;changed=true;}
+        }
+        if(changed){state.version++;save(unit,target,state);}
       }
       return {ok:true};
     });
   }
-  return {read,snapshot,opened};
+  function opened(unit,process,actor,block) {
+    if(!validId(process))throw Error('Processo inválido');
+    return openedMany(unit,[process],actor,block);
+  }
+  return {read,snapshot,opened,openedMany};
 }
 const validId=id=>typeof id==='string'&&/^\d{1,30}$/.test(id);

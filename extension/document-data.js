@@ -155,10 +155,11 @@ globalThis.seiDocumentData = (() => {
     } catch {
       return null;
     }
-    const match = (top.querySelector('a#lnkUsuarioSistema')?.title || '').match(/^(.+)\s+\(([^/()]+)\/([^()]+)\)$/);
+    // Same reading of "Nome (login/ÓRGÃO)" as scope.js/editing.js/monitor-data.js.
+    const match = (top.querySelector('a#lnkUsuarioSistema')?.title || '').match(/^(.+?)\s*\(([^/()]+)\/([^()]+)\)$/);
     const unit = top.querySelector('#lnkInfraUnidade')?.textContent.trim();
     if (!match || match[3] !== config.org || !unit) return null;
-    return { top, unit, actor: { name: match[1].trim(), login: match[2], org: match[3] } };
+    return { top, unit, actor: { name: match[1].trim(), login: match[2].trim().toLowerCase(), org: match[3] } };
   }
   function parseSignatures(text) {
     const result = [],

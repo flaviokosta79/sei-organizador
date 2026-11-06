@@ -43,6 +43,15 @@ const server=http.createServer(async(req,res)=>{
       const body=await readJson(req,65536);if(body.status)return send(body.status,{error:body.error});
       const data=body.data;return send(200,editing[2]?store.editing.update(unit,editing[2],data):store.editing.query(unit,data.processIds,data.block));
     }
+    const openedBatch=url.pathname.match(/^\/v1\/units\/(\d+)\/processes\/opened$/);
+    if(openedBatch){
+      if(openedBatch[1]!==unit)return send(403,{error:'Unidade não permitida'});
+      if(req.method!=='POST')return send(405,{error:'Método inválido'});
+      const body=await readJson(req,131072);if(body.status)return send(body.status,{error:body.error});
+      const data=body.data;
+      const a=data.actor||{};const actor={login:typeof a.login==='string'?a.login.slice(0,100):'',org:typeof a.org==='string'?a.org.slice(0,80):'',verified:false};
+      return send(200,store.alerts.openedMany(unit,data.processes,actor,data.block));
+    }
     const shared=url.pathname.match(/^\/v1\/units\/(\d+)\/(?:blocks\/(\d{1,30})\/alerts|processes\/(\d{1,30})\/opened)$/);
     if(shared){
       if(shared[1]!==unit)return send(403,{error:'Unidade não permitida'});
@@ -68,5 +77,8 @@ const server=http.createServer(async(req,res)=>{
     send(e.status||400,{error:[403,409,429].includes(e.status)?e.message:'Não foi possível aplicar a alteração. Verifique os dados.'});
   }
 });
+// Retention runs at startup and then once a day; a failure is logged and retried on the next run.
+const maintain=()=>{try{const {removed}=store.maintain();if(removed)console.log('Retenção: registros antigos removidos',removed);}catch(e){console.error('Retenção falhou',e);}};
+maintain();setInterval(maintain,86400000).unref();
 server.requestTimeout=15000;server.listen(Number(process.env.PORT||8787),host,()=>console.log('SEI Organizador iniciado'));
 for(const sig of ['SIGINT','SIGTERM'])process.on(sig,()=>{server.close(()=>{store.close();process.exit(0);});server.closeIdleConnections();});

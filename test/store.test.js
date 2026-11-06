@@ -16,3 +16,34 @@ test('classificação, conflitos, isolamento, histórico, desfazer e persistênc
  s.close();s=createStore(path);assert.equal(s.read('1','2').version,4);
  }finally{s.close();rmSync(dir,{recursive:true,force:true});}
 });
+
+test('retenção mantém as 300 alterações mais recentes por bloco e 60 dias de aberturas e assinaturas',()=>{
+ const s=createStore(':memory:');const actor={name:'Teste',login:'teste',org:'SEPM',verified:false};
+ try{
+  let version=0;for(let i=0;i<305;i++)version=s.mutate('1','2',version,actor,{type:'status',status:i%2?'urgent':'none',processIds:['10']}).version;
+  s.mutate('1','3',0,actor,{type:'status',status:'sign',processIds:['20']});
+  const day=86400000,now=Date.now();
+  s.alerts.opened('1','30',{login:'a',org:'SEPM'});s.alerts.opened('1','31',{login:'a',org:'SEPM'},'2');
+  const sig=s.signatures;const member={login:'smoke',org:'SEPM'};sig.sync('1','2',{actor:member,after:null});
+  const observed={process:'10',document:'11',number:'555',signatureBlock:'99',includedAt:now-60000,includedBy:{login:'smoke',name:'Smoke'},signature:{time:now,signer:{login:'chefe',name:'Chefe'}}};
+  assert.equal(sig.observe('1','2',{actor:member,observations:[observed]}).accepted,1);
+  const before=s.history('1','2');
+  assert.deepEqual(s.maintain(now+day),{removed:5},'só o excedente do bloco 2; dados recentes preservados');
+  assert.equal(s.history('1','3').length,1);assert.deepEqual(s.history('1','2').map(h=>h.id),before.map(h=>h.id),'tela de histórico inalterada');
+  assert.equal(s.read('1','2').version,305,'estado atual não muda');
+  const removed=s.maintain(now+61*day).removed;assert.equal(removed,4,'2 aberturas, 1 assinatura e 1 acompanhamento antigos');
+  assert.equal(sig.sync('1','2',{actor:member,after:0}).events.length,0);
+  assert.equal(s.maintain(now+61*day).removed,0,'idempotente');
+ }finally{s.close();}
+});
+
+test('abertura em lote marca vários processos vistos numa única gravação por bloco',()=>{
+ const s=createStore(':memory:');const a=s.alerts;const actor={login:'a',org:'SEPM'};
+ try{
+  let r=a.snapshot('1','2',{version:0,ids:['10']});r=a.snapshot('1','2',{version:r.version,ids:['10','20','30']});
+  const version=a.read('1','2').version;
+  a.openedMany('1',['20','30'],actor,'2');
+  const state=a.read('1','2');assert.equal(state.version,version+1);assert.equal(state.entries['20'].seen,true);assert.equal(state.entries['30'].seen,true);
+  for(const bad of [[],['x'],['20','20'],Array.from({length:1001},(_,i)=>String(i))])assert.throws(()=>a.openedMany('1',bad,actor,'2'),/Processos inválidos/);
+ }finally{s.close();}
+});

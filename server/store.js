@@ -98,6 +98,29 @@ export function createStore(path) {
     }
     return result;
   }
-  return {receipts,signatures,editing,alerts,read,mutate,history,close:()=>db.close()};
+  // Retention approved by the user: the newest 300 changes per block (the history screen shows 100)
+  // and 60 days of openings and signature tracking. Older rows no longer affect alerts or undo.
+  const retention={historyRows:300,days:60};
+  function maintain(now=Date.now()){
+    const cutoff=now-retention.days*86400000;
+    db.exec('BEGIN IMMEDIATE');
+    try{
+      let removed=0;
+      for(const {unit,block} of db.prepare('SELECT DISTINCT unit,block FROM history').all()){
+        const keep=db.prepare('SELECT id FROM history WHERE unit=? AND block=? ORDER BY id DESC LIMIT 1 OFFSET ?').get(unit,block,retention.historyRows-1);
+        if(keep)removed+=db.prepare('DELETE FROM history WHERE unit=? AND block=? AND id<?').run(unit,block,keep.id).changes;
+      }
+      for(const sql of [
+        'DELETE FROM process_views WHERE opened<?',
+        'DELETE FROM process_block_views WHERE opened<?',
+        'DELETE FROM signature_events WHERE signed_at<?',
+        'DELETE FROM signature_watches WHERE included_at<?',
+      ])removed+=db.prepare(sql).run(cutoff).changes;
+      db.exec('COMMIT');
+      if(removed)historyCache.clear();
+      return {removed};
+    }catch(e){db.exec('ROLLBACK');throw e;}
+  }
+  return {receipts,signatures,editing,alerts,read,mutate,history,maintain,close:()=>db.close()};
 }
 function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw new Error('Nome deve conter 1 a 80 caracteres');return n.trim();}

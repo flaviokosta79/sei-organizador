@@ -13,7 +13,7 @@ const tick=()=>new Promise(r=>setTimeout(r,90));
 function worker(){
  const data={},listeners=[],notices=[],requests=[];
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,openOptionsPage:async()=>{},onMessage:{addListener:fn=>listeners.push(fn)}},storage:{local:{get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))}},tabs:{query:async()=>[{id:1}],sendMessage:async(id,msg)=>notices.push(msg)}};
- const context={chrome,URL,AbortSignal,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},importScripts:()=>{},fetch:async(url,init)=>{requests.push(String(url));return {ok:true,json:async()=>({version:0,tabs:[],assignments:{},statuses:{}})};}};
+ const context={chrome,URL,AbortSignal,structuredClone,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},importScripts:()=>{},fetch:async(url,init)=>{requests.push(String(url));return {ok:true,json:async()=>({version:0,tabs:[],assignments:{},statuses:{}})};}};
  runInNewContext(read('service-client.js')+';'+read('scope-background.js')+';'+read('background.js'),context);
  const send=(msg,source=url('2'))=>new Promise(resolve=>{for(const listener of listeners)listener(msg,{url:source,tab:{id:1,url:source},frameId:0},resolve);});
  const call=async(msg,source)=>{const result=await send({identity:actor,...msg},source);if(result.error)throw Error(result.error);return result.data;};
