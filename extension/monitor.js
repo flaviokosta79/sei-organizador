@@ -307,7 +307,15 @@
       const ul = node('ul', null, body);
       for (const item of signatures.events.slice(-50).reverse()) {
         const li = node('li', null, ul);
-        node('strong', `Documento ${item.number || item.document}`, li);
+        const title = node('strong', null, li);
+        // Same address as the SEI's own "Link para Acesso Direto": it opens the process on the document.
+        if (/^\d{1,30}$/.test(item.process) && /^\d{1,30}$/.test(item.document)) {
+          const a = node('a', `Documento ${item.number || item.document}`, title);
+          a.href = `https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=${item.process}&id_documento=${item.document}`;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.title = 'Abrir o documento no processo';
+        } else title.textContent = `Documento ${item.number || item.document}`;
         node(
           'span',
           ` · assinado por ${item.signer.name || item.signer.login} (${item.signer.login}) · ${new Date(item.signedAt).toLocaleString('pt-BR')} · bloco de assinatura ${item.signatureBlock}`,

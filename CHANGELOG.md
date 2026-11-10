@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.11 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- No aviso de documento assinado, "Documento N" agora é um link: abre, em outra aba, o processo já posicionado no documento. O endereço é o mesmo que o SEI oferece em "Link para Acesso Direto" na árvore do processo, e funciona para qualquer colega do grupo que tenha acesso ao documento.
+- 255 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.10 — 2026-11-10
 
 **Extensão (não requer reimplantar a API). Inclui as mudanças da 0.23.9, que não teve release.**

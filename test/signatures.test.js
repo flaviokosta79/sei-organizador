@@ -160,7 +160,8 @@ test('rodapé mostra documento e assinante sem exigir registro de um bloco abert
  }}};
  try{
   w.eval(read('monitor.js'));await new Promise(r=>setTimeout(r,90));const root=w.document.querySelector('#sei-organizador-alertas').shadowRoot;
-  assert.match(root.textContent,/1 documento assinado/);assert.match(root.textContent,/Documento 555/);assert.match(root.textContent,/Nome do Chefe \(chefe\)/);
+  assert.match(root.textContent,/1 documento assinado/);assert.match(root.textContent,/Documento 555/);
+  const link=root.querySelector('li strong a');assert.equal(link.textContent,'Documento 555');assert.equal(link.href,'https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=10&id_documento=11');assert.equal(link.target,'_blank');assert.match(root.textContent,/Nome do Chefe \(chefe\)/);
   [...root.querySelectorAll('button')].find(b=>b.textContent==='Marcar assinaturas como vistas').click();await new Promise(r=>setTimeout(r,90));assert.doesNotMatch(root.textContent,/Documento 555/);
  }finally{w.close();}
 });
