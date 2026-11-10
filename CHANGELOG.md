@@ -10,6 +10,7 @@
   - São no máximo duas leituras: a tela de atribuição e, se a tela atual não tiver o endereço dela, o Controle de Processos do menu. Elas passam pela mesma fila das outras leituras da extensão, que cede a vez à navegação.
   - Se o SEI não entregar o seletor, a janela informa e continua valendo abrir a tela Atribuir Processo ou digitar o login.
 - A lista continua só no navegador de cada pessoa e não vai para o servidor da extensão.
+- Conferido pelo autor no SEI-RJ real em 2026-11-10, com a lista vazia: a busca obteve os usuários tanto a partir da lista de um bloco quanto da tela de um processo.
 - 259 testes, todos passando. Os novos cobrem a leitura a pedido, o caminho pelo Controle de Processos, a falha e endereços de outra unidade ou de outro site.
 - Após atualizar, recarregar todas as abas do SEI.
 
