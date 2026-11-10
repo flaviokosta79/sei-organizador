@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.23.9 — 2026-11-10
+
+**Preparação para a Chrome Web Store. Extensão e API mudam, mas nada disso exige ação de quem usa o ZIP: sem release no GitHub.**
+
+- Pacote da loja: `node tools/build-store.mjs` gera `artifacts/sei-organizador-store.zip`, igual ao ZIP da unidade exceto por não ter o campo `key` (a loja define o identificador) nem a consulta de versão ao GitHub. O script confere ícones, raiz do ZIP e arquivos que não devem ir para a loja.
+- Ícones em 16, 32, 48 e 128 px no manifesto (a loja exige o de 128).
+- Instalada pela loja, a extensão não consulta o GitHub nem mostra "Nova versão": o Chrome atualiza sozinho. No ZIP da unidade o aviso continua igual.
+- Descrição do manifesto passa a citar o SEI-RJ e a dizer que a ferramenta não é oficial.
+- API: página `/privacidade` com a política de privacidade exigida pela loja. Só é publicada quando a variável `SEI_PRIVACY_CONTACT` (nome e e-mail de contato) está definida na stack; o contato não fica no repositório nem na imagem. **Requer reimplantar a API para a página existir.**
+- `store/ficha-da-loja.md`: textos da listagem, justificativa de cada permissão, respostas de privacidade e instruções para a análise. `store/screenshots/`: três capturas 1280×800 feitas numa página de demonstração com dados fictícios.
+- 253 testes, todos passando. Os novos cobrem a instalação pela loja, os ícones e a página de privacidade.
+
 ## 0.23.8 — 2026-11-10
 
 **Extensão (não requer reimplantar a API). Inclui o ajuste da 0.23.7, que não teve release.**

@@ -5,12 +5,12 @@ import {runInNewContext} from 'node:vm';
 const read=name=>readFileSync(new URL('../extension/'+name,import.meta.url),'utf8');
 const releases='https://github.com/flaviokosta79/sei-organizador/releases/tag/';
 
-function worker({installed='0.22.4',answer}={}){
+function worker({installed='0.22.4',answer,manifest={},config=read('config.js')}={}){
  let listener,offset=0;const requests=[],local={};
  const Clock=class extends Date{static now(){return Date.now()+offset;}};
- const chrome={runtime:{getManifest:()=>({version:installed}),onMessage:{addListener:fn=>listener=fn}},storage:{local:{get:async key=>({[key]:local[key]&&structuredClone(local[key])}),set:async value=>Object.assign(local,structuredClone(value))}}};
+ const chrome={runtime:{getManifest:()=>({version:installed,...manifest}),onMessage:{addListener:fn=>listener=fn}},storage:{local:{get:async key=>({[key]:local[key]&&structuredClone(local[key])}),set:async value=>Object.assign(local,structuredClone(value))}}};
  const context={chrome,URL,AbortSignal,Date:Clock,fetch:async(url,options)=>{requests.push({url,options});return answer();}};
- runInNewContext(read('config.js')+';'+read('update-check.js'),context);
+ runInNewContext(config+';'+read('update-check.js'),context);
  const ask=(url='https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_controlar',frameId=0)=>new Promise(r=>listener({type:'update:status'},{tab:{url},frameId},r));
  return {ask,requests,local,later(ms){offset+=ms;}};
 }
@@ -45,4 +45,17 @@ test('manifesto autoriza só a API do GitHub além do SEI e do serviço; o rodap
  assert.deepEqual(manifest.host_permissions,['https://sei.rj.gov.br/*','https://ext.5cpa.com.br/*','https://api.github.com/*']);
  assert.match(read('background.js'),/importScripts\('update-check\.js'\)/);
  const monitor=read('monitor.js');assert.match(monitor,/Nova versão \$\{upgrade\.latest\}/);assert.match(monitor,/sei-organizador e siga o LEIA-ME/);
+});
+
+test('instalada pela Chrome Web Store, a extensão não consulta o GitHub nem mostra aviso de versão',async()=>{
+ // The store adds update_url to the manifest; the store package also ships config.js without the feed.
+ const store=worker({answer:ok('v9.9.9'),manifest:{update_url:'https://clients2.google.com/service/update2/crx'}});
+ let r=(await store.ask()).data;assert.equal(r.available,false);assert.equal(r.url,null);assert.equal(r.current,'0.22.4');assert.equal(store.requests.length,0);
+ const noFeed=worker({answer:ok('v9.9.9'),config:read('config.js').replace(/^.*(?:updateFeed|releasesPage).*$/gm,'')});
+ r=(await noFeed.ask()).data;assert.equal(r.available,false);assert.equal(noFeed.requests.length,0);
+});
+
+test('manifesto traz os ícones exigidos pela loja e os arquivos existem',()=>{
+ const manifest=JSON.parse(read('manifest.json'));
+ for(const size of ['16','32','48','128']){const png=readFileSync(new URL('../extension/'+manifest.icons[size],import.meta.url));assert.equal(png.subarray(1,4).toString(),'PNG');assert.equal(png.readUInt32BE(16),Number(size));assert.equal(png.readUInt32BE(20),Number(size));}
 });

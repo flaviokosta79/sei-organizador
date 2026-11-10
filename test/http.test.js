@@ -114,13 +114,15 @@ test('API pública (modo de produção): limites, JSON inválido, mensagens úte
   assert.match((await unknown.json()).error,/não existe mais/);
   const generic=await post('/blocks/2',{version:0,actor:{login:'a'},action:{type:'inexistente'}});
   assert.equal((await generic.json()).error,'Não foi possível aplicar a alteração. Verifique os dados.');
+  // Without a configured contact the privacy policy is not published.
+  assert.equal((await fetch(`http://127.0.0.1:${port}/privacidade`)).status,404);
  }finally{const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;rmSync(dir,{recursive:true,force:true});}
 });
 
 test('API pública: banco no teto de tamanho responde 507 nas gravações e continua lendo',async()=>{
  const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
  const dir=mkdtempSync(join(tmpdir(),'sei-full-'));
- const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_ALLOW_PUBLIC_ACCESS:'true',SEI_API_TOKEN_HASHES_FILE:'',SEI_UNIT_ID:'1',SEI_MAX_DB_MB:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_ALLOW_PUBLIC_ACCESS:'true',SEI_API_TOKEN_HASHES_FILE:'',SEI_UNIT_ID:'1',SEI_MAX_DB_MB:'1',SEI_PRIVACY_CONTACT:'Fulano <contato@exemplo.test>',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
  try{
   const started=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',data=>{clearTimeout(timer);resolve(String(data));});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
   assert.match(started,/banco com \d+\.\d MB de 1 MB/);
@@ -132,5 +134,8 @@ test('API pública: banco no teto de tamanho responde 507 nas gravações e cont
   assert.equal(full?.status,507);assert.match((await full.json()).error,/Armazenamento do serviço cheio/);
   const state=await(await fetch(base+'/blocks/2')).json();assert.equal(state.tabs[0].name,'Assunto');
   assert.equal((await fetch(`http://127.0.0.1:${port}/healthz`)).status,200);
+  // Privacy policy page: HTML, with the configured contact escaped and no placeholder left.
+  const policy=await fetch(`http://127.0.0.1:${port}/privacidade`);assert.equal(policy.status,200);assert.match(policy.headers.get('content-type'),/^text\/html/);
+  const html=await policy.text();assert.match(html,/Política de privacidade do SEI Organizador/);assert.match(html,/Fulano &#60;contato@exemplo\.test&#62;/);assert.doesNotMatch(html,/\{\{/);
  }finally{const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;rmSync(dir,{recursive:true,force:true});}
 });

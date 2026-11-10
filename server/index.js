@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {createStore} from './store.js';
 import {createAuth} from './auth.js';
+import {readFileSync} from 'node:fs';
 const unit=process.env.SEI_UNIT_ID;
 if(!unit||!/^\d+$/.test(unit))throw new Error('Configure SEI_UNIT_ID com a unidade autorizada');
 const host=process.env.HOST||'127.0.0.1';
@@ -8,6 +9,11 @@ const authorized=createAuth({file:process.env.SEI_API_TOKEN_HASHES_FILE,host,pub
 const maxMb=Number(process.env.SEI_MAX_DB_MB||1024);
 if(!Number.isFinite(maxMb)||maxMb<1)throw new Error('SEI_MAX_DB_MB deve ser um número a partir de 1');
 const store=createStore(process.env.DATA_FILE||'./data/organizador.sqlite',{maxBytes:maxMb*1048576});
+// Privacy policy required by the Chrome Web Store. Published only when a contact is configured, so the
+// page never goes out with a blank contact; the contact stays out of the repository and of the image.
+const escapeHtml=text=>text.replace(/[&<>"']/g,c=>`&#${c.charCodeAt(0)};`);
+const contact=(process.env.SEI_PRIVACY_CONTACT||'').trim().slice(0,300);
+const privacy=contact?readFileSync(new URL('./privacidade.html',import.meta.url),'utf8').replace('{{CONTATO}}',escapeHtml(contact)):null;
 // Buffers are joined before decoding, so multibyte characters split across chunks stay intact.
 async function readJson(req,limit){
   if(!req.headers['content-type']?.startsWith('application/json'))return {status:415,error:'Use JSON'};
@@ -20,6 +26,7 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
   const send=(status,data)=>{const body=JSON.stringify(data);res.setHeader('Server-Timing',`app;dur=${(performance.now()-started).toFixed(2)}`);res.writeHead(status);res.end(body);};
   if(req.url==='/healthz'&&req.method==='GET')return send(200,{ok:true});
+  if(req.url==='/privacidade'&&req.method==='GET'&&privacy){res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, max-age=3600');res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'");res.writeHead(200);return res.end(privacy);}
   if(!authorized(req.headers.authorization)){res.setHeader('WWW-Authenticate','Bearer');return send(401,{error:'Token de acesso ausente ou inválido'});}
   try{
     const url=new URL(req.url,'http://localhost');

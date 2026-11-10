@@ -38,7 +38,11 @@ globalThis.seiUpdateCheck = (() => {
       return { ...state, nextAt: Date.now() + retry };
     }
   }
+  // Installed from the Chrome Web Store (the store adds update_url): Chrome updates it by itself, so
+  // nothing is asked to GitHub and no notice is shown.
+  const managed = () => !!chrome.runtime.getManifest().update_url || !updateFeed;
   async function status() {
+    if (managed()) return { current: chrome.runtime.getManifest().version, latest: null, url: null, available: false };
     let state = (await chrome.storage.local.get(storageKey))[storageKey] || {};
     const now = Date.now();
     if (!(state.nextAt > now) || state.nextAt > now + every) {

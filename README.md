@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.8
+# SEI Organizador — 0.23.9
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -20,6 +20,12 @@ npm ci
 ```
 
 Para clone existente, execute `git submodule update --init`. `referencias/sei` é o submódulo do [SEI++ original](https://github.com/jonatasrs/sei), usado como referência independente; não é necessário para executar o organizador. Sua licença e seu histórico são preservados.
+
+## Chrome Web Store (em preparação, 0.23.9)
+
+`node tools/build-store.mjs` gera `artifacts/sei-organizador-store.zip`, o pacote para enviar à loja. Ele é igual ao ZIP da unidade, sem o campo `key` do manifesto e sem a consulta de versão ao GitHub. Os textos da listagem, as justificativas de permissão, as respostas de privacidade e o passo a passo estão em [store/ficha-da-loja.md](store/ficha-da-loja.md); as capturas de tela, em `store/screenshots/`.
+
+A política de privacidade é servida pela API em `/privacidade`, depois que `SEI_PRIVACY_CONTACT` for definido na stack. Instalada pela loja, a extensão recebe outro identificador: cada pessoa remove a versão do ZIP e escolhe de novo o bloco de trabalho e os chefes de seção.
 
 ## Escolha do bloco de trabalho
 
@@ -192,7 +198,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.23.8: **251 testes passaram** (5 deles dependem de amostras reais do SEI, que não ficam no repositório, e são pulados sem elas), além das verificações de sintaxe e formatação. Histórico da 0.23.7: 250 testes passaram. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.9: **253 testes passaram** (5 deles dependem de amostras reais do SEI, que não ficam no repositório, e são pulados sem elas), além das verificações de sintaxe e formatação. Histórico da 0.23.7: 250 testes passaram. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
