@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "SEI Organizador",
-  "version": "0.23.1",
+  "version": "0.23.2",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApTqCR0JABk+ukgbJ83Qyj9tiFmMjntiVm/Ytbvlk0O2UdhyVDBJPNd0FDsBvvTXBMwoWDbn56cISrwekfvCRKZH+O3olnRnemJ1044cRsM2oE0Wg9XWL0OYXqmz1zvjExaQwQ1rNqLDsS6QKg81do8btx01k1i2c/Hr16Wa8Hibfsuvnp7pM3CGdk33tm/l+kxlOB/ttPBu8Z/I4LNMdBbrWxKWB+ODVGzvMz3Nr3rj7rp39PUOev9BKHRtBF87aQTr3h9PHjhhik479cbBAroZUWu5w0lssZ2vj450WitTz/rSpiw9FtUk7vK+2cghSA1eYmb0411JawJG5gPE/AQIDAQAB",
   "description": "Abas por assunto, situação dos documentos e alertas de novos processos nos blocos internos do SEI.",
   "background": {

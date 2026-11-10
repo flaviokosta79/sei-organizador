@@ -150,14 +150,25 @@
     return list;
   }
   async function api(block, body) {
-    const result = await chrome.runtime.sendMessage({
-      type: 'api',
-      identity: globalThis.seiWorkScope?.identity,
-      unit: config.unitId,
-      block,
-      body,
-    });
-    if (result?.error) throw new Error(result.error);
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({
+        type: 'api',
+        identity: globalThis.seiWorkScope?.identity,
+        unit: config.unitId,
+        block,
+        body,
+      });
+    } catch (e) {
+      // After the extension is updated or reloaded, the scripts of pages already open lose contact with it.
+      throw new Error(
+        /context invalidated/i.test(e?.message)
+          ? 'A extensão foi atualizada ou recarregada. Recarregue esta página (F5).'
+          : e?.message || 'A extensão não respondeu.',
+      );
+    }
+    if (!result) throw new Error('A extensão não respondeu. Recarregue esta página (F5).');
+    if (result.error) throw new Error(result.error);
     return result.data;
   }
 
@@ -300,7 +311,9 @@
     'pagehide',
     () => {
       dispose();
-      if (!processView) {
+      // Also when the root view drew the summary: a PDF taking its place draws no card of its own.
+      // The tree itself leaving needs nothing: its page is going away with the card.
+      if (document !== treeDocument) {
         const event = ui.createEvent('Event');
         event.initEvent('sei-organizador:restore-process', false, false);
         ui.dispatchEvent(event);
@@ -368,10 +381,9 @@
   const documentLinks = new Map();
   if (pending.length)
     for (const link of ui.querySelectorAll('a[href]')) {
-      try {
-        const id = new URL(link.getAttribute('href'), ui.location.href).searchParams.get('id_documento');
-        if (id && !documentLinks.has(id)) documentLinks.set(id, link);
-      } catch {}
+      // Read from the address text: a large tree has thousands of links, on every document selected.
+      const id = /[?&]id_documento=([^&#]+)/.exec(link.getAttribute('href'))?.[1];
+      if (id && !documentLinks.has(id)) documentLinks.set(id, link);
     }
   if (pending.length) {
     const pendingLine = line('Pendências antes de enviar');
@@ -700,10 +712,13 @@
 
     async function describeBlocks(kind, found, label) {
       if (!found.length) return [];
+      // The list of Blocos de Assinatura is never read: one of its pages took about 35 s in the real SEI
+      // and held the user's next click (0.22.2). The block number from the history is enough here.
       let listed = null;
-      try {
-        listed = await loadBlocks(kind);
-      } catch {}
+      if (kind === 'interno')
+        try {
+          listed = await loadBlocks(kind);
+        } catch {}
       return found
         .filter((b) => !listed || listed.partial || listed.blocks.has(b.id))
         .map((b) => {
@@ -848,12 +863,23 @@
         if (busy || !ready || !active()) return;
         busy = true;
         disableControls();
-        try {
-          const next = await api(block.id, {
-            version: state.version,
+        const save = (version) =>
+          api(block.id, {
+            version,
             actor,
             action: { ...action, processNumbers: { [process]: tree.process.number } },
           });
+        try {
+          let next;
+          try {
+            next = await save(state.version);
+          } catch (e) {
+            // A colleague saved first. A status or a subject means the same on the newer state, so it
+            // is sent once more on it instead of being lost (as the block list does).
+            if (!/outro colega/i.test(e.message)) throw e;
+            current = await api(block.id);
+            next = await save(current.version);
+          }
           current = next;
           renderOrganizer(current, 'Alteração salva.');
         } catch (e) {

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.23.2 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Resumo do processo não some mais ao abrir um PDF:
+  - Ao voltar de um documento para a raiz do processo, o resumo podia ser desenhado pela área de visualização, e não pela árvore. Abrir em seguida um PDF ou outro conteúdo sem card removia o resumo, e ele só voltava ao recarregar o processo.
+  - Agora, sempre que a área que desenhou o card dá lugar a outra página, a árvore redesenha o resumo, como já fazia ao fechar um documento.
+- Status e assuntos pelo card não se perdem quando um colega grava antes:
+  - Se um colega alterava o bloco nos segundos entre a última leitura do card e a sua escolha, o card mostrava "Estado atualizado por outro colega" e a escolha era descartada.
+  - Agora o card lê o estado novo e envia a mesma escolha mais uma vez, como a lista do bloco já fazia. Se ainda houver conflito, mostra a mensagem com os dados atuais.
+- O card não lê mais a lista de Blocos de Assinatura:
+  - Ao clicar em "Consultar andamento" num documento da unidade em bloco de assinatura, o card lia essa lista para mostrar a descrição do bloco. É a mesma lista que a 0.22.2 tirou do monitor: no SEI real, uma das páginas levou cerca de 35 s e segurou o clique seguinte.
+  - A linha da assinatura passa a mostrar só o número: "Aguardando assinatura · bloco nº N". O número vem do andamento. A lista de Blocos Internos continua sendo lida.
+- Com a extensão atualizada ou recarregada e a tela do processo ainda aberta, o card mostra "A extensão foi atualizada ou recarregada. Recarregue esta página (F5)." em vez de "Extension context invalidated".
+- Em processos com pendências de assinatura, o card não monta mais um endereço completo para cada link da árvore a cada documento selecionado.
+- 242 testes, todos passando. Os novos cobrem o resumo após PDF, o reenvio após conflito, a mensagem de recarregar e a ausência de leitura da lista de Blocos de Assinatura.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.1 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

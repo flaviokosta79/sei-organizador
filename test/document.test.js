@@ -252,8 +252,10 @@ test('documento sem assinatura em bloco mostra aguardando assinatura na própria
  const unsignedTree=tree.replace(/NosAcoes\[1\][^\n]*\n/,'');
  const rows=historyRows.filter(r=>!/retirado do bloco 14|Assinado Documento/.test(r));
  const f=frame({body:'<p>Minuta</p>',rows,signatureList:[['14','COMANDANTE 5º CPA']],treeDom:new JSDOM(unsignedTree,{url:base+'controlador.php?acao=procedimento_visualizar'})});await f.done;await settle();
- const text=f.badge().textContent;assert.match(text,/Assinatura✎ Aguardando assinatura · bloco nº 14 \(COMANDANTE 5º CPA\)/);assert.doesNotMatch(text,/Não assinado|Bloco de assinatura/);
- const signed=frame({rows,signatureList:[['14','COMANDANTE 5º CPA']]});await signed.done;await settle();assert.match(signed.badge().textContent,/Pessoa Um \(Coronel\) · 19\/10\/2026.*No bloco nº 14 \(COMANDANTE 5º CPA\)/);
+ const text=f.badge().textContent;assert.match(text,/Assinatura✎ Aguardando assinatura · bloco nº 14/);assert.doesNotMatch(text,/Não assinado|Bloco de assinatura|COMANDANTE/);
+ // The slow list of Blocos de Assinatura is never read by the card; the internal one still is.
+ assert.equal(f.requests.some(r=>/bloco_assinatura_listar/.test(r.url)),false);assert.equal(f.requests.some(r=>/bloco_interno_listar/.test(r.url)),true);
+ const signed=frame({rows,signatureList:[['14','COMANDANTE 5º CPA']]});await signed.done;await settle();assert.match(signed.badge().textContent,/Pessoa Um \(Coronel\) · 19\/10\/2026.*No bloco nº 14/);assert.equal(signed.requests.some(r=>/bloco_assinatura_listar/.test(r.url)),false);
  assert.equal(signed.badge().querySelector('.organizer select').closest('label').textContent.startsWith('Status manual'),true);
 });
 
@@ -554,4 +556,38 @@ test('card grande monta vinte pendências por vez sem perder acesso às restante
   more.click();assert.equal(section.querySelectorAll('.pending').length,40);
   more.click();assert.equal(section.querySelectorAll('.pending').length,55);assert.equal(more.hidden,true);assert.equal(f.requests.length,0);
  }finally{f.leave();}
+});
+
+test('resumo desenhado pela visão da raiz volta quando ela dá lugar a um conteúdo sem card (PDF)',async()=>{
+ const process=frame({action:'procedimento_visualizar'});await process.done;
+ const doc=frame({treeDom:process.treeDom});await doc.done;
+ // Back to the process root: the root view draws the summary before the tree's own delayed restore.
+ doc.leave();const root=frame({action:'arvore_visualizar',treeDom:process.treeDom});await root.done;
+ await new Promise(r=>setTimeout(r,300));await settle();
+ assert.equal(process.tree.querySelectorAll('#sei-organizador-documento').length,1);assert.equal(process.tree.querySelector('#sei-organizador-documento').dataset.mode,'process');
+ // A PDF or another page without card replaces the root view: the tree must draw the summary again.
+ root.leave();await new Promise(r=>setTimeout(r,300));await settle();
+ assert.equal(process.tree.querySelectorAll('#sei-organizador-documento').length,1);assert.equal(process.tree.querySelector('#sei-organizador-documento').dataset.mode,'process');
+ assert.match(process.badge().textContent,/Última movimentação/);process.leave();
+});
+
+test('card reenvia status e assunto uma vez quando um colega gravou antes, sem insistir em outros erros',async()=>{
+ let state={version:3,tabs:[{id:'t1',name:'Pessoal'}],assignments:{},statuses:{'900':'attention'}};
+ const conflict='Estado atualizado por outro colega. Recarregue e tente novamente.';let always=false;const writes=[];
+ const f=frame({apiHandler:async msg=>{if(!msg.body)return {data:state};writes.push(msg.body.version);
+  if(always||msg.body.version!==state.version)return {error:conflict};
+  state={...state,version:state.version+1,statuses:{'900':msg.body.action.status}};return {data:state};}});await f.done;
+ // A colleague assigns a subject between this card's last reading and the user's choice.
+ state={...state,version:4,assignments:{'900':['t1']}};
+ const select=f.badge().querySelector('select');select.value='urgent';select.dispatchEvent(new f.doc.defaultView.Event('change'));await settle();
+ assert.deepEqual(writes,[3,4]);assert.equal(state.statuses['900'],'urgent');
+ assert.match(f.badge().textContent,/Assunto: Pessoal/);assert.match(f.badge().textContent,/Alteração salva\./);assert.equal(f.badge().querySelector('select').value,'urgent');
+ // Still in conflict on the second try: the message is shown with the current data, without a third try.
+ always=true;writes.length=0;const again=f.badge().querySelector('select');again.value='follow';again.dispatchEvent(new f.doc.defaultView.Event('change'));await settle();
+ assert.equal(writes.length,2);assert.match(f.badge().textContent,/outro colega/);assert.equal(f.badge().querySelector('select').value,'urgent');assert.equal(f.badge().querySelector('select').disabled,false);f.leave();
+});
+
+test('card pede para recarregar a página quando a extensão foi atualizada com ela aberta',async()=>{
+ const f=frame({apiHandler:async()=>{throw new Error('Extension context invalidated.');}});await f.done;
+ assert.match(f.badge().textContent,/Organizador indisponível: A extensão foi atualizada ou recarregada\. Recarregue esta página \(F5\)/);f.leave();
 });
