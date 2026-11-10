@@ -288,4 +288,4 @@ Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O
 
 ### Estado em produção
 
-Extensão 0.23.8 (ZIP da release v0.23.8 e em `R:\sei-organizador`) e API 0.23.6, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd`). A 0.23.6 muda só a API: não há release 0.23.6 nem 0.23.7 no GitHub. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.8 (ZIP da release v0.23.8 e em `R:\sei-organizador`) e API 0.23.9, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 prepara a publicação na Chrome Web Store e não tem release no GitHub: quem usa o ZIP continua na 0.23.8. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
