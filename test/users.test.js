@@ -96,8 +96,9 @@ test('sugestões aceitam teclado e Escape fecha sugestões antes do modal',async
 
 test('sem catálogo capturado, a busca orienta a abrir a tela de atribuição e a digitação manual continua',async()=>{
  const f=modal({});try{
-  await tick();assert.match(f.root.querySelector('.chief-search').textContent,/depois de abrir uma vez a tela Atribuir Processo/);
+  await tick();assert.match(f.root.querySelector('.chief-search').textContent,/Abra uma vez a tela Atribuir Processo do SEI para ativar a busca/);
   f.search('danilo');assert.equal(f.root.querySelector('[role=option]'),null);
+  assert.match(f.root.querySelector('.chief-search').textContent,/ainda não foi lida neste navegador/);assert.doesNotMatch(f.root.querySelector('.chief-search').textContent,/Nenhum usuário encontrado/);
   assert.ok(f.root.querySelector('textarea'));
  }finally{f.close();}
 });

@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.11
+# SEI Organizador — 0.23.12
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 

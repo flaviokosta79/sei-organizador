@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.12 — 2026-11-10
+
+**Extensão (não requer reimplantar a API). Ajuste pequeno, sem release própria: segue com a próxima versão distribuída.**
+
+- Em "Chefes de seção", quando a lista de usuários ainda não foi lida neste navegador, a busca explica o motivo e o que fazer ("Abra uma vez a tela Atribuir Processo do SEI para ativar a busca, ou digite o login abaixo") em vez de responder "Nenhum usuário encontrado" a qualquer nome digitado.
+- 255 testes, todos passando.
+
 ## 0.23.11 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

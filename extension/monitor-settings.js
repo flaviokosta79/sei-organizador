@@ -234,6 +234,9 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         suggestions.children[active].scrollIntoView?.({ block: 'nearest' });
       }
     }
+    // No list ships with the extension: say how to get one instead of "nobody found".
+    const emptyCatalog =
+      'A lista de usuários ainda não foi lida neste navegador. Abra uma vez a tela Atribuir Processo do SEI para ativar a busca, ou digite o login abaixo.';
     function update() {
       const query = fold(search.value.trim());
       suggestions.replaceChildren();
@@ -256,7 +259,9 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       search.removeAttribute('aria-activedescendant');
       note.textContent = found.length
         ? 'Selecione um usuário para adicionar o login.'
-        : 'Nenhum usuário encontrado. Você pode digitar o login abaixo.';
+        : users.length
+          ? 'Nenhum usuário encontrado. Você pode digitar o login abaixo.'
+          : emptyCatalog;
     }
     search.addEventListener('input', update);
     search.addEventListener('keydown', (event) => {
@@ -288,9 +293,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       .then((result) => {
         if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
         users = result;
-        note.textContent = users.length
-          ? 'Digite o nome ou login e selecione uma sugestão.'
-          : 'Sugestões disponíveis depois de abrir uma vez a tela Atribuir Processo do SEI. Você pode digitar o login abaixo.';
+        note.textContent = users.length ? 'Digite o nome ou login e selecione uma sugestão.' : emptyCatalog;
         if (search.value.trim()) update();
       })
       .catch(() => {
