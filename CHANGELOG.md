@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.15 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Em "Chefes de seção", abaixo do campo de logins aparece a lista com o nome de cada chefe informado, no formato "Nome (login)". A lista acompanha o que é digitado e o que é escolhido na busca.
+  - O campo continua guardando só os logins; os nomes vêm da lista de usuários deste navegador.
+  - Um login que não está na lista da unidade aparece como "login · nome não encontrado na unidade", o que ajuda a perceber erro de digitação.
+  - Se a lista de usuários ainda não foi lida neste navegador, aparecem só os logins; os nomes surgem depois da primeira busca.
+- 260 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.14 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

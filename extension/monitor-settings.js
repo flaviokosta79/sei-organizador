@@ -76,7 +76,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         :host{all:initial}dialog{box-sizing:border-box;width:min(480px,calc(100vw - 28px));max-height:85vh;overflow:auto;padding:0;border:1px solid #7294bb;border-radius:8px;background:#f7faff;color:#243b53;font:13px/1.5 Arial,sans-serif;box-shadow:0 8px 35px #0004}
         dialog::backdrop{background:#10243c80}header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#dceafa}h2{font-size:16px;margin:0}
         .body{padding:4px 16px 12px}p{margin:8px 0}h3{font-size:14px;margin:16px 0 6px}button{font:inherit;padding:5px 9px;margin:3px 6px 3px 0;cursor:pointer}button:disabled{cursor:wait;opacity:.6}
-        .chief-search input{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}.chief-search [role=listbox]{border:1px solid #b4c7dd;background:white;max-height:230px;overflow:auto}.chief-search [role=option]{display:block;width:100%;text-align:left;margin:0;border:0;border-bottom:1px solid #e0e8f0;padding:8px;white-space:normal;overflow-wrap:anywhere}.chief-search [aria-selected=true]{background:#dceafa}.chief-search [hidden]{display:none!important}
+        .chief-names{margin:6px 0 2px;padding-left:20px}.chief-names li{margin:2px 0}.chief-search input{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}.chief-search [role=listbox]{border:1px solid #b4c7dd;background:white;max-height:230px;overflow:auto}.chief-search [role=option]{display:block;width:100%;text-align:left;margin:0;border:0;border-bottom:1px solid #e0e8f0;padding:8px;white-space:normal;overflow-wrap:anywhere}.chief-search [aria-selected=true]{background:#dceafa}.chief-search [hidden]{display:none!important}
         label{display:block}select{box-sizing:border-box;width:100%;font:inherit;padding:7px;margin:5px 0}textarea{box-sizing:border-box;width:100%;min-height:80px;font:inherit;padding:6px}.status{margin:0 16px 12px;min-height:1.5em}.error{color:#a02020}@media print{:host{display:none!important}}
       `;
       dialog = node('dialog');
@@ -208,6 +208,34 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase();
+    // The field keeps only logins; this list shows who they are, from the catalog of this browser.
+    const names = node('ul');
+    names.className = 'chief-names';
+    names.setAttribute('aria-label', 'Chefes informados');
+    input.closest('label').after(names);
+    function showNames() {
+      const logins = [
+        ...new Set(
+          input.value
+            .split(/[,;\n]+/)
+            .map((value) => value.trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ];
+      names.replaceChildren();
+      names.hidden = !logins.length;
+      for (const login of logins) {
+        const user = users.find((item) => item.login === login);
+        const text = user
+          ? `${user.name} (${login})`
+          : users.length
+            ? `${login} · nome não encontrado na unidade`
+            : login;
+        node('li', text, names);
+      }
+    }
+    input.addEventListener('input', showNames);
+    showNames();
     function hide() {
       suggestions.hidden = true;
       search.setAttribute('aria-expanded', 'false');
@@ -222,6 +250,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       if (!tokens.some((value) => value.toLowerCase() === user.login)) tokens.push(user.login);
       input.value = tokens.join('\n');
       draft = input.value;
+      showNames();
       search.value = '';
       hide();
       note.textContent = user.name + ' (' + user.login + ') adicionado. Clique em Salvar chefes para aplicar.';
@@ -253,6 +282,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
           if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
           searching = false;
           users = result;
+          showNames();
           if (search.value.trim()) update();
           else note.textContent = users.length ? 'Digite o nome ou login e selecione uma sugestão.' : emptyCatalog;
         });
@@ -318,6 +348,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
         users = result;
         loaded = true;
+        showNames();
         note.textContent = users.length
           ? 'Digite o nome ou login e selecione uma sugestão.'
           : 'Digite o nome ou login. Na primeira busca, a lista de usuários é lida no SEI.';
@@ -416,6 +447,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     add.addEventListener('click', () => {
       input.value = [input.value, identity.login].filter(Boolean).join('\n');
       draft = input.value;
+      input.dispatchEvent(new Event('input'));
     });
     const save = node('button', 'Salvar chefes', body);
     save.type = 'button';

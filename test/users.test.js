@@ -155,3 +155,20 @@ test('tela Atribuir Processo (procedimento_atribuicao_cadastrar) também aliment
  }finally{f.close();}
  const other=fixture({action:'procedimento_atribuir_outra_coisa',html:native});try{await tick();assert.equal(other.sets,0);}finally{other.close();}
 });
+
+test('abaixo dos logins aparecem os nomes dos chefes informados, atualizados ao digitar e ao escolher sugestão',async()=>{
+ const f=modal();try{
+  await tick();const names=()=>[...f.root.querySelectorAll('.chief-names li')].map(li=>li.textContent);
+  assert.deepEqual(names(),[]);assert.equal(f.root.querySelector('.chief-names').hidden,true);
+  f.search('danilo');f.root.querySelector('[role=option]').click();
+  assert.deepEqual(names(),['Danilo Exemplo Pinheiro (danilo)']);
+  const input=f.root.querySelector('textarea');input.value='danilo, ZECA\ndesconhecido';input.dispatchEvent(new f.w.Event('input'));
+  assert.deepEqual(names(),['Danilo Exemplo Pinheiro (danilo)','Zeca Modelo (zeca)','desconhecido · nome não encontrado na unidade']);
+  assert.equal(input.value,'danilo, ZECA\ndesconhecido','o campo continua só com o que foi digitado');
+ }finally{f.close();}
+ // Without a catalog in this browser only the logins are listed, with no claim about the names.
+ const empty=modal({});try{
+  await tick();const input=empty.root.querySelector('textarea');input.value='danilo';input.dispatchEvent(new empty.w.Event('input'));
+  assert.deepEqual([...empty.root.querySelectorAll('.chief-names li')].map(li=>li.textContent),['danilo']);
+ }finally{empty.close();}
+});

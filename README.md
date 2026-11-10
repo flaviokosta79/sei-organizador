@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.14
+# SEI Organizador — 0.23.15
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -155,7 +155,7 @@ Registros já desfeitos, sem efeito ou que representam um desfazer não oferecem
 
 ## Sugestões de chefes
 
-Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
+Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login, e logo abaixo dele aparece o nome de cada chefe informado; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
 
 A extensão não traz nenhuma lista de usuários embutida. Na primeira vez que a pessoa usa a busca, a extensão lê o seletor de usuários da tela nativa **Atribuir Processo** (no máximo duas leituras no SEI, a pedido e pela fila que cede a vez à navegação) e guarda uma cópia só naquele navegador. A cópia também se atualiza sempre que alguém abre essa tela. A extensão não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível.
 
@@ -203,7 +203,7 @@ Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-ex
 node tools/build-store.mjs
 ```
 
-A suíte tem 259 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
+A suíte tem 260 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
 
 A cada entrega da extensão: incrementar a versão no manifesto, no `package.json` e no lockfile, registrar no CHANGELOG e gerar os pacotes. Para o ZIP da unidade, criar a release no GitHub como "Latest" (o arquivo se chama sempre `sei-organizador-extension.zip`) e copiar o mesmo ZIP para `R:\sei-organizador`. Para a loja, enviar `artifacts/sei-organizador-store.zip` no painel. Os arquivos em `artifacts/` são resultados locais, fora do Git.
 
