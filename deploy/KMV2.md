@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão na versão 0.23.0 e API na versão 0.22.0 (as versões 0.22.1 a 0.23.0 mudam só a extensão). Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão na versão 0.23.5 e API na versão 0.23.6 (as versões 0.22.1 a 0.23.5 mudaram só a extensão; a 0.23.6 muda só a API). Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,10 +14,22 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93 (tag 0.22.0).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:47024df4be2a4af332ac05c301634e26d5fd76dc38307b09ecc4efb7026f6989 (0.21.0).
+Imagem da stack: flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd (tag 0.23.6).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93 (0.22.0).
 O conteúdo da imagem é restrito a package.json e server/ em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.23.6 — 2026-11-10
+
+Teto de tamanho do banco: 1 GB por padrão (`max_page_count` do SQLite), ajustável com `SEI_MAX_DB_MB` no Env da stack. No teto, gravações respondem HTTP 507 e leituras continuam. Antes da troca, o banco tinha 1,6 MB e o disco 82,4 GB livres de 95,8 GB.
+
+Backup consistente em /data/backups/before-0.23.6-20261110.sqlite (VACUUM INTO, quick_check ok), com cópia local em artifacts/backups/before-0.23.6-20261110.tar. Arquivo e Env anteriores em artifacts/stack-before-0.23.6.json; o arquivo em produção era idêntico ao deploy/stack-kmv2.yaml e não mudou.
+
+Imagem gerada na KVM2 a partir do commit fbaa3f1 e validada em containers isolados, sem rede, com raiz somente leitura e sem capabilities: as regras do servidor e o servidor real com teto de 1 MB, que respondeu 507 ao encher e continuou lendo. Stack 18 atualizada pelo Portainer trocando somente SEI_IMAGE. Na verificação final: atualização completed, container healthy como node, versão 0.23.6, log "banco com 1.6 MB de 1024 MB", volume sei_organizador_data em /data, /tmp em tmpfs, administração exclusiva e editor da stack preservados, API 200/200/403. Evidências em artifacts/deployment-0.23.6.json.
+
+Os arquivos do servidor na imagem têm o mesmo conteúdo do commit, mas com fim de linha CRLF: o `git archive` desta máquina (core.autocrlf=true) converteu o contexto do build. Não afeta a execução. Comparação sem fim de linha em artifacts/deployment-eol-0.23.6.json.
+
+Rollback: reaplicar pelo Portainer o Env de artifacts/stack-before-0.23.6.json (imagem 0.22.0), preservando o volume. A API 0.22.0 abre o mesmo banco sem o teto. Não restaurar o banco para apenas voltar a imagem.
 
 ## Atualização 0.22.0 — 2026-11-06
 
