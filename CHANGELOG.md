@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.13 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Busca de chefes de seção volta a funcionar depois de abrir a tela **Atribuir Processo**:
+  - A extensão lia a lista de usuários só na tela de processos atribuídos a um usuário (`procedimento_atribuicao_listar`). A tela **Atribuir Processo**, aberta pelo botão do processo ou do Controle de Processos, é outra (`procedimento_atribuicao_cadastrar`) e não era observada.
+  - Enquanto a extensão trazia a lista embutida, isso não aparecia. Com a retirada da lista na 0.23.8, a busca ficou vazia, e a orientação da 0.23.12 ("abra a tela Atribuir Processo") não resolvia.
+  - Agora as duas telas alimentam a lista.
+- 256 testes, todos passando.
+- Após atualizar, recarregar as abas do SEI e abrir uma vez a tela Atribuir Processo.
+
 ## 0.23.12 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

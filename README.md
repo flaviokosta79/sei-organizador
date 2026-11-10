@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.12
+# SEI Organizador — 0.23.13
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -203,7 +203,7 @@ Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-ex
 node tools/build-store.mjs
 ```
 
-A suíte tem 255 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
+A suíte tem 256 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
 
 A cada entrega da extensão: incrementar a versão no manifesto, no `package.json` e no lockfile, registrar no CHANGELOG e gerar os pacotes. Para o ZIP da unidade, criar a release no GitHub como "Latest" (o arquivo se chama sempre `sei-organizador-extension.zip`) e copiar o mesmo ZIP para `R:\sei-organizador`. Para a loja, enviar `artifacts/sei-organizador-store.zip` no painel. Os arquivos em `artifacts/` são resultados locais, fora do Git.
 

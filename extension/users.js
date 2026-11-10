@@ -70,8 +70,11 @@
     } catch {}
   }
   globalThis.seiUnitUsers = { list, parse };
-  // Only the native assignment page is observed. Other pages do no background work.
-  if (new URL(location.href).searchParams.get('acao') !== 'procedimento_atribuicao_listar') return;
+  // Only the native assignment pages are observed; other pages do no background work. "Atribuir Processo"
+  // (button of the process and of Controle de Processos) is procedimento_atribuicao_cadastrar; the list of
+  // processes assigned to a user is procedimento_atribuicao_listar.
+  const assignmentPages = ['procedimento_atribuicao_cadastrar', 'procedimento_atribuicao_listar'];
+  if (!assignmentPages.includes(new URL(location.href).searchParams.get('acao'))) return;
   const observer = new MutationObserver(() => {
     if (timer) return;
     timer = setTimeout(() => {

@@ -102,3 +102,10 @@ test('sem catálogo capturado, a busca orienta a abrir a tela de atribuição e 
   assert.ok(f.root.querySelector('textarea'));
  }finally{f.close();}
 });
+
+test('tela Atribuir Processo (procedimento_atribuicao_cadastrar) também alimenta o catálogo',async()=>{
+ const f=fixture({action:'procedimento_atribuicao_cadastrar',html:native});try{
+  await tick();assert.equal(f.storage.seiUnitUsers.users.length,5);assert.equal((await f.w.seiUnitUsers.list(identity)).length,5);
+ }finally{f.close();}
+ const other=fixture({action:'procedimento_atribuir_outra_coisa',html:native});try{await tick();assert.equal(other.sets,0);}finally{other.close();}
+});
