@@ -59,6 +59,10 @@ Textos e respostas prontos para colar no painel do desenvolvedor. O pacote é ge
 
 **Ícone da loja:** `extension/icons/icon-128.png`.
 
+**Blocos promocionais** (opcionais, JPEG sem alfa): `store/bloco-promocional-440x280.jpg` (pequeno) e `store/bloco-letreiro-1400x560.jpg` (letreiro).
+
+**Campos extras:** URL oficial e URL da página inicial em branco; URL do suporte `https://ext.5cpa.com.br/privacidade`.
+
 ## Visibilidade
 
 **Não listada** (decisão de 2026-11-10): só instala quem tem o link, e a extensão não aparece na busca da loja. A extensão serve a uma única unidade; publicar como pública só atrairia instalações que não funcionam.
