@@ -61,7 +61,7 @@ Textos e respostas prontos para colar no painel do desenvolvedor. O pacote é ge
 
 ## Visibilidade
 
-Recomendado: **Não listada** (instala quem tem o link) ou **Privada** (só os e-mails autorizados). A extensão serve a uma única unidade; publicar como pública só atrairia instalações que não funcionam.
+**Não listada** (decisão de 2026-11-10): só instala quem tem o link, e a extensão não aparece na busca da loja. A extensão serve a uma única unidade; publicar como pública só atrairia instalações que não funcionam.
 
 ## Privacidade (aba "Práticas de privacidade")
 

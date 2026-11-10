@@ -8,6 +8,8 @@ services:
       PORT: "8787"
       DATA_FILE: /data/organizador.sqlite
       SEI_ALLOW_PUBLIC_ACCESS: "true"
+      # Contact shown in /privacidade; the page is published only when this is set (Env of the stack).
+      SEI_PRIVACY_CONTACT: ${SEI_PRIVACY_CONTACT:-}
     volumes:
       - organizador:/data
       # Read-only root filesystem: the app writes only to /data (volume) and /tmp (memory).
