@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.3 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Recebidos da Secretaria com menos chamadas ao serviço:
+  - Para quem usa o bloco 1396, cada tela do SEI carregada pedia a listagem compartilhada de recebidos ao servidor da extensão. Os alertas do bloco, as assinaturas e os avisos de edição já reaproveitavam a resposta desde a 0.22.3; os recebidos tinham ficado de fora.
+  - Agora a listagem é reaproveitada por 20 s. Um recebimento confirmado por um colega aparece aqui em até 20 s a mais.
+  - Uma leitura do Controle de Processos prestes a começar sempre pede a listagem de novo, para partir da versão atual. A leitura feita por este navegador renova a listagem na hora. Uma resposta com erro não é reaproveitada.
+  - Essas chamadas vão só ao servidor da extensão; as leituras do SEI não mudam.
+- Filtro do andamento e leitor de recebidos revisados, sem alteração.
+- 243 testes, todos passando. O novo cobre o reaproveitamento, a leitura prestes a começar e a falha.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.2 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

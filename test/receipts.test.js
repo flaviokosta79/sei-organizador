@@ -103,12 +103,17 @@ function browser(store,{local={},session={},activity}={}){
  const listeners={},notices=[],sounds=[],opened=[];let offline=false,scope='1396',muted=false,notificationFails=false,audioFails=false;
  const event=name=>({addListener:fn=>listeners[name]=fn});const area=value=>({get:async key=>({[key]:key==='seiBlockAlerts'?{sound:!muted}:structuredClone(value[key])}),set:async v=>Object.assign(value,structuredClone(v))});
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:event('message')},storage:{local:area(local),session:area(session)},notifications:{create:async(id,data)=>{if(notificationFails)throw Error('negado');notices.push({id,data});},onClicked:event('notification')},tabs:{create:async v=>opened.push(v.url),onRemoved:event('removed'),onUpdated:event('updated')}};
- runInNewContext(read('service-client.js')+';'+read('receipts-background.js'),{chrome,URL,crypto,Date,AbortSignal,seiActivity:activity,SEI_ORGANIZADOR_CONFIG:{unitId:unit,org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(a,b)=>{if(scope!==b)throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>{if(audioFails)throw Error('áudio bloqueado');sounds.push(id);},fetch:async(url,options)=>{if(offline)throw Error('Offline');try{const state=options.body?store.receipts.snapshot(unit,JSON.parse(options.body)):store.receipts.read(unit);return {ok:true,json:async()=>state};}catch(e){return {ok:false,status:e.status||400};}}});
+ const gets=[],caches=[];
+ const context={chrome,URL,crypto,Date,AbortSignal,seiActivity:activity,SEI_ORGANIZADOR_CONFIG:{unitId:unit,org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(a,b)=>{if(scope!==b)throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>{if(audioFails)throw Error('áudio bloqueado');sounds.push(id);},fetch:async(url,options)=>{if(!options.body)gets.push(String(url));if(offline)throw Error('Offline');try{const state=options.body?store.receipts.snapshot(unit,JSON.parse(options.body)):store.receipts.read(unit);return {ok:true,json:async()=>state};}catch(e){return {ok:false,status:e.status||400};}}};
+ // The shared list is reused for 20 s; sync() stands for a page loaded later than that, soon() for one within it.
+ runInNewContext(read('service-client.js'),context);const fresh=context.seiFreshCache;context.seiFreshCache=ttl=>{const cache=fresh(ttl);caches.push(cache);return cache;};
+ runInNewContext(read('receipts-background.js'),context);
  const call=async(type,extra={},sender={tab:{url:control,id:1},frameId:0})=>{const result=await new Promise(resolve=>listeners.message({type,identity,...extra},sender,resolve));if(result.error)throw Error(result.error);return result.data;};
- const sync=(extra={})=>call('receipts:sync',{url:control,...extra});
+ const soon=(extra={})=>call('receipts:sync',{url:control,...extra});
+ const sync=(extra={})=>{for(const cache of caches)cache.clear();return soon(extra);};
  const poll=async(items)=>{const target=(await sync({poll:true})).poll;assert.ok(target);try{return await call('receipts:result',{lease:target.id,complete:true,items,url:control});}finally{await call('receipts:done',{lease:target.id});}};
  const due=()=>{for(const t of Object.values(session.seiSecretariatReceiptTargets || {}))t.lastPoll=0;};
- return {call,sync,poll,due,notices,sounds,opened,listeners,local,session,set offline(v){offline=v;},set scope(v){scope=v;},set muted(v){muted=v;},set notificationFails(v){notificationFails=v;},set audioFails(v){audioFails=v;}};
+ return {call,sync,soon,gets,poll,due,notices,sounds,opened,listeners,local,session,set offline(v){offline=v;},set scope(v){scope=v;},set muted(v){muted=v;},set notificationFails(v){notificationFails=v;},set audioFails(v){audioFails=v;}};
 }
 
 test('dois navegadores recebem uma vez, primeira leitura é silenciosa e recebimento confirmado retira pendência dos dois',async()=>{
@@ -279,5 +284,26 @@ test('leitura longa de recebidos renova a reserva a cada página e não é recus
   a.due();const other=(await a.sync({poll:true})).poll;assert.ok(other);
   t.mock.timers.tick(181000);
   await assert.rejects(a.call('receipts:result',{lease:other.id,complete:true,items:[item('10')],url:control}),/substituída/,'sem renovação, vence como antes');
+ }finally{store.close();}
+});
+
+test('lista compartilhada é reaproveitada por 20 s entre telas, mas nunca ao iniciar uma leitura',async()=>{
+ const store=createStore(':memory:');const a=browser(store),b=browser(store);
+ try{
+  await a.poll([item('10')]);await b.sync();const before=b.gets.length;
+  // Pages loaded right after each other: one request to the service, same panel.
+  assert.equal((await b.soon()).pending.length,1);assert.equal((await b.soon()).pending.length,1);assert.equal(b.gets.length,before);
+  // A colleague's reading within those 20 s shows up on the first page loaded after them, with one alert.
+  a.due();await a.poll([item('10'),item('20')]);
+  assert.equal((await b.soon()).pending.length,1);assert.equal(b.sounds.length,0);
+  assert.equal((await b.sync()).pending.length,2);assert.equal(b.sounds.length,1);assert.equal((await b.soon()).pending.length,2);assert.equal(b.sounds.length,1);
+  // A reading about to start asks the service again, so it starts from the current version.
+  await b.soon();const count=b.gets.length;b.due();const target=(await b.soon({poll:true})).poll;assert.ok(target);assert.equal(b.gets.length,count+1);
+  assert.equal(target.version,store.receipts.read(unit).version);
+  // This browser's own reading clears the reused list.
+  const view=await b.call('receipts:result',{lease:target.id,complete:true,items:[item('10',false),item('20')],url:control});await b.call('receipts:done',{lease:target.id});
+  assert.equal(view.pending.length,1);assert.equal((await b.soon()).pending.length,1);
+  // A failure is not kept: the next page asks again.
+  b.offline=true;assert.match((await b.sync()).error,/Offline/);b.offline=false;assert.equal((await b.soon()).error,'');
  }finally{store.close();}
 });

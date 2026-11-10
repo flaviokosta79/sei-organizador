@@ -11,6 +11,10 @@
       ? Math.max(maxObservationAge, seiActivity.longestGap('receipts:' + owner) + maxObservationAge)
       : maxObservationAge;
   const serial = seiCreateQueue();
+  // Each SEI page load syncs the receipts: the shared list is reused for 20 s (a receipt confirmed by a
+  // colleague shows up at most 20 s later). A reading sent by this browser clears it, and a reading
+  // about to start always asks again, so it never starts from an old version.
+  const recent = seiFreshCache(20000);
   function address(value, process) {
     const url = new URL(value);
     if (
@@ -45,6 +49,7 @@
     data.stored = { local, session };
   }
   async function shared(body) {
+    if (body) recent.clear();
     const response = await seiServiceFetch('secretariat/receipts', { body, timeout: 15000 });
     if (!response.ok)
       throw Error(
@@ -186,21 +191,25 @@
     if (msg.type === 'receipts:sync') {
       if (msg.url) target.url = address(msg.url);
       let poll = null;
+      const due =
+        msg.poll &&
+        target.url &&
+        (!target.lease || target.lease.until < Date.now()) &&
+        (globalThis.seiActivity
+          ? seiActivity.due('receipts:' + owner, target.lastPoll)
+          : Date.now() - target.lastPoll >= 55000);
       try {
-        const arrived = apply(record, await shared(), observationLimit(owner));
+        const reused = due ? undefined : recent.get('state'),
+          state = reused || (await shared());
+        const arrived = apply(record, state, observationLimit(owner));
+        // Kept only after it was accepted: a rejected answer must be asked again, not replayed.
+        if (!reused) recent.set('state', state);
         record.error = record.stale
           ? 'Leitura de recebidos antiga; aguardando confirmação recente no SEI. Aviso sonoro suspenso.'
           : '';
         await save(data);
         await notify(record, arrived, owner, data);
-        if (
-          msg.poll &&
-          target.url &&
-          (!target.lease || target.lease.until < Date.now()) &&
-          (globalThis.seiActivity
-            ? seiActivity.due('receipts:' + owner, target.lastPoll)
-            : Date.now() - target.lastPoll >= 55000)
-        ) {
+        if (due) {
           poll = { id: crypto.randomUUID(), version: record.version, url: target.url };
           target.lease = { id: poll.id, version: poll.version, tab: sender.tab.id, until: Date.now() + 180000 };
           target.lastPoll = Date.now();
