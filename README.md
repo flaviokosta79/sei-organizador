@@ -282,4 +282,4 @@ Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O
 
 ### Estado em produção
 
-Extensão 0.23.5 (ZIP da release v0.23.5 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.5 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.5 (ZIP da release v0.23.5 e em `R:\sei-organizador`) e API 0.23.6, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd`). A 0.23.6 muda só a API: a extensão continua na 0.23.5 e não há release 0.23.6 no GitHub. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
