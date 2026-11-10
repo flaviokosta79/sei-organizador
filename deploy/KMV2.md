@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão na versão 0.23.5 e API na versão 0.23.6 (as versões 0.22.1 a 0.23.5 mudaram só a extensão; a 0.23.6 muda só a API). Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão distribuída na versão 0.23.8 e API na versão 0.23.9. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,10 +14,20 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd (tag 0.23.6).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93 (0.22.0).
+Imagem da stack: flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758 (tag 0.23.9).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd (0.23.6).
 O conteúdo da imagem é restrito a package.json e server/ em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
+
+## Atualização 0.23.9 — 2026-11-10
+
+Página `/privacidade` com a política de privacidade exigida pela Chrome Web Store. A stack ganhou a variável `SEI_PRIVACY_CONTACT` (contato exibido na página); sem ela a página responde 404. O valor fica só no Env da stack.
+
+Backup consistente em /data/backups/before-0.23.9-20261110.sqlite (VACUUM INTO, quick_check ok), com cópia local em artifacts/backups/before-0.23.9-20261110.tar. Arquivo e Env anteriores em artifacts/stack-before-0.23.9.json.
+
+Imagem gerada na KVM2 a partir do commit 3a73beb, desta vez com fim de linha LF (`git -c core.autocrlf=false archive`), e validada em containers isolados: regras do servidor, página de privacidade com contato de teste e teto do banco. Stack 18 atualizada pelo Portainer com o arquivo deploy/stack-kmv2.yaml, SEI_IMAGE e SEI_PRIVACY_CONTACT. Na verificação final: atualização completed, container healthy como node, versão 0.23.9, arquivos do servidor idênticos ao commit, raiz somente leitura, administração exclusiva preservada, API 200/200/403 e https://ext.5cpa.com.br/privacidade 200 com o contato. Evidências em artifacts/deployment-0.23.9.json.
+
+Rollback: reaplicar pelo Portainer o arquivo e o Env de artifacts/stack-before-0.23.9.json (imagem 0.23.6), preservando o volume. A política de privacidade sai do ar com o rollback; a loja exige que ela continue acessível.
 
 ## Atualização 0.23.6 — 2026-11-10
 
