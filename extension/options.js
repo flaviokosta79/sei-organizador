@@ -8,6 +8,7 @@
   async function call(type, extra = {}) {
     const response = await chrome.runtime.sendMessage({ type, ...extra });
     if (response?.error) throw Error(response.error);
+    if (!response) throw Error('A extensão não respondeu. Recarregue esta página.');
     return response.data;
   }
   function render() {
@@ -43,7 +44,8 @@
       ? 'Escolha um bloco e salve para aplicar nas páginas abertas.'
       : 'Abra um bloco interno no SEI para identificar seu usuário e iniciar.';
   }
-  async function update() {
+  // `manual`: the user clicked the button and must learn when no SEI tab could read the list.
+  async function update(manual = false) {
     refresh.disabled = true;
     status.classList.remove('error');
     try {
@@ -51,13 +53,26 @@
       // a time): the active one first, the next only if it could not.
       const tabs = await chrome.tabs.query({ url: 'https://sei.rj.gov.br/sei/controlador.php*' });
       tabs.sort((a, b) => b.active - a.active || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+      let read = false,
+        problem = '';
       for (const tab of tabs) {
         const answer = await chrome.tabs
           .sendMessage(tab.id, { type: 'scope:catalog-request' }, { frameId: 0 })
           .catch(() => null);
-        if (answer?.ok) break;
+        if (answer?.ok) {
+          read = true;
+          break;
+        }
+        if (answer?.error) problem = answer.error;
       }
       await load();
+      if (manual && read) status.textContent = 'Lista de blocos atualizada.';
+      else if (manual) {
+        status.textContent =
+          'A lista não foi atualizada: ' +
+          (problem || 'abra o SEI na unidade atendida (ou recarregue a tela do SEI) e tente de novo.');
+        status.classList.add('error');
+      }
     } catch (error) {
       status.textContent = error.message;
       status.classList.add('error');
@@ -66,7 +81,7 @@
     }
   }
   profile.addEventListener('change', render);
-  refresh.addEventListener('click', update);
+  refresh.addEventListener('click', () => update(true));
   save.addEventListener('click', async () => {
     save.disabled = true;
     status.classList.remove('error');

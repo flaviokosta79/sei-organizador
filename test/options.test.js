@@ -32,3 +32,21 @@ test('bloco salvo fora do catálogo não deixa salvar vazio: começa pelo primei
  const empty=page({profile:{catalog:[]}});
  try{await settle();assert.equal(empty.d.querySelector('#save').disabled,true);}finally{empty.dom.window.close();}
 });
+
+test('Atualizar lista informa quando nenhuma tela do SEI leu a lista; a abertura da página não reclama',async()=>{
+ let p=page({tabs:[]});
+ try{await settle();const status=p.d.querySelector('#status');
+  assert.match(status.textContent,/Escolha um bloco e salve/);assert.equal(status.classList.contains('error'),false);
+  p.d.querySelector('#refresh').click();await settle();
+  assert.match(status.textContent,/A lista não foi atualizada: abra o SEI/);assert.ok(status.classList.contains('error'));
+  assert.equal(p.d.querySelector('#block').options.length,2,'a lista guardada continua disponível');
+ }finally{p.dom.window.close();}
+ p=page({answers:{2:{error:'Menu de Blocos Internos não encontrado nesta tela.'},3:new Error('fechada'),1:new Error('fechada')}});
+ try{await settle();p.d.querySelector('#refresh').click();await settle();
+  assert.match(p.d.querySelector('#status').textContent,/A lista não foi atualizada: Menu de Blocos Internos não encontrado/);
+ }finally{p.dom.window.close();}
+ p=page();
+ try{await settle();p.d.querySelector('#refresh').click();await settle();const status=p.d.querySelector('#status');
+  assert.equal(status.textContent,'Lista de blocos atualizada.');assert.equal(status.classList.contains('error'),false);
+ }finally{p.dom.window.close();}
+});

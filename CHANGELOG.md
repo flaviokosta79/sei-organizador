@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.23.7 — 2026-11-10
+
+**Extensão (não requer reimplantar a API). Ajuste pequeno, sem release própria: segue junto com a próxima versão distribuída.**
+
+- Página de opções: "Atualizar lista do SEI" agora informa quando nenhuma tela do SEI conseguiu ler a lista (SEI fechado, sessão expirada, tela sem o menu de Blocos Internos), em vez de voltar à mensagem normal como se tivesse atualizado. A lista já guardada continua disponível. Ao abrir a página, a tentativa automática continua silenciosa.
+- Quando a leitura dá certo, a página confirma "Lista de blocos atualizada."
+- Página de opções e catálogo de usuários revisados; sem outras alterações.
+- 250 testes, todos passando.
+
 ## 0.23.6 — 2026-11-10
 
 **API (requer reimplantar). A extensão não muda: quem já tem a 0.23.5 não precisa reinstalar, e não há release nova no GitHub.**

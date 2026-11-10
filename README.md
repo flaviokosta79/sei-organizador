@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.6
+# SEI Organizador — 0.23.7
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -192,7 +192,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.23.6: **249 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.7: **250 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
