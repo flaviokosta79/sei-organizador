@@ -230,7 +230,7 @@ Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.1
 
 Histórico calculado em cache limitado, invalidado por gravações locais e PRAGMA data_version de outras conexões. Resultado devolvido como cópia independente. Cabeçalho Server-Timing mede o processamento de cada resposta. Nenhuma migração, mudança de permissão ou aumento de recursos. Limites de 0,5 CPU e 512 MiB preservados.
 
-Stack 18 atualizada pelo mecanismo suportado do Portainer, mudando somente SEI_IMAGE. Administração exclusiva, editor/arquivo acessível, atualização completed, container healthy como node e oito módulos conferidos por SHA-256. Volume e demais variáveis preservados. Banco com quick_check ok: 2 blocos e 293 registros de histórico antes/depois. Evidência resumida versionada em deploy/performance-0.16.4.json.
+Stack 18 atualizada pelo mecanismo suportado do Portainer, mudando somente SEI_IMAGE. Administração exclusiva, editor/arquivo acessível, atualização completed, container healthy como node e oito módulos conferidos por SHA-256. Volume e demais variáveis preservados. Banco com quick_check ok: 2 blocos e 293 registros de histórico antes/depois. Evidência resumida versionada em deploy/performance-0.16.4.json (arquivo retirado do repositório em 2026-11-10; continua no histórico do Git).
 
 Backup consistente em /data/backups/before-0.16.4-20261028.sqlite, com cópia local em artifacts/backups/before-0.16.4-20261028.tar. Rollback: reaplicar pelo Portainer o arquivo e Env de artifacts/stack-before-0.16.4.json, preservando o volume e o banco. A versão anterior pode ler os mesmos dados.
 
@@ -250,4 +250,4 @@ Catálogo inicial de 65 usuários do 5º CPA distribuído com a extensão. Busca
 
 ## Correção de travamentos 0.17.2 — 2026-10-28
 
-Índices e reutilização da árvore nativa, renderização de pendências em lotes de 20, eliminação de varreduras duplicadas da tabela e monitor de edição restrito às telas pertinentes. Evidência sintética versionada em referencias/validacao/performance-0.17.2.json. Somente extensão; API 0.16.4 e stack preservadas, sem implantação na VPS.
+Índices e reutilização da árvore nativa, renderização de pendências em lotes de 20, eliminação de varreduras duplicadas da tabela e monitor de edição restrito às telas pertinentes. Evidência sintética versionada em referencias/validacao/performance-0.17.2.json (arquivo retirado do repositório em 2026-11-10; continua no histórico do Git). Somente extensão; API 0.16.4 e stack preservadas, sem implantação na VPS.

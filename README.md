@@ -14,14 +14,12 @@ Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ po
 O serviço HTTPS `https://ext.5cpa.com.br`, a unidade e o órgão estão fixos em `extension/config.js`. Não há campos de endereço, unidade ou token para preencher. Valores antigos salvos no navegador são ignorados. A organização das listas atua nos blocos internos reconhecidos; os alertas continuam nas demais telas do SEI, sempre na unidade definida.
 
 ```powershell
-git clone --recurse-submodules https://github.com/flaviokosta79/sei-organizador.git
+git clone https://github.com/flaviokosta79/sei-organizador.git
 cd sei-organizador
 npm ci
 ```
 
-Para clone existente, execute `git submodule update --init`. `referencias/sei` é o submódulo do [SEI++ original](https://github.com/jonatasrs/sei), usado como referência independente; não é necessário para executar o organizador. Sua licença e seu histórico são preservados.
-
-## Chrome Web Store (em preparação, 0.23.9)
+## Chrome Web Store
 
 `node tools/build-store.mjs` gera `artifacts/sei-organizador-store.zip`, o pacote para enviar à loja. Ele é igual ao ZIP da unidade, sem o campo `key` do manifesto e sem a consulta de versão ao GitHub. Os textos da listagem, as justificativas de permissão, as respostas de privacidade e o passo a passo estão em [store/ficha-da-loja.md](store/ficha-da-loja.md); as capturas de tela, em `store/screenshots/`.
 
@@ -33,7 +31,7 @@ Clique na engrenagem **⚙ Organizador**, no cabeçalho do SEI, ou abra **Opçõ
 
 O primeiro bloco reconhecido é escolhido automaticamente, preservando o uso após instalar. A preferência é separada por unidade, órgão e login neste navegador. Trocar a preferência aplica a mudança às páginas abertas; não remove classificações do bloco anterior. Para iniciar consultas após reiniciar o navegador ou escolher um bloco que ainda não foi aberto, abra o bloco escolhido.
 
-Abas, status, assuntos, alertas, reconhecimento de novas entradas e avisos de edição ficam restritos ao bloco escolhido. Em outros blocos, os controles nativos permanecem disponíveis, sem faixa nem botão de escolha do Organizador. O resumo do processo permanece visível mesmo sem confirmação de inclusão no bloco de trabalho. Somente as classificações e os controles de assuntos/status ficam restritos ao bloco escolhido; ausência de registro ou histórico incompleto são informados no card. A presença de edição também usa o bloco escolhido, mesmo quando o mesmo processo aparece em mais de um bloco. Todos precisam atualizar a extensão; versões antigas mantêm seu comportamento anterior. A preferência organiza o fluxo da extensão e não altera as permissões do SEI.
+Abas, status, assuntos, alertas, reconhecimento de novas entradas e avisos de edição ficam restritos ao bloco escolhido. Em outros blocos, os controles nativos permanecem disponíveis, sem faixa nem botão de escolha do Organizador. O resumo do processo permanece visível mesmo sem confirmação de inclusão no bloco de trabalho. Somente as classificações e os controles de assuntos/status ficam restritos ao bloco escolhido; ausência de registro ou histórico incompleto são informados no card. A presença de edição também usa o bloco escolhido, mesmo quando o mesmo processo aparece em mais de um bloco. A preferência organiza o fluxo da extensão e não altera as permissões do SEI.
 
 ## Limpeza após retirada do processo
 
@@ -48,8 +46,8 @@ A limpeza é atômica com a confirmação da lista e fica registrada no históri
 - **Geral** reúne os processos carregados na página. Classificar por assunto mantém o processo em Geral. O filtro de status também se aplica a Geral e pode esconder linhas.
 - Um processo pode ter vários assuntos. **Sem assunto** reúne os processos sem vínculo válido. Contagens consideram somente os processos carregados pela página e pela pesquisa atuais.
 - A coluna **Assunto** aparece somente em Geral. Clique no assunto, use o clique direito na linha ou a tecla de menu para atribuir ou retirar vínculos. O menu da linha também funciona nas demais abas.
-- **Status** aparece em todas as abas: Sem status, Atenção, Acompanhar, Urgente, Assinar e Arquivar. Processos marcados antes como "Para arquivar" aparecem como Arquivar, sem migração. É manual, independente dos assuntos e das anotações nativas.
-- A barra oferece Criar assunto, o filtro de status, status em lote e Histórico/Fechar histórico. Para mudar vários processos, marque as caixas das linhas visíveis, escolha Status dos selecionados e clique em Aplicar em N. A confirmação mostra a quantidade, o status e os primeiros dez processos. Cancelar não grava. O conjunto é uma única alteração compartilhada e pode ser desfeito pelo histórico; seleções ocultas não entram na ação. Renomear e Excluir aba aparecem quando uma pasta está ativa. Os botões Atualizar e Limpar filtros foram retirados; para voltar à visão completa, selecione Geral e Todos os status.
+- **Status** aparece em todas as abas: Sem status, Atenção, Acompanhar, Urgente, Assinar e Arquivar. É manual, independente dos assuntos e das anotações nativas.
+- A barra oferece Criar assunto, o filtro de status, status em lote e Histórico/Fechar histórico. Para mudar vários processos, marque as caixas das linhas visíveis, escolha Status dos selecionados e clique em Aplicar em N. A confirmação mostra a quantidade, o status e os primeiros dez processos. Cancelar não grava. O conjunto é uma única alteração compartilhada e pode ser desfeito pelo histórico; seleções ocultas não entram na ação. Renomear e Excluir aba aparecem quando uma pasta está ativa. Para voltar à visão completa, selecione Geral e Todos os status.
 - A sincronização acontece ao abrir e a cada dez segundos enquanto a página está visível, além de ocorrer após uma alteração. Falhas retornam a Geral e desabilitam gravações até reconectar; status não sincronizado não é apresentado como Sem status.
 - Trocar de aba ou filtrar desmarca as seleções que ficaram escondidas, preservando as ações nativas do SEI sobre os processos visíveis.
 - Descrição e Palavras-chave para pesquisa ficam lado a lado, com a descrição à esquerda. Abaixo de 760 px, ficam empilhadas. Os campos, valores, rótulos, eventos e associação ao formulário nativos são preservados; a estrutura original é restaurada ao sair da lista.
@@ -62,7 +60,7 @@ Ao abrir o primeiro bloco interno da unidade atendida, ele é escolhido automati
 
 - A primeira leitura completa de cada bloco e usuário cria a referência sem avisar os processos existentes. As referências locais continuam no navegador; o reconhecimento de novas entradas é compartilhado pela API entre os usuários da extensão atualizada. Nas leituras seguintes, a comparação usa os IDs, inclusive quando saídas e entradas mantêm a mesma quantidade total. Uma reinclusão detectada depois de uma saída também gera aviso. Cada entrada tem uma referência própria no servidor, para que uma abertura antiga não reconheça uma nova entrada. Aberturas ocorridas após a última observação do bloco também são consideradas quando a entrada só é detectada na consulta seguinte; a ordem exata de saída/reinclusão entre duas consultas não pode ser reconstruída.
 - Uma entrada detectada gera notificação do sistema, o áudio Novo SEI (volume de reprodução de 85%), contador no ícone da extensão e aviso no painel com links para os processos. Clique na notificação para abrir o bloco; clique no ícone da extensão para abrir o painel em uma tela do SEI. A linha carregada de um processo novo recebe o marcador **Novo**. Ao abrir o processo no SEI, suas novas entradas no bloco de trabalho são marcadas como vistas para os colegas que escolheram o mesmo bloco. Os demais navegadores retiram o destaque Novo e o contador no próximo ciclo, normalmente em até um minuto, com uma tela do SEI aberta e sessão válida. O painel também permite marcar as novas entradas como vistas por bloco ou de uma vez, compartilhando esse reconhecimento; avisos de assinatura continuam com reconhecimento local.
-- Os sons são fixos por evento: **Novo SEI** (sound/novosei.mp3) para entrada de processo no bloco, e **Assinar** (sound/assinar.mp3) para mudança do status manual do Organizador para Assinar e para assinatura efetiva confirmada no SEI. O toque padrão de três toques foi removido. Os MP3 originais continuam sem alteração e incluídos no ZIP.
+- Os sons são fixos por evento: **Novo SEI** (`extension/sound/novosei.mp3`) para entrada de processo no bloco, e **Assinar** (`extension/sound/assinar.mp3`) para mudança do status manual do Organizador para Assinar e para assinatura efetiva confirmada no SEI.
 - No cabeçalho do SEI, clique em **⚙ Organizador** para abrir **Configurações do SEI Organizador**. Em **Chefes de seção**, informe os logins do SEI separados por vírgula ou linha e clique em **Salvar chefes**. **Adicionar meu login** preenche o login conectado, que também aparece no painel. A lista é salva por unidade neste navegador; configure-a no navegador de cada chefe. Os outros logins continuam recebendo Novo SEI, mas não recebem os avisos de status manual Assinar; todos que escolheram o mesmo bloco interno recebem os avisos de assinatura efetiva. A lista é uma preferência de avisos, não uma alteração das permissões do SEI.
 - O monitor consulta também o estado e o histórico compartilhados do Organizador nos blocos acompanhados, a cada minuto. Assim, o chefe recebe aviso de mudanças feitas por colegas em outros computadores, desde que tenha o bloco monitorado e o login configurado. A primeira leitura de status é silenciosa; repetir o mesmo status não repete o som. Pendências reconhecidas não voltam a avisar sem nova mudança. Se o status sair de Assinar ou o processo sair do bloco, a pendência é retirada. Uma entrada de processo já marcado como Assinar não é presumida como mudança de status.
 - O rodapé fica reservado aos alertas: separa **Novos no bloco** e **Para assinar**, com links, reconhecimento dos avisos e erros de consulta independentes. A barra permanece fina e recolhida, com contagens de novos processos e pendências de assinatura; sem novidades, mostra Nenhum alerta novo. Um pequeno indicador amarelo destaca avisos ou falhas sem mudar a cor de toda a barra. Ao clicar, os detalhes abrem para cima e têm rolagem própria. Novos avisos não expandem o painel automaticamente. Esc recolhe os detalhes e devolve o foco ao resumo. Blocos sem avisos ou erros não são listados. O espaço da barra é reservado no layout da página, incluindo a área dos iframes do processo; a reserva acompanha a altura da barra e é removida ao sair da unidade ou da página. O botão nativo de voltar ao topo fica acima dela. Cor e contraste acompanham o cabeçalho; a barra não entra na impressão. Configurações e testes de som ficam exclusivamente na janela aberta pelo cabeçalho. A janela fecha por **Fechar** ou **Esc** e preserva o texto em edição durante atualizações dos alertas. Se o estado e o histórico chegarem em versões diferentes, mantém a referência anterior e tenta novamente no próximo ciclo. São usados os últimos 100 registros fornecidos pelo histórico; muitas mudanças entre consultas podem exceder essa janela.
@@ -72,7 +70,7 @@ Ao abrir o primeiro bloco interno da unidade atendida, ele é escolhido automati
 - Login expirado, página inesperada, erro de rede, contagem inconsistente ou paginação repetida preservam a referência anterior e mostram falha de atualização. O monitor tenta novamente no próximo ciclo. A leitura tem limites de 50 páginas, 10.000 processos por bloco e um minuto por bloco; resultados incompletos não geram entradas presumidas.
 - O acompanhamento identifica diferenças entre consultas; não é uma notificação em tempo real do servidor SEI. Entradas removidas antes da consulta podem não ser vistas. O Chrome pode atrasar consultas quando o computador suspende ou o navegador limita sua execução.
 
-A versão exige Chrome 120 ou superior e acrescenta permissões de armazenamento, alarmes, notificações, áudio offscreen e acesso ao host do SEI. IDs, números, preferências e avisos ficam no armazenamento local da extensão. URLs autenticadas ficam apenas no armazenamento de sessão do navegador e não são enviadas à API do Organizador. Não há endereço, unidade ou token para configurar. Esta entrega foi validada com testes automatizados de leitura, coordenação entre abas, painel e áudio; não houve confirmação de som/notificação em uma sessão real do Chrome/SEI.
+A versão exige Chrome 120 ou superior e acrescenta permissões de armazenamento, alarmes, notificações, áudio offscreen e acesso ao host do SEI. IDs, números, preferências e avisos ficam no armazenamento local da extensão. URLs autenticadas ficam apenas no armazenamento de sessão do navegador e não são enviadas à API do Organizador. Não há endereço, unidade ou token para configurar.
 
 ## Alertas de recebimento para a Secretaria
 
@@ -84,7 +82,7 @@ O monitor lê somente **Controle de Processos**, usando `processoNaoVisualizado`
 
 É necessário manter uma tela do SEI aberta na unidade atendida e a sessão válida. Há uma consulta por usuário aproximadamente a cada minuto, coordenada entre abas. São lidas todas as páginas de Recebidos (as amostras têm 217 processos em seis páginas), com limite de 10.000 registros e prazo de 110 segundos por leitura. Filtros de atribuição, marcador, tipo e prioridade são retirados das requisições do monitor em um formulário separado, sem alterar o DOM da tela visível. Leituras incompletas, repetidas, filtradas, alteradas ou substituídas não confirmam entradas nem retiradas; o painel conserva a última leitura e informa a falha.
 
-A API guarda apenas IDs, números e referências das pendências em `secretariat_receipts`, sem links autenticados, cookies ou conteúdo dos processos. Os dados dessa função são independentes das classificações, dos vistos e da limpeza do bloco interno 1396. A extensão e a API precisam estar atualizadas para 0.16.0.
+A API guarda apenas IDs, números e referências das pendências em `secretariat_receipts`, sem links autenticados, cookies ou conteúdo dos processos. Os dados dessa função são independentes das classificações, dos vistos e da limpeza do bloco interno 1396.
 
 ## Assinaturas confirmadas para o grupo
 
@@ -94,7 +92,7 @@ Todos devem instalar a extensão atualizada e manter uma tela do SEI aberta na u
 
 As consultas rodam em ciclos de aproximadamente um minuto, com até cinco históricos de processos por ciclo para limitar requisições ao SEI. Desde a 0.23.5, até três dessas leituras vão primeiro para processos com documento ainda sem assinatura em bloco de assinatura (dois) e para processos abertos nos últimos 30 minutos (um); as demais seguem o rodízio geral entre todos os processos abertos na sessão. Em listas maiores, a confirmação pode levar vários ciclos; o aviso não é instantâneo. O nome de quem assinou vem da descrição do andamento, inclusive quando o autor da linha é um delegado. Somente históricos completos são aceitos; falhas e leituras parciais aparecem no painel. Documentos sem acesso pela sessão do SEI não podem ser acompanhados. Fechar todas as telas do SEI interrompe as leituras até reabri-las.
 
-Metadados compartilhados são observações da sessão do usuário, com o mesmo modelo público e restrito à unidade da API existente. Não são enviados conteúdo do documento, cookies ou URLs autenticadas. Inclusões já observadas mantêm o grupo de origem se o usuário trocar de bloco posteriormente. As tabelas novas são aditivas e o rollback da imagem preserva o banco.
+Metadados compartilhados são observações da sessão do usuário, com o mesmo modelo público e restrito à unidade da API existente. Não são enviados conteúdo do documento, cookies ou URLs autenticadas. Inclusões já observadas mantêm o grupo de origem se o usuário trocar de bloco posteriormente.
 
 ## Filtro do andamento nativo
 
@@ -106,11 +104,11 @@ A lista é dividida em **30 resultados do filtro por página**, com **Anterior /
 
 Após uma leitura completa, os controles de paginação nativos ficam temporariamente ocultos, dando lugar à paginação de 30 resultados. Se a leitura falhar ou não puder ser confirmada, os registros já carregados e a paginação nativa continuam disponíveis, com aviso explícito da limitação. Após reunir todas as páginas, a faixa da primeira página é retirada da legenda para não contradizer a paginação local; a legenda original é restaurada ao sair. Registros originais, cores e links são preservados, e a ordem original é restaurada ao sair; os registros importados são removidos e a paginação nativa é restaurada ao sair. Leitores do resumo continuam acessando todas as linhas carregadas, mesmo quando estão escondidas pela paginação visual. A interface se recupera se a tabela ou a barra forem substituídas.
 
-O registro compartilhado de abertura não altera status manual, assuntos, assinaturas ou histórico de classificação. Em falha de rede, a extensão guarda a abertura no navegador e tenta novamente; o painel informa falhas de sincronização de vistos. Consultas concorrentes usam versões para não restaurar um aviso já reconhecido. Avisos locais existentes podem ser migrados sem confundir uma referência inicial silenciosa com reconhecimento por um colega. Links autenticados, cookies e conteúdo dos documentos não são enviados à API. Todos os usuários precisam atualizar a extensão para 0.14.0; versões anteriores não aplicam todas as restrições de bloco desta versão.
+O registro compartilhado de abertura não altera status manual, assuntos, assinaturas ou histórico de classificação. Em falha de rede, a extensão guarda a abertura no navegador e tenta novamente; o painel informa falhas de sincronização de vistos. Consultas concorrentes usam versões para não restaurar um aviso já reconhecido. Avisos locais existentes podem ser migrados sem confundir uma referência inicial silenciosa com reconhecimento por um colega. Links autenticados, cookies e conteúdo dos documentos não são enviados à API.
 
 ## Resumo do processo e situação do documento
 
-Na versão 0.14.0, o card usa painéis separados e prioriza pendências, assinatura e controles do bloco. O seletor aparece como **Status manual**. Envio e recebimento formam uma sequência visual; uma nota explica o registro do recebimento. **Nesta unidade** mostra **Processo aberto** e informa que o tempo conta desde a última movimentação, não desde a chegada. Alertas identificam quando se referem a outra unidade. O tipo do processo fica em um detalhe recolhido no final; clique para abrir. Último envio e outras unidades continuam recolhidos por padrão.
+O card usa painéis separados e prioriza pendências, assinatura e controles do bloco. O seletor aparece como **Status manual**. Envio e recebimento formam uma sequência visual; uma nota explica o registro do recebimento. **Nesta unidade** mostra **Processo aberto** e informa que o tempo conta desde a última movimentação, não desde a chegada. Alertas identificam quando se referem a outra unidade. O tipo do processo fica em um detalhe recolhido no final; clique para abrir. Último envio e outras unidades continuam recolhidos por padrão.
 
 Ao entrar no processo na unidade atendida, aparece um card na árvore, logo abaixo de **Consultar Andamento**, sem precisar selecionar um documento. O card consulta todas as páginas do histórico completo, com os mesmos limites e validações do leitor da tabela. Leituras completas ficam em cache por até um minuto, por processo, unidade e usuário. Ao completar a leitura do andamento na tabela, o card aberto é atualizado com esses dados. Eventos são comparados por data e hora real. O resumo mostra o número e o tipo do processo, a última movimentação carregada (data, unidade, descrição e autor), por padrão da unidade atual, o último envio, as unidades abertas e o tempo parado, as pendências de assinatura e os assuntos/status dos blocos internos. Tipo e pendências aparecem assim que a árvore está disponível; o restante carrega em seguida, com indicação de espera. Em **Última movimentação**, o seletor **Minha unidade / Todo o processo** permite alternar entre o registro mais recente da unidade atual e o mais recente do processo. A escolha fica salva por usuário e unidade neste navegador e usa os registros já carregados, sem novas consultas ao alternar. Quando não há registro local disponível, o card informa que não encontrou movimentação da unidade nos registros carregados, sem substituí-la por outra unidade. É um resumo dos dados do SEI, sem leitura ou resumo automático do conteúdo dos documentos.
 
@@ -134,7 +132,7 @@ A detecção exige a página editor_montar, processo/documento/unidade confirmad
 
 A presença é renovada e consultada a cada 20 segundos. Ao sair do editor, a extensão tenta encerrar a presença imediatamente. Sem confirmação, o servidor expira o aviso após 90 segundos; a remoção visual ocorre na próxima atualização. Em falha de conexão, não enfileira presença para reprodução posterior e não mantém avisos expirados como atuais. O aviso é informativo e não bloqueia edição nem prova que uma alteração foi salva.
 
-O conteúdo digitado, valores dos campos, cookies e URLs autenticadas não são enviados: apenas unidade, processo, documento, número identificado, usuário, identificador aleatório da janela e tempo desde a última entrada. Assuntos, status, reconhecimento de novos e histórico continuam independentes. Todos precisam da extensão 0.14.0 e da API atualizada. Testes com fixtures e popup no Chromium confirmaram abertura, atividade, fechamento e ausência de conteúdo nas requisições; validação no editor real do SEI ainda pendente.
+O conteúdo digitado, valores dos campos, cookies e URLs autenticadas não são enviados: apenas unidade, processo, documento, número identificado, usuário, identificador aleatório da janela e tempo desde a última entrada. Assuntos, status, reconhecimento de novos e histórico continuam independentes. A validação no editor real do SEI ainda está pendente.
 
 ## Pendência antes de enviar
 
@@ -147,7 +145,7 @@ O aviso nunca bloqueia o envio. Sem pendência, nada aparece. Envios em lote pel
 
 ## Histórico e desfazer
 
-O painel mostra as últimas 100 operações; o SQLite conserva todo o histórico. As cores distinguem criação, exclusão, atribuição, retirada, renomeação, status e desfazer, com descrição textual independente da cor. Passe o mouse sobre o login para ver o nome completo e o órgão registrados. Registros antigos sem nome completo informam que ele não está disponível.
+O painel mostra as últimas 100 operações; o servidor conserva as 300 mais recentes de cada bloco. As cores distinguem criação, exclusão, atribuição, retirada, renomeação, status e desfazer, com descrição textual independente da cor. Passe o mouse sobre o login para ver o nome completo e o órgão registrados. Registros antigos sem nome completo informam que ele não está disponível.
 
 **Desfazer** fica à direita, depois da frase do registro, somente nos registros do próprio login e órgão que ainda possam ser revertidos. A operação consulta novamente o estado e o histórico antes de confirmar, mostra a alteração escolhida e o autor, e envia o identificador do registro com a versão consultada. Cancelar não grava.
 
@@ -155,9 +153,15 @@ O servidor compara o autor novamente e aplica somente as diferenças produzidas 
 
 Registros já desfeitos, sem efeito ou que representam um desfazer não oferecem novo desfazer. O botão desaparece depois da reversão e o registro original continua no histórico com a indicação **Desfeita**. A reversão também gera seu próprio registro.
 
+## Sugestões de chefes
+
+Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
+
+A extensão não traz nenhuma lista de usuários embutida. As sugestões aparecem depois que a pessoa abre uma vez a tela nativa **Atribuir Processo** na unidade atendida: a extensão lê o seletor já carregado e guarda uma cópia só naquele navegador. Ela não consulta um diretório em tempo real, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível.
+
 ## Dados e identificação
 
-Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e snapshots anterior/posterior. Desde a 0.1.6, cada registro guarda a lista de abas e somente os processos que a operação alterou; registros antigos com o estado completo continuam válidos para desfazer. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O card do documento lê o andamento e os blocos diretamente no SEI e não envia esses dados à API; à API vão apenas o bloco interno e o processo, como na lista do bloco. O worker faz as chamadas sem cookies e sem referrer.
+Persistimos unidade, bloco, IDs internos de processos, números formatados usados nas operações, abas, vínculos, status, versões e histórico com autor, horário e o que cada operação alterou. Não enviamos documentos, anotações, URLs autenticadas, cookies ou hashes do SEI. O card do documento lê o andamento e os blocos diretamente no SEI e não envia esses dados à API; à API vão apenas o bloco interno e o processo, como na lista do bloco. O worker faz as chamadas sem cookies e sem referrer. A política de privacidade publicada está em https://ext.5cpa.com.br/privacidade.
 
 O autor vem do título do ícone do usuário no SEI: nome, login e órgão. A API não autentica essa identidade; comparar login e órgão é uma regra funcional para o uso normal da extensão, não uma garantia contra chamadas que declarem outra identidade. O usuário autorizou API pública sem token e instalação sem configuração. O servidor restringe a unidade, valida dados e tamanho das requisições e usa transações com controle de versão. A administração da VPS e do Portainer permanece restrita.
 
@@ -167,13 +171,13 @@ A API está implantada na KMV2, com HTTPS via Traefik e imagem pública sem cred
 
 [Operação, imagem implantada, backups e rollback](deploy/KMV2.md). [Todas as versões e mudanças](CHANGELOG.md).
 
-Teto do banco (0.23.6): o arquivo SQLite não passa de 1 GB (`SEI_MAX_DB_MB`, em MB, altera o valor). No teto, gravações respondem HTTP 507 e leituras continuam; o log de início mostra o tamanho atual.
+- **Teto do banco:** o arquivo SQLite não passa de 1 GB (`SEI_MAX_DB_MB`, em MB, altera o valor). No teto, gravações respondem HTTP 507 e leituras continuam; o log de início mostra o tamanho atual.
+- **Limites da API pública:** IDs de bloco com até 30 dígitos e estado para no máximo 500 blocos por unidade (HTTP 409 acima disso). Erros que o usuário pode corrigir, como nome de aba inválido ou aba já excluída, voltam com a mensagem real (HTTP 400); os demais continuam genéricos.
+- **Retenção:** as 300 alterações mais recentes de cada bloco e 60 dias de aberturas e de acompanhamento de assinaturas.
+- **Container:** imagem base Node 24 Alpine fixada por digest, `HEALTHCHECK` na própria imagem, usuário não root, sistema de arquivos raiz somente leitura, `/tmp` em memória (64 MiB, usado pelo SQLite) e todas as capabilities removidas. O banco fica no volume `sei_organizador_data`.
+- **Política de privacidade:** `GET /privacidade`, publicada somente quando `SEI_PRIVACY_CONTACT` está definido na stack.
 
-Limites da API pública (0.22.0): IDs de bloco com até 30 dígitos e estado para no máximo 500 blocos por unidade (HTTP 409 acima disso). Erros que o usuário pode corrigir, como nome de aba inválido ou aba já excluída, voltam com a mensagem real (HTTP 400); os demais continuam genéricos. As respostas incluem `X-Content-Type-Options: nosniff`, e a conexão fica aberta por 95 segundos para evitar 502 esporádicos atrás do Traefik.
-
-Container (0.22.0): imagem base Node 24 Alpine fixada por digest, `HEALTHCHECK` na própria imagem, usuário não root, sistema de arquivos raiz somente leitura, `/tmp` em memória (64 MiB, usado pelo SQLite) e todas as capabilities removidas. O banco continua no volume `sei_organizador_data`.
-
-Ações HTTP: `GET /healthz`, `GET /v1/units/:unit/blocks/:block`, `GET .../history` e `POST ...` com `{version, actor, action}`. Ações: create, rename, delete, assign, unassign, status e undo. Status aceita de 1 a 1.000 IDs únicos e aplica o lote em uma transação, sujeito ao limite HTTP de 64 KiB; valores anteriores ficam registrados por processo. Desfazer exige `historyId`; o histórico inclui `undoable` e `undoReason`. O banco existente é compatível e não exige migração para estas mudanças.
+Ações HTTP: `GET /healthz`, `GET /v1/units/:unit/blocks/:block`, `GET .../history` e `POST ...` com `{version, actor, action}`. Ações: create, rename, delete, assign, unassign, status e undo. Status aceita de 1 a 1.000 IDs únicos e aplica o lote em uma transação, sujeito ao limite HTTP de 64 KiB. Desfazer exige `historyId`; o histórico inclui `undoable` e `undoReason`. O cabeçalho `Server-Timing` indica o tempo de processamento da resposta.
 
 Para desenvolvimento local, com Node.js 24 ou superior:
 
@@ -182,13 +186,13 @@ $env:SEI_UNIT_ID='ID_DA_UNIDADE'
 npm start
 ```
 
-O serviço local usa loopback e `data/organizador.sqlite`. A extensão distribuída continua apontando para a VPS; testar contra uma API local exige uma cópia de desenvolvimento com destino e permissão ajustados. O compose local lê a unidade e publica somente no loopback:
+O serviço local usa loopback e `data/organizador.sqlite`. A extensão distribuída aponta para a VPS; testar contra uma API local exige uma cópia de desenvolvimento com destino e permissão ajustados. O compose local lê a unidade e publica somente no loopback:
 
 ```powershell
 docker compose -f deploy/compose.yaml up -d --build
 ```
 
-`SEI_ALLOW_PUBLIC_ACCESS=true` habilita acesso sem token explicitamente. Fora desse modo, o servidor oferece hashes de tokens e recusa bind em rede sem configuração de autenticação. Essas ferramentas foram preservadas para desenvolvimento e rollback; usuários da extensão atual não precisam de token.
+`SEI_ALLOW_PUBLIC_ACCESS=true` habilita acesso sem token explicitamente. Fora desse modo, o servidor exige um arquivo de hashes de tokens (`SEI_API_TOKEN_HASHES_FILE`) e recusa bind em rede sem autenticação configurada. Os usuários da extensão não precisam de token.
 
 ## Validação e distribuição
 
@@ -196,96 +200,37 @@ docker compose -f deploy/compose.yaml up -d --build
 npm test
 npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
+node tools/build-store.mjs
 ```
 
-Resultado da entrega 0.23.9: **253 testes passaram** (5 deles dependem de amostras reais do SEI, que não ficam no repositório, e são pulados sem elas), além das verificações de sintaxe e formatação. Histórico da 0.23.7: 250 testes passaram. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+A suíte tem 253 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
 
-O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
+A cada entrega da extensão: incrementar a versão no manifesto, no `package.json` e no lockfile, registrar no CHANGELOG e gerar os pacotes. Para o ZIP da unidade, criar a release no GitHub como "Latest" (o arquivo se chama sempre `sei-organizador-extension.zip`) e copiar o mesmo ZIP para `R:\sei-organizador`. Para a loja, enviar `artifacts/sei-organizador-store.zip` no painel. Os arquivos em `artifacts/` são resultados locais, fora do Git.
 
-Os arquivos em `artifacts/` são resultados locais, fora do Git: ZIPs, imagens de validação, backups e configurações operacionais anteriores. A fonte da extensão está versionada e permite regenerar o ZIP. A cada nova entrega da extensão, incrementar manifesto, pacote e lockfile, registrar o CHANGELOG e atualizar a distribuição.
+Após atualizar a extensão, recarregue ou feche e reabra todas as abas do SEI, para substituir os scripts antigos.
 
-### Navegação em documentos (0.16.2)
-
-Nas telas de processo, o monitor sincroniza avisos pela API sem iniciar consultas automáticas de listas ou históricos no SEI. O card aproveita andamento completo recente em cache; sem cache, use **Consultar andamento** para carregar os detalhes. As varreduras automáticas continuam nas demais telas do SEI.
-
-O ZIP dos releases usa sempre o nome `sei-organizador-extension.zip`. Link permanente da versão mais recente: https://github.com/flaviokosta79/sei-organizador/releases/latest/download/sei-organizador-extension.zip
-
-### Desempenho da API (0.16.4)
-
-O servidor reutiliza o cálculo do histórico enquanto os dados permanecem iguais, com cache limitado e invalidação nas gravações e alterações externas. O cabeçalho `Server-Timing` indica o tempo de processamento da resposta. Medições da implantação e seus limites estão em `deploy/performance-0.16.4.json`. Essa otimização não altera o carregamento nativo de documentos pelo SEI.
-
-### Atualidade do alerta da Secretaria (0.16.5)
-
-O som e a notificação de processo para receber exigem uma leitura do SEI de até 90 segundos. Uma leitura mais antiga permanece identificada no painel, sem gerar aviso sonoro. Se o processo ainda estiver pendente numa confirmação recente, o aviso ocorre uma vez; se já tiver sido recebido ou retirado, não há aviso atrasado. Outros usuários podem receber ou encaminhar o processo entre a leitura e a abertura da lista.
-
-### Configurações no próprio SEI (0.16.6)
-
-Clique em **⚙ Organizador** no cabeçalho do SEI. O modal reúne bloco de trabalho, atualização da lista de blocos, sons e chefes de seção. Escolha o bloco e clique em **Salvar bloco de trabalho** para aplicar às páginas abertas, sem sair do SEI. A alteração vale para o usuário conectado neste navegador. A página de opções do Chrome continua disponível como alternativa para os perfis locais.
-
-### Sugestões de chefes (0.17.0)
-
-Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
-
-Desde a 0.23.8 a extensão não traz nenhuma lista de usuários embutida. As sugestões aparecem depois que a pessoa abre uma vez a tela nativa **Atribuir Processo** na unidade atendida: a extensão lê o seletor já carregado e guarda uma cópia só naquele navegador. Ela não consulta um diretório em tempo real. Não faz novas consultas, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível para usuários novos.
-
-### Ícone de configurações (0.17.1)
-
-As configurações são abertas pela **engrenagem âmbar** no cabeçalho do SEI, ao lado dos controles nativos. Ao passar o mouse, a dica mostra **Configurações do SEI Organizador**. O modal mantém as mesmas opções.
-
-### Correção de travamentos em processos grandes (0.17.2)
-
-A leitura da árvore usa índices e reutiliza o resultado enquanto o script nativo permanece igual. O card mostra até 20 pendências inicialmente; **Mostrar mais pendências** acrescenta outras 20, mantendo o total e o acesso a todos os documentos. Isso evita montar milhares de itens ao selecionar cada documento. A visualização de documentos não instala mais o monitor de edição; a presença continua no card da árvore e nos editores.
-
-Benchmark reproduzível com dados sintéticos: `node tools/benchmark-tree.mjs`. A comparação no Chromium está em `referencias/validacao/performance-0.17.2.json`. Após atualizar a extensão, recarregue ou feche/reabra **todas** as abas do SEI para substituir os scripts antigos.
-
-### Leituras de fundo e velocidade da navegação (0.20.0 a 0.22.0)
+## Desempenho
 
 O SEI atende um pedido por vez em cada sessão. Por isso, as leituras automáticas da extensão (blocos, recebidos e assinaturas) cedem a vez à navegação do usuário:
 
 - Uma única leitura de fundo por vez, para todas as abas, coordenada pelo service worker. Entre uma leitura e outra há um intervalo igual à duração da anterior, entre 1 e 10 segundos.
 - Cada leitura espera 2,5 segundos depois do último clique ou Enter. Uma rodada só começa após 15 segundos sem navegação, ou depois de 2 minutos sem nenhuma rodada daquele tipo.
 - Com o SEI lento (mediana acima de 4 segundos), o intervalo entre rodadas dobra, até 5 minutos, e volta ao normal quando o SEI se recupera.
-- O tempo-limite de cada leitura conta só o tempo de leitura, não a espera pela vez.
+- Nas telas de processo, a extensão não inicia leituras automáticas de listas ou históricos; elas acontecem nas demais telas do SEI.
+- A extensão não lê a lista de Blocos de Assinatura: no SEI real, uma página dessa lista levou cerca de 35 s e segurou o clique seguinte do usuário pelo mesmo tempo.
 
-Medição de 2026-11-06 no Chromium, com a extensão carregada, as páginas reais salvas do SEI e uma sessão simulada que atende um pedido por vez:
+Medição de 2026-11-06 no SEI-RJ real (extensão 0.22.3, 120 navegações, medianas):
 
-| Cenário           | Navegação média sem extensão | Com extensão | Leituras de fundo em 3 min |
-| ----------------- | ---------------------------- | ------------ | -------------------------- |
-| Bloco comum       | 2,17 s                       | 2,21 s       | 3                          |
-| Secretaria (1396) | 2,17 s                       | 2,25 s       | 6                          |
+| Tela                  | Com extensão | Sem extensão |
+| --------------------- | ------------ | ------------ |
+| Controle de Processos | 0,47 s       | 0,44 s       |
+| Blocos Internos       | 0,61 s       | 0,53 s       |
+| Bloco de trabalho     | 0,23 s       | 0,18 s       |
+| Tela do processo      | 1,19 s       | 1,16–1,34 s  |
+| Documento da árvore   | 0,29 s       | 0,28–0,30 s  |
 
-A extensão acrescenta cerca de 30 a 60 ms ao abrir o Controle de Processos e a tela do processo. Um bloco interno com 1.000 processos levava cerca de 0,4 s a mais para abrir; desde a 0.23.1 leva cerca de 0,13 s a mais (ver abaixo). A leitura de históricos para assinaturas e os tempos reais do SEI não entraram na simulação. Os scripts ficam em `artifacts/perf/`, fora do Git.
+Um bloco interno sintético de 1.000 processos abre em cerca de 0,18 s com a extensão e 0,06 s sem ela (Chromium, sem latência do SEI). Em processos grandes, o card mostra 20 pendências por vez, com **Mostrar mais pendências**. `node tools/benchmark-tree.mjs` reproduz a medição da leitura da árvore com dados sintéticos. Os demais roteiros de medição ficam em `artifacts/perf/`, fora do Git. O histórico das medições e das correções está no [CHANGELOG](CHANGELOG.md).
 
-### Medição no SEI real (0.22.0 a 0.22.3)
+## Estado em produção
 
-Em 2026-11-06, a navegação foi medida no SEI-RJ real, com uma sessão autenticada e o bloco 1343. O mesmo navegador alternou rodadas com e sem a extensão, ligando e desligando a extensão entre elas. O roteiro abre Controle de Processos, Blocos Internos, o bloco de trabalho, um processo (que abre em outra aba) e dois documentos da árvore, com pausas de 3 a 7 s.
-
-- **0.22.0**: em quase toda rodada com extensão, Blocos Internos travou por cerca de 35 s. A causa era a leitura de fundo da lista de Blocos de Assinatura: uma das páginas levava cerca de 35 s. Como o SEI atende um pedido por vez em cada sessão, o clique seguinte do usuário esperou o mesmo tempo. Exemplo medido: leitura da extensão aos 247 s, clique aos 248 s e resposta 33,9 s depois. As chamadas à API própria e o processamento no navegador não tiveram efeito. Numa rodada sem extensão logo depois de rodadas com a 0.22.0, Blocos Internos também travou 3 vezes por 35 s; a causa dessas travas não foi confirmada (efeito residual na sessão ou lentidão do próprio SEI).
-- **0.22.2**: a lista deixou de ser lida. Em 72 navegações, não houve nenhuma trava, e os tempos ficaram iguais com e sem a extensão.
-- **0.22.3**: em 120 navegações, a extensão leu 20 andamentos para o alerta de assinatura (0,4 a 1,0 s cada), cedendo a vez à navegação; só um clique coincidiu com uma leitura (+0,15 s). As chamadas à API própria caíram de cerca de 37 para 15 por minuto por navegador.
-
-| Tela (mediana, 0.22.3) | Com extensão | Sem extensão |
-| ---------------------- | ------------ | ------------ |
-| Controle de Processos  | 0,47 s       | 0,44 s       |
-| Blocos Internos        | 0,61 s       | 0,53 s       |
-| Bloco de trabalho      | 0,23 s       | 0,18 s       |
-| Tela do processo       | 1,19 s       | 1,16–1,34 s  |
-| Documento da árvore    | 0,29 s       | 0,28–0,30 s  |
-
-A melhora completa depende de todos os colegas atualizarem: quem continua na 0.22.0 ainda faz a leitura pesada da lista de Blocos de Assinatura e trava a própria sessão. O roteiro de medição fica em `artifacts/perf/real5.mjs`, fora do Git, e pede um login no navegador de teste.
-
-### Abertura de blocos grandes (0.23.1)
-
-Medição de 2026-11-10 no Chromium, com a extensão carregada e um bloco interno sintético de 1.000 processos, sem latência do SEI (mediana de 9 aberturas):
-
-| Bloco de 1.000 processos | Sem extensão | 0.23.0 | 0.23.1 |
-| ------------------------ | ------------ | ------ | ------ |
-| Página carregada         | 55 ms        | 480 ms | 182 ms |
-| Script da extensão       | —            | 157 ms | 33 ms  |
-| Tarefas no navegador     | 149 ms       | 783 ms | 523 ms |
-
-Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O que resta é quase todo do navegador: redesenhar a tabela uma vez com as colunas Assunto e Status. As colunas aparecem quando o serviço responde pela primeira vez; se ele não responder em 400 ms, as linhas aparecem como "Não sincronizado", como antes. Os roteiros ficam em `artifacts/perf/` (`block.mjs`, `layouts.mjs` e `block-visual.mjs`), fora do Git.
-
-### Estado em produção
-
-Extensão 0.23.8 (ZIP da release v0.23.8 e em `R:\sei-organizador`) e API 0.23.9, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 prepara a publicação na Chrome Web Store e não tem release no GitHub: quem usa o ZIP continua na 0.23.8. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.8 (ZIP da release v0.23.8 e em `R:\sei-organizador`) e API 0.23.9, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 foi enviada à Chrome Web Store como não listada em 2026-11-10 e aguarda análise; não tem release no GitHub, e quem usa o ZIP continua na 0.23.8. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

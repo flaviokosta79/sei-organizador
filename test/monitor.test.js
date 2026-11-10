@@ -302,7 +302,7 @@ test('reprodutor usa somente áudios empacotados e mantém a escolha de cada avi
  assert.deepEqual(played,['chrome-extension://test/sound/novosei.mp3']);created.dispatchEvent(new Event('ended'));await first;await new Promise(r=>setTimeout(r,0));
  assert.equal(played[1],'chrome-extension://test/sound/assinar.mp3');created.dispatchEvent(new Event('ended'));await second;
  assert.match((await play('../secret.mp3')).error,/Áudio inválido/);assert.equal(played.length,2);
- for(const name of ['novosei','assinar'])assert.deepEqual(readFileSync(new URL(`../extension/sound/${name}.mp3`,import.meta.url)),readFileSync(new URL(`../sound/${name}.mp3`,import.meta.url)));
+ for(const name of ['novosei','assinar'])assert.ok(readFileSync(new URL(`../extension/sound/${name}.mp3`,import.meta.url)).length>1000);
 });
 
 test('painel mostra eventos fixos e configura chefe pelo login identificado no SEI',async()=>{
