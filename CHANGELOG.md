@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.6 — 2026-11-10
+
+**API (requer reimplantar). A extensão não muda: quem já tem a 0.23.5 não precisa reinstalar, e não há release nova no GitHub.**
+
+- Teto de tamanho para o banco da API:
+  - A API é pública e nada limitava o tamanho do banco. A rota de processos abertos aceita até 1.000 processos por requisição, de qualquer bloco; em medida local, 200 requisições gravaram 200.000 linhas e 19 MB. No limite de requisições do Traefik, alguém com o endereço poderia encher o disco da VPS em horas.
+  - Agora o arquivo do banco não passa de 1 GB (limite nativo do SQLite, `max_page_count`). O valor pode ser alterado com a variável `SEI_MAX_DB_MB`.
+  - No teto, as gravações respondem HTTP 507 "Armazenamento do serviço cheio. Avise o administrador." e ficam registradas no log; as leituras continuam. A limpeza diária de registros antigos libera espaço dentro do próprio arquivo.
+  - Ao iniciar, o servidor registra no log o tamanho atual e o teto.
+- Uma gravação recusada pelo SQLite não é mais trocada pelo erro "cannot rollback": a causa real chega ao log e à resposta.
+- API e servidor revisados; sem outras alterações.
+- 249 testes, todos passando. Os novos cobrem o teto no banco e a resposta 507 pela rede.
+
 ## 0.23.5 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

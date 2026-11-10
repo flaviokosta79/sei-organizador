@@ -13,7 +13,7 @@ export function createAlerts(db,{onSnapshot=()=>{}}={}) {
   };
   const read=(unit,block)=>{const row=q.read.get(unit,block);return row?{version:row.version,observed:row.observed,entries:JSON.parse(row.entries)}:{version:0,observed:0,entries:null};};
   const save=(unit,block,state)=>q.save.run(unit,block,state.version,state.observed,JSON.stringify(state.entries));
-  const transaction=fn=>{db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}};
+  const transaction=fn=>{db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){rollback(db);throw e;}};
   function snapshot(unit,block,{version,ids,pendingIds=[]}) {
     if(!Number.isSafeInteger(version)||version<0||!Array.isArray(ids)||ids.length>10000||!ids.every(validId)||!Array.isArray(pendingIds)||pendingIds.length>10000)throw Error('Lista inválida');
     const present=new Set(ids);
@@ -68,3 +68,5 @@ export function createAlerts(db,{onSnapshot=()=>{}}={}) {
   return {read,snapshot,opened,openedMany};
 }
 const validId=id=>typeof id==='string'&&/^\d{1,30}$/.test(id);
+// Errors such as SQLITE_FULL end the transaction by themselves: a failing ROLLBACK must not hide the cause.
+function rollback(db){try{db.exec('ROLLBACK');}catch{}}

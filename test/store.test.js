@@ -62,3 +62,23 @@ test('unidade guarda estado de no máximo N blocos; blocos já conhecidos contin
   s.admit('2','4',3);
  }finally{s.close();}
 });
+
+test('banco tem teto de tamanho: gravação além dele é recusada, leitura continua e o estado anterior fica íntegro',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'sei-cap-'));const file=join(dir,'db.sqlite');
+ let s=createStore(file,{maxBytes:1048576});
+ try{
+  const state=s.mutate('1','2',0,{login:'a',org:'SEPM'},{type:'create',name:'Assunto'});
+  let n=0,error;
+  try{for(let r=0;r<100;r++)s.alerts.openedMany('1',Array.from({length:1000},()=>String(++n)),{login:'x'},'9');}catch(e){error=e;}
+  assert.equal(error?.errcode,13,'SQLITE_FULL chega a quem chamou, sem ser trocado pelo erro do ROLLBACK');
+  assert.ok(s.size()<=1048576);assert.ok(n<100000);
+  // The refused batch left nothing behind, and reads still work.
+  assert.equal(s.read('1','2').tabs[0].name,'Assunto');assert.equal(s.history('1','2').length,1);
+  // Retention frees room: writes work again without growing the file.
+  assert.ok(s.maintain(Date.now()+90*86400000).removed>0);
+  assert.equal(s.mutate('1','2',state.version,{login:'a',org:'SEPM'},{type:'rename',tabId:state.tabs[0].id,name:'Outro'}).tabs[0].name,'Outro');
+  s.close();s=createStore(file,{maxBytes:1048576});
+  assert.equal(s.read('1','2').tabs[0].name,'Outro');assert.ok(s.size()<=1048576);assert.equal(s.maxBytes,1048576);
+  assert.equal(createStore(':memory:').maxBytes,1073741824);
+ }finally{s.close();rmSync(dir,{recursive:true,force:true});}
+});

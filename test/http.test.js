@@ -116,3 +116,21 @@ test('API pública (modo de produção): limites, JSON inválido, mensagens úte
   assert.equal((await generic.json()).error,'Não foi possível aplicar a alteração. Verifique os dados.');
  }finally{const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;rmSync(dir,{recursive:true,force:true});}
 });
+
+test('API pública: banco no teto de tamanho responde 507 nas gravações e continua lendo',async()=>{
+ const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+ const dir=mkdtempSync(join(tmpdir(),'sei-full-'));
+ const child=spawn(process.execPath,['server/index.js'],{env:{...process.env,HOST:'127.0.0.1',SEI_ALLOW_PUBLIC_ACCESS:'true',SEI_API_TOKEN_HASHES_FILE:'',SEI_UNIT_ID:'1',SEI_MAX_DB_MB:'1',PORT:String(port),DATA_FILE:join(dir,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+ try{
+  const started=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Serviço não iniciou')),15000);child.stdout.once('data',data=>{clearTimeout(timer);resolve(String(data));});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Serviço encerrou'));});});
+  assert.match(started,/banco com \d+\.\d MB de 1 MB/);
+  const base=`http://127.0.0.1:${port}/v1/units/1`;
+  const post=(path,body)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const created=await post('/blocks/2',{version:0,actor:{login:'a',org:'SEPM'},action:{type:'create',name:'Assunto'}});assert.equal(created.status,200);
+  let n=0,full;
+  for(let r=0;r<100&&!full;r++){const response=await post('/processes/opened',{actor:{login:'x',org:'SEPM'},block:'9',processes:Array.from({length:1000},()=>String(++n))});if(response.status!==200)full=response;}
+  assert.equal(full?.status,507);assert.match((await full.json()).error,/Armazenamento do serviço cheio/);
+  const state=await(await fetch(base+'/blocks/2')).json();assert.equal(state.tabs[0].name,'Assunto');
+  assert.equal((await fetch(`http://127.0.0.1:${port}/healthz`)).status,200);
+ }finally{const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;rmSync(dir,{recursive:true,force:true});}
+});

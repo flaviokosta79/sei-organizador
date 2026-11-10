@@ -5,7 +5,9 @@ const unit=process.env.SEI_UNIT_ID;
 if(!unit||!/^\d+$/.test(unit))throw new Error('Configure SEI_UNIT_ID com a unidade autorizada');
 const host=process.env.HOST||'127.0.0.1';
 const authorized=createAuth({file:process.env.SEI_API_TOKEN_HASHES_FILE,host,publicAccess:process.env.SEI_ALLOW_PUBLIC_ACCESS==='true'});
-const store=createStore(process.env.DATA_FILE||'./data/organizador.sqlite');
+const maxMb=Number(process.env.SEI_MAX_DB_MB||1024);
+if(!Number.isFinite(maxMb)||maxMb<1)throw new Error('SEI_MAX_DB_MB deve ser um número a partir de 1');
+const store=createStore(process.env.DATA_FILE||'./data/organizador.sqlite',{maxBytes:maxMb*1048576});
 // Buffers are joined before decoding, so multibyte characters split across chunks stay intact.
 async function readJson(req,limit){
   if(!req.headers['content-type']?.startsWith('application/json'))return {status:415,error:'Use JSON'};
@@ -75,6 +77,8 @@ const server=http.createServer(async(req,res)=>{
     return send(200,store.mutate(match[1],match[2],data.version,actor,clean));
   }catch(e){
     // Database failures are server faults: log them and do not blame the request data.
+    // SQLITE_FULL (13): the size limit of the database was reached. Reads keep working.
+    if(e?.errcode===13){console.error('Banco no limite de tamanho; gravação recusada',req.method,req.url);return send(507,{error:'Armazenamento do serviço cheio. Avise o administrador.'});}
     if(typeof e?.code==='string'&&e.code.startsWith('ERR_SQLITE')){console.error(req.method,req.url,e);return send(500,{error:'Falha interna ao gravar os dados. Tente novamente.'});}
     // Only errors raised with a status carry a message meant for the user; others stay generic.
     send(e.status||400,{error:e.status&&e.message?e.message:'Não foi possível aplicar a alteração. Verifique os dados.'});
@@ -83,5 +87,5 @@ const server=http.createServer(async(req,res)=>{
 // Retention runs at startup and then once a day; a failure is logged and retried on the next run.
 const maintain=()=>{try{const {removed}=store.maintain();if(removed)console.log('Retenção: registros antigos removidos',removed);}catch(e){console.error('Retenção falhou',e);}};
 maintain();setInterval(maintain,86400000).unref();
-server.requestTimeout=15000;server.keepAliveTimeout=95000;server.headersTimeout=96000;server.listen(Number(process.env.PORT||8787),host,()=>console.log('SEI Organizador iniciado'));
+server.requestTimeout=15000;server.keepAliveTimeout=95000;server.headersTimeout=96000;server.listen(Number(process.env.PORT||8787),host,()=>console.log(`SEI Organizador iniciado; banco com ${(store.size()/1048576).toFixed(1)} MB de ${maxMb} MB`));
 for(const sig of ['SIGINT','SIGTERM'])process.on(sig,()=>{server.close(()=>{store.close();process.exit(0);});server.closeIdleConnections();});

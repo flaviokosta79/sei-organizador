@@ -7,11 +7,16 @@ import {createAlerts} from './alerts.js';
 import {createEditing} from './editing.js';
 import {createSignatures} from './signatures.js';
 import {createReceipts} from './receipts.js';
-export function createStore(path) {
+export function createStore(path,{maxBytes=1073741824}={}) {
   mkdirSync(dirname(path), {recursive:true});
   const db = new DatabaseSync(path);
   // WAL with NORMAL sync stays durable across app crashes; busy_timeout absorbs short lock waits.
   db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;');
+  // The API is public: the database file cannot grow past this size (SQLite refuses the write with
+  // SQLITE_FULL), so no volume of requests can fill the server's disk. Not persistent: set on every open.
+  const pageSize=db.prepare('PRAGMA page_size').get().page_size;
+  db.exec(`PRAGMA max_page_count=${Math.max(1,Math.floor(maxBytes/pageSize))}`);
+  const size=()=>db.prepare('PRAGMA page_count').get().page_count*pageSize;
   // A process leaves the block's organization only when two complete readings at least 30 s apart
   // miss it: one wrong, partial or forged list can no longer wipe subjects and statuses (not undoable).
   db.exec('CREATE TABLE IF NOT EXISTS departures (unit TEXT, block TEXT, process TEXT, since INTEGER, PRIMARY KEY(unit,block,process))');
@@ -83,7 +88,7 @@ export function createStore(path) {
       q.save.run(unit,block,v,JSON.stringify(next));
       q.record.run(unit,block,new Date().toISOString(),JSON.stringify(actor),JSON.stringify(recorded),before,after,v);
       if(!inTransaction)db.exec('COMMIT'); return {version:v,...next};
-    }catch(e){if(!inTransaction)db.exec('ROLLBACK');throw e;}
+    }catch(e){if(!inTransaction)rollback(db);throw e;}
   }
   // Only computed metadata is cached. SQLite remains the source of truth.
   // External commits change data_version; local mutations invalidate before touching the transaction.
@@ -132,7 +137,7 @@ export function createStore(path) {
       db.exec('COMMIT');
       if(removed)historyCache.clear();
       return {removed};
-    }catch(e){db.exec('ROLLBACK');throw e;}
+    }catch(e){rollback(db);throw e;}
   }
   const blocksIn={known:db.prepare('SELECT 1 FROM blocks WHERE unit=? AND block=? UNION ALL SELECT 1 FROM alert_blocks WHERE unit=? AND block=? LIMIT 1'),count:db.prepare('SELECT COUNT(*) AS n FROM (SELECT block FROM blocks WHERE unit=? UNION SELECT block FROM alert_blocks WHERE unit=?)')};
   // The API is public: a unit can hold state for at most this many blocks, so the volume cannot be filled.
@@ -140,8 +145,10 @@ export function createStore(path) {
     if(blocksIn.known.get(unit,block,unit,block))return;
     if(blocksIn.count.get(unit,unit).n>=limit)throw Object.assign(new Error(`Limite de ${limit} blocos por unidade atingido.`),{status:409});
   }
-  return {receipts,signatures,editing,alerts,read,mutate,history,maintain,admit,close:()=>db.close()};
+  return {receipts,signatures,editing,alerts,read,mutate,history,maintain,admit,size,maxBytes,close:()=>db.close()};
 }
 function validName(n){if(typeof n!=='string'||!n.trim()||n.trim().length>80)throw bad('O nome da aba deve ter de 1 a 80 caracteres.');return n.trim();}
 // Errors the user can act on: the API shows their message instead of a generic one.
 function bad(message){return Object.assign(new Error(message),{status:400});}
+// Errors such as SQLITE_FULL end the transaction by themselves: a failing ROLLBACK must not hide the cause.
+function rollback(db){try{db.exec('ROLLBACK');}catch{}}

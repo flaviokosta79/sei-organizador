@@ -24,7 +24,7 @@ export function createSignatures(db) {
   };
   const transaction = (fn) => {
     db.exec('BEGIN IMMEDIATE');
-    try { const result=fn(); db.exec('COMMIT'); return result; } catch(e) { db.exec('ROLLBACK'); throw e; }
+    try { const result=fn(); db.exec('COMMIT'); return result; } catch(e) { rollback(db); throw e; }
   };
   function sync(unit, block, data) {
     const user=actor(data.actor);
@@ -67,3 +67,5 @@ export function createSignatures(db) {
   return {sync,observe};
 }
 const id=v=>typeof v==='string'&&/^\d{1,30}$/.test(v);
+// Errors such as SQLITE_FULL end the transaction by themselves: a failing ROLLBACK must not hide the cause.
+function rollback(db){try{db.exec('ROLLBACK');}catch{}}

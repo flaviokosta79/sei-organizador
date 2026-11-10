@@ -21,7 +21,9 @@ export function createReceipts(db) {
       q.save.run(unit,old.version+1,now,JSON.stringify(pending));
       db.exec('COMMIT');
       return {version:old.version+1,observed:now,initialized:true,pending};
-    }catch(e){db.exec('ROLLBACK');throw e;}
+    }catch(e){rollback(db);throw e;}
   }
   return {read,snapshot};
 }
+// Errors such as SQLITE_FULL end the transaction by themselves: a failing ROLLBACK must not hide the cause.
+function rollback(db){try{db.exec('ROLLBACK');}catch{}}
