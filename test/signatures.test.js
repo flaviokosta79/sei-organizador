@@ -200,3 +200,52 @@ test('aba de lista lê andamentos registrados por outra aba e a tela do processo
   w.seiSignatureScanner.collect(actor('p3a'),'2');await new Promise(r=>setTimeout(r,20));assert.equal(sent.filter(m=>m.type==='signature:remember').length,1);
  }finally{w.close();}
 });
+
+test('scanner lê primeiro processos com documento aguardando assinatura e os abertos há pouco, sem abandonar o rodízio',async()=>{
+ const {w}=reader('120000124');
+ const url=p=>`${base}?acao=procedimento_consultar_historico&id_procedimento=${p}&infra_unidade_atual=120000124`;
+ const all=Array.from({length:12},(_,i)=>String(i+1));
+ let waiting=['9','10','11'],recent=['12','1'];const sent=[],fetched=[];
+ w.chrome={runtime:{sendMessage:async msg=>{sent.push(msg);return msg.type==='signature:processes'?{data:{processes:all.map(p=>[p,url(p)]),waiting,recent}}:{data:{ok:true}};}}};
+ w.fetch=async value=>{
+  const p=new URL(value).searchParams.get('id_procedimento');fetched.push(p);
+  if(p==='11')throw Error('SEI fora do ar');
+  return new Response(history(p==='9'?[['10:01',insertion]]:[['10:03',signing],['10:01',insertion]]),{headers:{'content-type':'text/html; charset=utf-8'}});
+ };
+ try{
+  w.document.body.innerHTML='<a id="lnkInfraUnidade">SEPM/P3</a>';w.eval(read('signature-monitor.js'));
+  const scan=()=>w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
+  let result=await scan();
+  assert.deepEqual(fetched,['9','10','12','1','2'],'dois aguardando, um recente e dois do rodízio');
+  let report=sent.find(m=>m.type==='signature:waiting');assert.deepEqual([...report.read],['9','10','12','1','2']);assert.deepEqual([...report.waiting],['9']);
+  assert.equal(result.error,'');assert.equal(result.observations.filter(o=>o.signature).length,4);
+  // Next round: the worker moved what was read to the end of the queue; a failing history does not hold it.
+  waiting=['11','9'];fetched.length=0;sent.length=0;result=await scan();
+  assert.deepEqual(fetched,['11','9','1','3','4']);assert.match(result.error,/Acompanhamento parcial/);
+  report=sent.find(m=>m.type==='signature:waiting');assert.deepEqual([...report.read],['11','9','1','3','4']);assert.deepEqual([...report.waiting],['11','9']);
+  // Nothing waiting or recent: five from the general rotation, as before.
+  waiting=[];recent=[];fetched.length=0;await scan();assert.deepEqual(fetched,['5','6','7','8','9']);
+ }finally{w.close();}
+});
+
+test('fila de processos aguardando assinatura é da sessão do navegador, por usuário e bloco',async()=>{
+ const store=createStore(':memory:');const a=browser(store);
+ try{
+  const url=p=>`${base}?acao=procedimento_consultar_historico&id_procedimento=${p}&infra_unidade_atual=1&infra_hash=x`;
+  await a.call('signature:remember',{process:'10',url:url('10')});
+  let view=await a.call('signature:processes');assert.deepEqual([...view.waiting],[]);assert.deepEqual([...view.recent],['10'],'aberto há menos de 30 minutos');
+  await a.call('signature:waiting',{read:['10','11','12'],waiting:['10','12']});
+  assert.deepEqual([...(await a.call('signature:processes')).waiting],['10','12']);
+  // Read again: 10 is still waiting and goes to the end; 12 was signed and leaves.
+  await a.call('signature:waiting',{read:['10'],waiting:['10']});await a.call('signature:waiting',{read:['12'],waiting:[]});
+  assert.deepEqual([...(await a.call('signature:processes')).waiting],['10']);
+  await a.call('signature:waiting',{read:['13'],waiting:['13']});await a.call('signature:waiting',{read:['10'],waiting:['10']});
+  assert.deepEqual([...(await a.call('signature:processes')).waiting],['13','10']);
+  await assert.rejects(a.call('signature:waiting',{read:['10'],waiting:['11']}),/inválida/);
+  await assert.rejects(a.call('signature:waiting',{read:['x'],waiting:[]}),/inválida/);
+  await assert.rejects(a.call('signature:waiting',{read:['10'],waiting:[],block:'3'}),/não escolhido/);
+  a.session.seiSignatureProcesses[Object.keys(a.session.seiSignatureProcesses)[0]][0][2]=Date.now()-1900000;
+  assert.deepEqual([...(await a.call('signature:processes')).recent],[]);
+  assert.equal(JSON.stringify(a.local).includes('seiSignatureWaiting'),false);assert.ok(a.session.seiSignatureWaiting);
+ }finally{store.close();}
+});

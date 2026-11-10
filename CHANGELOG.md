@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.23.5 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Aviso de documento assinado chega mais cedo:
+  - A cada rodada (cerca de 1 minuto) são lidos até cinco andamentos, em rodízio entre os processos abertos nesta sessão do navegador. Com muitos processos abertos, um documento assinado podia levar de dezenas de minutos a cerca de 1 hora para avisar.
+  - Agora até três das cinco leituras vão primeiro para os processos com mais chance de assinatura: dois com documento ainda sem assinatura em bloco de assinatura e um aberto nos últimos 30 minutos. As outras duas seguem o rodízio geral, que continua passando por todos os processos.
+  - Sem processo aguardando nem aberto há pouco, as cinco leituras seguem o rodízio, como antes. A quantidade de leituras no SEI não aumenta.
+  - A fila de processos aguardando fica só na sessão do navegador e vale para todas as abas. Um andamento que falha vai para o fim da fila e não segura os demais.
+  - Um documento que fica no bloco sem nunca ser assinado mantém o processo na fila; ela é percorrida em ordem, então ele só divide a vez com os outros.
+- Assinaturas e avisos de edição revisados; sem outras alterações.
+- 247 testes, todos passando. Os novos cobrem a ordem de leitura, a falha de um andamento e a fila por usuário e bloco.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.4 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

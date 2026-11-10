@@ -6,7 +6,8 @@
 globalThis.seiSignatureScanner = (() => {
   const D = seiSignatureData;
   let owner = '',
-    processCursor = 0;
+    processCursor = 0,
+    recentCursor = 0;
   let processes = new Map();
   const save = () => {
     try {
@@ -91,9 +92,13 @@ globalThis.seiSignatureScanner = (() => {
     const unit = document.querySelector('#lnkInfraUnidade')?.textContent.trim();
     if (!unit) throw Error('Unidade do SEI indisponível para acompanhar assinaturas.');
     // Processes opened in any tab of this browser session (recorded by their process pages).
+    let waiting = [],
+      recent = [];
     try {
       const shared = await message('signature:processes', { identity, block });
       for (const [process, url] of shared?.processes || []) if (!processes.has(process)) remember(url);
+      waiting = Array.isArray(shared?.waiting) ? shared.waiting : [];
+      recent = Array.isArray(shared?.recent) ? shared.recent : [];
     } catch {}
     remember(location.href);
     // Only history links can be kept: asking for those spares checking every process link of a long list.
@@ -105,19 +110,57 @@ globalThis.seiSignatureScanner = (() => {
     } catch {}
     const errors = [];
     const observations = [],
-      processItems = [...processes];
+      ids = [...processes.keys()];
     save();
-    for (let index = 0; index < Math.min(5, processItems.length); index++) {
-      const [process, url] = processItems[processCursor++ % processItems.length];
+    // Five histories per round. Up to three go to the processes most likely to get a signature soon:
+    // two with a document still unsigned in a signature block, one opened in the last 30 minutes. The
+    // rest follows the general rotation, which still reaches every process (e.g. a second signature).
+    const picked = [];
+    const take = (list, cursor, limit) => {
+      const candidates = list.filter((id) => processes.has(id) && !picked.includes(id));
+      for (let i = 0; i < Math.min(limit, candidates.length); i++)
+        picked.push(candidates[(cursor + i) % candidates.length]);
+      return candidates.length ? cursor + Math.min(limit, candidates.length) : cursor;
+    };
+    // The waiting list is a queue kept by the worker (just read goes to its end): always from its head.
+    take(waiting, 0, 2);
+    recentCursor = take(recent, recentCursor, 1);
+    if (picked.length < 3) take(waiting, 0, 3 - picked.length);
+    if (picked.length < 3) recentCursor = take(recent, recentCursor, 3 - picked.length);
+    for (let tries = 0; picked.length < Math.min(5, ids.length) && tries < ids.length; tries++) {
+      const id = ids[processCursor++ % ids.length];
+      if (!picked.includes(id)) picked.push(id);
+    }
+    const read = [],
+      unsigned = [];
+    for (const process of picked) {
       try {
-        const doc = await D.history(url, process, signal);
+        const doc = await D.history(processes.get(process), process, signal);
         progress?.();
-        observations.push(...D.observations(doc, process, null, unit));
+        const found = D.observations(doc, process, null, unit);
+        observations.push(...found);
+        read.push(process);
+        // Still in a signature block (not removed) and no signature after that inclusion.
+        const signed = new Set(
+          found.filter((o) => o.signature).map((o) => `${o.document}:${o.signatureBlock}:${o.includedAt}`),
+        );
+        if (found.some((o) => !o.signature && !signed.has(`${o.document}:${o.signatureBlock}:${o.includedAt}`)))
+          unsigned.push(process);
       } catch (e) {
         errors.push(e.message);
+        // A waiting process that failed keeps waiting, but goes to the end so it cannot hold the queue.
+        if (waiting.includes(process)) {
+          read.push(process);
+          unsigned.push(process);
+        }
       }
     }
     save();
+    // The processes just read are reclassified for every tab of this browser.
+    if (read.length)
+      try {
+        await message('signature:waiting', { identity, block, read, waiting: unsigned });
+      } catch {}
     return {
       observations,
       error: errors.length ? `Acompanhamento parcial: ${errors[0]}` : '',

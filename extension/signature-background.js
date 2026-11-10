@@ -3,7 +3,10 @@
   const storageKey = 'seiCompletedSignatures',
     scanKey = 'seiSignatureScans',
     // History URLs of processes the user opened, shared by the tabs of this browser session only.
-    processKey = 'seiSignatureProcesses';
+    processKey = 'seiSignatureProcesses',
+    // Processes whose last history read left a document in a signature block still unsigned.
+    waitingKey = 'seiSignatureWaiting',
+    recentWindow = 1800000;
   const serial = seiCreateQueue();
   // Each SEI page load syncs signatures: the shared answer is reused for 20 s (new events arrive at most
   // 20 s later); observations sent from this browser clear it.
@@ -46,11 +49,36 @@
     await seiWorkScopeStore.requireBlock(identity, block);
     // The process page only records its history URL (no SEI request); a list page reads it later.
     // Kept in chrome.storage.session: the process opens in a new tab whose sessionStorage is lost.
-    if (msg.type === 'signature:remember' || msg.type === 'signature:processes') {
-      const stored = (await chrome.storage.session.get(processKey))[processKey] || {},
+    if (msg.type === 'signature:remember' || msg.type === 'signature:processes' || msg.type === 'signature:waiting') {
+      const session = Object.assign(
+          {},
+          ...(await Promise.all([chrome.storage.session.get(processKey), chrome.storage.session.get(waitingKey)])),
+        ),
+        stored = session[processKey] || {},
         owner = key(identity, block);
       let list = Array.isArray(stored[owner]) ? stored[owner] : [];
-      if (msg.type === 'signature:processes') return { processes: list.map(([process, href]) => [process, href]) };
+      const waitingAll = session[waitingKey] || {},
+        waiting = Array.isArray(waitingAll[owner]) ? waitingAll[owner] : [];
+      if (msg.type === 'signature:processes') {
+        // Read first: documents still waiting for a signature, then processes opened in the last 30 min
+        // (a document is usually sent to a signature block shortly after its process is opened).
+        const recent = list.filter(([, , at]) => Date.now() - at < recentWindow).map(([process]) => process);
+        return { processes: list.map(([process, href]) => [process, href]), waiting, recent };
+      }
+      if (msg.type === 'signature:waiting') {
+        const valid = (ids) =>
+          Array.isArray(ids) && ids.length <= 50 && ids.every((id) => typeof id === 'string' && /^\d{1,30}$/.test(id));
+        if (!valid(msg.read) || !valid(msg.waiting) || !msg.waiting.every((id) => msg.read.includes(id)))
+          throw Error('Leitura de assinaturas inválida.');
+        // Every process just read leaves the list; the ones still waiting go back to its end.
+        const read = new Set(msg.read),
+          next = [...waiting.filter((id) => !read.has(id)), ...msg.waiting].slice(-300);
+        if (JSON.stringify(next) !== JSON.stringify(waiting)) {
+          waitingAll[owner] = next;
+          await chrome.storage.session.set({ [waitingKey]: waitingAll });
+        }
+        return { ok: true, waiting: next.length };
+      }
       const history = new URL(String(msg.url || ''), 'https://sei.rj.gov.br/sei/');
       if (
         !/^\d{1,30}$/.test(msg.process || '') ||
@@ -200,6 +228,7 @@
         'signature:progress',
         'signature:remember',
         'signature:processes',
+        'signature:waiting',
       ].includes(msg?.type)
     )
       return;
