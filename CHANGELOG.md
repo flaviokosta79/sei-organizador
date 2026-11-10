@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.8 — 2026-11-10
+
+**Extensão (não requer reimplantar a API). Inclui o ajuste da 0.23.7, que não teve release.**
+
+- A extensão não traz mais nenhuma lista de usuários embutida:
+  - Desde a 0.17.0 o pacote incluía nomes completos e logins do SEI de 65 pessoas da unidade, para as sugestões de "Chefes de seção". O pacote é público (releases do GitHub e, em breve, Chrome Web Store), então a lista foi retirada.
+  - As sugestões passam a aparecer depois que a pessoa abre uma vez a tela **Atribuir Processo** do SEI; a cópia fica só naquele navegador. Quem já abriu essa tela continua com as sugestões. Sem catálogo, a janela explica isso e a digitação manual do login continua disponível.
+- As páginas reais do SEI usadas como amostra (`referencias/amostras/`) saíram do repositório e ficam só na máquina do autor. Os testes que dependem delas são pulados quando elas não existem; os demais usam dados fictícios.
+- Página de opções: "Atualizar lista do SEI" informa quando nenhuma tela do SEI conseguiu ler a lista (ajuste da 0.23.7).
+- Versões e commits anteriores ainda contêm a lista e as amostras.
+- 251 testes, todos passando (246, com 5 pulados, sem as amostras locais).
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.7 — 2026-11-10
 
 **Extensão (não requer reimplantar a API). Ajuste pequeno, sem release própria: segue junto com a próxima versão distribuída.**

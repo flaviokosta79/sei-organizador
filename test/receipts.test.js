@@ -1,12 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,rmSync,existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {runInNewContext} from 'node:vm';
 import {JSDOM} from 'jsdom';
 import {createStore} from '../server/store.js';
 const read=name=>readFileSync(new URL('../extension/'+name,import.meta.url),'utf8');
+// Real SEI pages hold personal data and are kept only on the author's machine (not in the repository).
+const noSamples=!existsSync(new URL('../referencias/amostras/controle-processos-pagina-1.html',import.meta.url))&&'amostra local ausente';
 const native=n=>readFileSync(new URL(`../referencias/amostras/controle-processos-pagina-${n}.html`,import.meta.url));
 const base='https://sei.rj.gov.br/sei/controlador.php', unit='120000124';
 const control=base+'?acao=procedimento_controlar&infra_unidade_atual='+unit+'&infra_hash=session-only';
@@ -24,7 +26,7 @@ function fixture(index,{total=217,pending=false,filtered=false}={}){
 }
 const response=text=>new Response(text,{headers:{'content-type':'text/html; charset=utf-8'}});
 
-test('HTMLs reais confirmam 80 processos únicos, dois não recebidos na primeira página e nenhum na segunda',()=>{
+test('HTMLs reais confirmam 80 processos únicos, dois não recebidos na primeira página e nenhum na segunda',{skip:noSamples},()=>{
  const {dom,w,D}=reader();
  try{
   const a=D.parse(nativeDoc(w,1),control),b=D.parse(nativeDoc(w,2),control);
@@ -35,7 +37,7 @@ test('HTMLs reais confirmam 80 processos únicos, dois não recebidos na primeir
  }finally{dom.window.close();}
 });
 
-test('leitura completa percorre seis páginas e nunca consulta um processo',async()=>{
+test('leitura completa percorre seis páginas e nunca consulta um processo',{skip:noSamples},async()=>{
  const calls=[];let criteria;
  const {dom,w,D}=reader(async(url,options={})=>{
   assert.equal(new URL(url).searchParams.get('acao'),'procedimento_controlar');calls.push({url:String(url),options});
@@ -50,7 +52,7 @@ test('leitura completa percorre seis páginas e nunca consulta um processo',asyn
  }finally{dom.window.close();}
 });
 
-test('listagem filtrada é normalizada sem alterar DOM visível; página repetida, parcial ou trocada é rejeitada',async()=>{
+test('listagem filtrada é normalizada sem alterar DOM visível; página repetida, parcial ou trocada é rejeitada',{skip:noSamples},async()=>{
  let mode='normalize',calls=0;
  const {dom,w,D}=reader(async(url,options={})=>{
   calls++;
@@ -179,7 +181,7 @@ test('consulta de zero recebidos é válida e mudanças de estado entre tokens n
  }finally{store.close();}
 });
 
-test('integração do monitor lê seis páginas, exibe estoque e avisa nova chegada sem abrir processos',async()=>{
+test('integração do monitor lê seis páginas, exibe estoque e avisa nova chegada sem abrir processos',{skip:noSamples},async()=>{
  const store=createStore(':memory:'),backend=browser(store),requests=[];let stage=0,criteria;
  const {dom,w,D}=reader(async(url,options={})=>{
   requests.push(String(url));assert.equal(new URL(url).searchParams.get('acao'),'procedimento_controlar');

@@ -1,4 +1,5 @@
-// Local suggestions only: no SEI requests, process visits or shared API writes.
+// Local suggestions only: no SEI requests, process visits or shared API writes. The catalog is read from
+// the native assignment selector when the user opens it, and stays in this browser.
 (() => {
   if (globalThis.seiUnitUsers) return;
   const key = 'seiUnitUsers';
@@ -41,8 +42,8 @@
       const saved = (await chrome.storage.local.get(key))[key];
       if (matches(saved) && valid(saved.users)) return saved.users;
     } catch {}
-    const initial = globalThis.SEI_ORGANIZADOR_USERS;
-    return matches(initial) && valid(initial.users) ? initial.users.map((user) => ({ ...user })) : [];
+    // No list ships with the extension: names and logins come only from the SEI of the user's own unit.
+    return [];
   }
   function pageIdentity() {
     try {

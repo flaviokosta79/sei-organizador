@@ -1,3 +1,5 @@
 node_modules/
 data/
 artifacts/
+# Real SEI pages with personal data: local only.
+referencias/amostras/

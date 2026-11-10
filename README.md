@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.7
+# SEI Organizador — 0.23.8
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -192,7 +192,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.23.7: **250 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.8: **251 testes passaram** (5 deles dependem de amostras reais do SEI, que não ficam no repositório, e são pulados sem elas), além das verificações de sintaxe e formatação. Histórico da 0.23.7: 250 testes passaram. Histórico da 0.23.6: 249 testes passaram. Histórico da 0.23.5: 247 testes passaram. Histórico da 0.23.4: 245 testes passaram. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -220,7 +220,7 @@ Clique em **⚙ Organizador** no cabeçalho do SEI. O modal reúne bloco de trab
 
 Em **⚙ Organizador → Chefes de seção**, digite parte do nome ou login em **Buscar usuário pelo nome ou login**. Selecione a sugestão por clique ou pelas setas e Enter. O campo abaixo recebe apenas o login; clique em **Salvar chefes** para aplicar. Escape fecha primeiro as sugestões e depois o modal.
 
-O catálogo inicial contém os 65 usuários do 5º CPA fornecidos no seletor de atribuição. Ele não consulta um diretório em tempo real: ao abrir a tela nativa de atribuição na unidade atendida, a extensão lê o seletor já carregado e atualiza a cópia local. Não faz novas consultas, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível para usuários novos.
+Desde a 0.23.8 a extensão não traz nenhuma lista de usuários embutida. As sugestões aparecem depois que a pessoa abre uma vez a tela nativa **Atribuir Processo** na unidade atendida: a extensão lê o seletor já carregado e guarda uma cópia só naquele navegador. Ela não consulta um diretório em tempo real. Não faz novas consultas, não muda a atribuição e não envia o catálogo à API. A digitação manual continua disponível para usuários novos.
 
 ### Ícone de configurações (0.17.1)
 
@@ -282,4 +282,4 @@ Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O
 
 ### Estado em produção
 
-Extensão 0.23.5 (ZIP da release v0.23.5 e em `R:\sei-organizador`) e API 0.23.6, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd`). A 0.23.6 muda só a API: a extensão continua na 0.23.5 e não há release 0.23.6 no GitHub. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.8 (ZIP da release v0.23.8 e em `R:\sei-organizador`) e API 0.23.6, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd`). A 0.23.6 muda só a API: não há release 0.23.6 nem 0.23.7 no GitHub. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

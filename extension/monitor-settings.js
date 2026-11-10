@@ -290,7 +290,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         users = result;
         note.textContent = users.length
           ? 'Digite o nome ou login e selecione uma sugestão.'
-          : 'Sugestões indisponíveis. Você pode digitar o login abaixo.';
+          : 'Sugestões disponíveis depois de abrir uma vez a tela Atribuir Processo do SEI. Você pode digitar o login abaixo.';
         if (search.value.trim()) update();
       })
       .catch(() => {

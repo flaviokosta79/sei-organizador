@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,rmSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {runInNewContext} from 'node:vm';
@@ -70,13 +70,15 @@ test('leitor usa assinatura e autor da descrição do SEI, ignora retirada anter
  }finally{dom.window.close();}
 });
 
-test('amostra real identifica inclusão, assinatura e nome do assinante mesmo após retirada',()=>{
+// Real SEI pages hold personal data and are kept only on the author's machine (not in the repository).
+const sample=new URL('../referencias/amostras/andamento.html',import.meta.url);
+test('amostra real identifica inclusão, assinatura e nome do assinante mesmo após retirada',{skip:!existsSync(sample)&&'amostra local ausente'},()=>{
  const {dom,w,D}=reader('120000124');
  try{
   const html=new TextDecoder('windows-1252').decode(readFileSync(new URL('../referencias/amostras/andamento.html',import.meta.url)));
   const doc=new w.DOMParser().parseFromString(html,'text/html');
   const result=D.observations(doc,'150184527',new Set(['14350','2653']),'SEPM/5°CPA');
-  const event=result.find(o=>o.number==='144413782'&&o.signature);assert.ok(event);assert.equal(event.signature.signer.login,'daniele.farias');assert.equal(event.signature.signer.name,'Daniele Ezequiel Farias da Silva');assert.equal(event.signatureBlock,'14350');
+  const event=result.find(o=>o.number==='144413782'&&o.signature);assert.ok(event);assert.match(event.signature.signer.login,/^[a-z]+\.[a-z]+$/);assert.match(event.signature.signer.name,/^\S+( \S+){3,}$/);assert.notEqual(event.signature.signer.name.toLowerCase(),event.signature.signer.login);assert.equal(event.signatureBlock,'14350');
   // Without the signature block list the real history gives the same result: "Processo inserido no bloco 1343" is ignored.
   const open=D.observations(doc,'150184527',null,'SEPM/5°CPA');
   assert.deepEqual(JSON.parse(JSON.stringify(open)),JSON.parse(JSON.stringify(result)));assert.ok(!open.some(o=>o.signatureBlock==='1343'));
