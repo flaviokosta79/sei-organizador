@@ -94,7 +94,7 @@ function browser(store,{local={},session={}}={}){
  const context={chrome,URL,AbortSignal,Date:Clock,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(identity,block)=>{if(block!=='2')throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>sounds.push(id),fetch:async(url,options)=>{if(offline)throw Error('Offline');const m=new URL(url).pathname.match(/blocks\/(\d+)\/signatures\/(sync|observe)$/);try{return {ok:true,json:async()=>store.signatures[m[2]]('1',m[1],JSON.parse(options.body))};}catch(e){return {ok:false,status:e.status||400};}}};
  runInNewContext(read('service-client.js')+';'+read('signature-background.js'),context);
  const call=async(type,extra={},sender={tab:{url:base,id:1},frameId:0})=>{const result=await new Promise(resolve=>listeners[0]({type,identity:actor('p3a'),block:'2',...extra},sender,resolve));if(result.error)throw Error(result.error);return result.data;};
- return {call,local,session,notices,sounds,later(){offset+=21000;},set offline(v){offline=v;}};
+ return {call,local,session,notices,sounds,later(ms=21000){offset+=ms;},set offline(v){offline=v;}};
 }
 
 test('dois navegadores recebem som e alerta uma vez, vistos são individuais e offline não perde cursor',async()=>{
@@ -249,5 +249,22 @@ test('fila de processos aguardando assinatura é da sessão do navegador, por us
   a.session.seiSignatureProcesses[Object.keys(a.session.seiSignatureProcesses)[0]][0][2]=Date.now()-1900000;
   assert.deepEqual([...(await a.call('signature:processes')).recent],[]);
   assert.equal(JSON.stringify(a.local).includes('seiSignatureWaiting'),false);assert.ok(a.session.seiSignatureWaiting);
+ }finally{store.close();}
+});
+
+test('assinatura com mais de 3 dias não avisa nem fica no painel; a de até 3 dias avisa',async()=>{
+ const store=createStore(':memory:');const a=browser(store),b=browser(store),c=browser(store);
+ try{
+  for(const x of [a,b,c])await x.call('signature:sync');
+  await a.call('signature:observe',{observations:[observation()]});
+  // B only reads the shared events 4 days later: too old to be news.
+  b.later(4*86400000);let view=await b.call('signature:sync');
+  assert.equal(view.events.length,0);assert.equal(b.sounds.length,0);assert.equal(b.notices.length,0);
+  // The cursor moved on: the old event does not come back on later syncs.
+  b.later();view=await b.call('signature:sync');assert.equal(view.events.length,0);assert.equal(b.sounds.length,0);
+  // C reads 2 days later: still within the window.
+  c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);
+  // An event already in the panel leaves it once it is older than 3 days.
+  c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,0);assert.equal(c.sounds.length,1);
  }finally{store.close();}
 });
