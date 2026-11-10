@@ -19,6 +19,8 @@ Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:4ffa82cd47672
 O conteúdo da imagem é restrito a package.json e server/ em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
 
+Em 2026-11-10 a pasta local `artifacts/` foi limpa: ficaram os backups do banco (`artifacts/backups/`) e os arquivos das implantações 0.23.6 e 0.23.9. Os arquivos `stack-before-*`, logs e evidências citados nas seções de versões anteriores não existem mais; para voltar além da 0.23.6, use a imagem pelo digest registrado em cada seção.
+
 ## Atualização 0.23.9 — 2026-11-10
 
 Página `/privacidade` com a política de privacidade exigida pela Chrome Web Store. A stack ganhou a variável `SEI_PRIVACY_CONTACT` (contato exibido na página); sem ela a página responde 404. O valor fica só no Env da stack.
