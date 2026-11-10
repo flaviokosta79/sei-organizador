@@ -23,7 +23,7 @@ Para clone existente, execute `git submodule update --init`. `referencias/sei` �
 
 ## Escolha do bloco de trabalho
 
-Abra **Opções** da extensão ou use **⚙ Organizador → Escolher bloco nas opções da extensão**. Selecione seu usuário, escolha o **Bloco interno**, identificado por **número + grupo do SEI**, e clique em **Salvar bloco de trabalho**. Sem grupo indica campo vazio no SEI; Grupo não identificado pede atualizar a lista pela sessão aberta, sem usar a descrição como substituto. A lista reúne blocos reconhecidos no SEI e pode ser atualizada pela sessão aberta; se algum faltar, abra esse bloco no SEI e clique em **Atualizar lista do SEI**. Serviço, unidade e acesso sem token continuam fixos.
+Clique na engrenagem **⚙ Organizador**, no cabeçalho do SEI, ou abra **Opções** da extensão (lá, selecione antes o seu usuário). Escolha o **Bloco interno**, identificado por **número + descrição do SEI**, e clique em **Salvar bloco de trabalho**. **Descrição não identificada** indica que a descrição ainda não foi lida: clique em **Atualizar lista do SEI**. A lista reúne blocos reconhecidos no SEI e pode ser atualizada pela sessão aberta; se algum faltar, abra esse bloco no SEI e clique em **Atualizar lista do SEI**. Serviço, unidade e acesso sem token continuam fixos.
 
 O primeiro bloco reconhecido é escolhido automaticamente, preservando o uso após instalar. A preferência é separada por unidade, órgão e login neste navegador. Trocar a preferência aplica a mudança às páginas abertas; não remove classificações do bloco anterior. Para iniciar consultas após reiniciar o navegador ou escolher um bloco que ainda não foi aberto, abra o bloco escolhido.
 
