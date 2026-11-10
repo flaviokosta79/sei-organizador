@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.10 — 2026-11-10
+
+**Extensão (não requer reimplantar a API). Ajuste pequeno, sem release própria: segue com a próxima versão distribuída.**
+
+- Quando uma leitura automática do SEI falha por falta de conexão ou sessão expirada, o painel mostra "o SEI não respondeu (sem conexão ou sessão expirada). Recarregue a página do SEI." no lugar de "Failed to fetch", a mensagem interna do navegador. Vale para a leitura do bloco, dos recebidos e dos andamentos de assinatura.
+- 254 testes, todos passando.
+
 ## 0.23.9 — 2026-11-10
 
 **Preparação para a Chrome Web Store. Extensão e API mudam, mas nada disso exige ação de quem usa o ZIP: sem release no GitHub.**

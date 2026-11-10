@@ -62,6 +62,12 @@ globalThis.seiPacedFetch = (() => {
         statusText: response.statusText,
         headers: response.headers,
       });
+    } catch (e) {
+      // The browser reports "Failed to fetch" for no connection and for a blocked redirect (the SEI
+      // sends an expired session to the login page). Aborts and timeouts keep their own errors.
+      if (e?.name === 'TypeError')
+        throw new Error('o SEI não respondeu (sem conexão ou sessão expirada). Recarregue a página do SEI.');
+      throw e;
     } finally {
       if (id) chrome.runtime.sendMessage({ type: 'sei:slot-done', id, latency: Date.now() - started }).catch(() => {});
     }
