@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.0
+# SEI Organizador — 0.23.1
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -190,7 +190,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.23.0: **234 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.1: **239 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -246,7 +246,7 @@ Medição de 2026-11-06 no Chromium, com a extensão carregada, as páginas reai
 | Bloco comum       | 2,17 s                       | 2,21 s       | 3                          |
 | Secretaria (1396) | 2,17 s                       | 2,25 s       | 6                          |
 
-A extensão acrescenta cerca de 30 a 60 ms ao abrir o Controle de Processos e a tela do processo. Um bloco interno com 1.000 processos leva cerca de 0,4 s a mais para abrir; é o principal ponto pendente de otimização. A leitura de históricos para assinaturas e os tempos reais do SEI não entraram na simulação. Os scripts ficam em `artifacts/perf/`, fora do Git.
+A extensão acrescenta cerca de 30 a 60 ms ao abrir o Controle de Processos e a tela do processo. Um bloco interno com 1.000 processos levava cerca de 0,4 s a mais para abrir; desde a 0.23.1 leva cerca de 0,13 s a mais (ver abaixo). A leitura de históricos para assinaturas e os tempos reais do SEI não entraram na simulação. Os scripts ficam em `artifacts/perf/`, fora do Git.
 
 ### Medição no SEI real (0.22.0 a 0.22.3)
 
@@ -266,6 +266,18 @@ Em 2026-11-06, a navegação foi medida no SEI-RJ real, com uma sessão autentic
 
 A melhora completa depende de todos os colegas atualizarem: quem continua na 0.22.0 ainda faz a leitura pesada da lista de Blocos de Assinatura e trava a própria sessão. O roteiro de medição fica em `artifacts/perf/real5.mjs`, fora do Git, e pede um login no navegador de teste.
 
+### Abertura de blocos grandes (0.23.1)
+
+Medição de 2026-11-10 no Chromium, com a extensão carregada e um bloco interno sintético de 1.000 processos, sem latência do SEI (mediana de 9 aberturas):
+
+| Bloco de 1.000 processos | Sem extensão | 0.23.0 | 0.23.1 |
+| ------------------------ | ------------ | ------ | ------ |
+| Página carregada         | 55 ms        | 480 ms | 182 ms |
+| Script da extensão       | —            | 157 ms | 33 ms  |
+| Tarefas no navegador     | 149 ms       | 783 ms | 523 ms |
+
+Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O que resta é quase todo do navegador: redesenhar a tabela uma vez com as colunas Assunto e Status. As colunas aparecem quando o serviço responde pela primeira vez; se ele não responder em 400 ms, as linhas aparecem como "Não sincronizado", como antes. Os roteiros ficam em `artifacts/perf/` (`block.mjs`, `layouts.mjs` e `block-visual.mjs`), fora do Git.
+
 ### Estado em produção
 
-Extensão 0.23.0 (ZIP da release v0.23.0 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.0 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.1 (ZIP da release v0.23.1 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.1 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

@@ -4,6 +4,7 @@
   globalThis.seiMonitorInstalled = true;
   const D = globalThis.seiBlockMonitor;
   let spacer,
+    observedHeight = null,
     footerCleanup = () => {};
   let latestView,
     openedProcess,
@@ -33,7 +34,15 @@
     stopped = false;
   const key = (value) => JSON.stringify(value);
   async function call(type, extra = {}) {
-    const response = await chrome.runtime.sendMessage({ type, identity, ...extra });
+    let response;
+    try {
+      response = await chrome.runtime.sendMessage({ type, identity, ...extra });
+    } catch (e) {
+      // After the extension is updated or reloaded, the scripts of pages already open lose contact with it.
+      if (/context invalidated/i.test(e?.message))
+        throw new Error('A extensão foi atualizada ou recarregada. Recarregue esta página (F5).');
+      throw e;
+    }
     if (response?.error) throw new Error(response.error);
     if (!response?.data) throw new Error('Monitor indisponível. Recarregue a extensão e o SEI.');
     return response.data;
@@ -78,7 +87,8 @@
       node('style', null, spacer);
     }
     if (spacer.parentElement !== parent) parent.append(spacer);
-    const height = Math.ceil(summary.getBoundingClientRect().height || 34);
+    // The observer reports the height after each layout; measuring here would force one on every redraw.
+    const height = Math.ceil((observedHeight === null ? summary.getBoundingClientRect().height : observedHeight) || 34);
     spacer.style.height = `${height}px`;
     // The SEI's fixed "back to top" button otherwise overlaps the strip (native bottom: 1rem).
     const rules = `@media screen { #btnInfraTopo { bottom:calc(${height}px + 1rem)!important; } } @media print { #sei-organizador-alertas-spacer { display:none!important; } }`;
@@ -134,7 +144,14 @@
       }
     });
     const themeCleanup = globalThis.seiApplyTheme?.(host);
-    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(reserveFooter) : null;
+    const resize =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver((entries) => {
+            observedHeight = entries.at(-1)?.borderBoxSize?.[0]?.blockSize || 0;
+            reserveFooter();
+          })
+        : null;
+    observedHeight = resize ? 0 : null;
     resize?.observe(summary);
     window.addEventListener('resize', reserveFooter);
     footerCleanup = () => {
@@ -382,10 +399,12 @@
     const block = new URL(location.href).searchParams.get('id_bloco'),
       record = view.records.find((r) => r.block === block);
     const ids = new Set(record?.pending.map((p) => p.id) || []);
-    for (const row of document.querySelectorAll('#tblProtocolosBlocos tr')) {
+    const table = document.querySelector('#tblProtocolosBlocos');
+    // Nothing new and nothing marked (the usual case): no pass over every row on each redraw.
+    if (!table || (!ids.size && !table.querySelector('.so-new-process,.so-new-process-label'))) return;
+    for (const row of table.querySelectorAll('tr')) {
       const link = row.querySelector('a[href*="id_procedimento="]');
-      const isNew =
-        !!link && ids.has(new URL(link.getAttribute('href'), location.href).searchParams.get('id_procedimento'));
+      const isNew = !!link && ids.has(/[?&]id_procedimento=(\d+)(?:[&#]|$)/.exec(link.getAttribute('href'))?.[1]);
       row.classList.toggle('so-new-process', isNew);
       const labels = [...row.querySelectorAll('.so-new-process-label')];
       let label = isNew ? labels.shift() : null;

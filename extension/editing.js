@@ -216,12 +216,9 @@
     const rows = [...document.querySelectorAll('#tblProtocolosBlocos tr')].flatMap((row) => {
       const link = row.querySelector('a[href*="id_procedimento="]');
       if (!link) return [];
-      try {
-        const id = new URL(link.getAttribute('href'), location.href).searchParams.get('id_procedimento');
-        return /^\d{1,30}$/.test(id || '') ? [{ id, cell: link.closest('td') }] : [];
-      } catch {
-        return [];
-      }
+      // Read from the address text: this runs on every page change, for each row of the block.
+      const id = /[?&]id_procedimento=(\d{1,30})(?:[&#]|$)/.exec(link.getAttribute('href'))?.[1];
+      return id ? [{ id, cell: link.closest('td') }] : [];
     });
     const host = document.querySelector('#sei-organizador-documento');
     const process = host?.dataset.process;

@@ -223,6 +223,17 @@
       });
     }
     root.after(history);
+    // The rows get their columns once the service answered for the first time (or failed, or after 400 ms).
+    // Drawing 1,000 rows as "not synchronised" and again with the real data laid the table out twice.
+    let settled = false;
+    const settleTimer = setTimeout(() => settle(), 400);
+    cleanups.push(() => clearTimeout(settleTimer));
+    function settle(draw = true) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(settleTimer);
+      if (draw) filter();
+    }
     let tableHeaderFrame = null;
     function scheduleTableHeader() {
       if (disposed || tableHeaderFrame !== null) return;
@@ -232,6 +243,8 @@
       });
     }
     function updateTableHeader() {
+      // Before the columns exist the header stays as the SEI drew it: floating it early laid the table out again.
+      if (!settled) return;
       const header = Array.from(table.rows).find((r) => r.querySelector('th'));
       if (!header) return;
       // Move the original cells within their table, so native controls and horizontal scrolling stay intact.
@@ -394,16 +407,51 @@
       return (rowCache = Array.from(table.querySelectorAll('tr')).flatMap((row) => {
         const a = row.querySelector('a[href*="id_procedimento="]');
         if (!a) return [];
-        try {
-          const id = new URL(a.getAttribute('href'), location.href).searchParams.get('id_procedimento');
-          return /^\d+$/.test(id || '')
-            ? [{ row, id, link: a, number: processNumber(a), check: row.querySelector('input[type="checkbox"]') }]
-            : [];
-        } catch {
-          return [];
-        }
+        // Read from the address text: building a URL object per row is slow in blocks with 1,000 processes.
+        const id = /[?&]id_procedimento=(\d+)(?:[&#]|$)/.exec(a.getAttribute('href'))?.[1];
+        return id
+          ? [{ row, id, link: a, number: processNumber(a), check: row.querySelector('input[type="checkbox"]') }]
+          : [];
       }));
     }
+    // Cells and controls of each row, found once and reused while they stay in the row. Looking them up
+    // again on every pass was most of the script time of opening a block with 1,000 processes.
+    const rowParts = new WeakMap();
+    function partsOf(item, names, layout) {
+      const { row } = item;
+      let parts = rowParts.get(row);
+      if (parts && parts.layout === layout && parts.type?.parentElement === row) return parts;
+      const own = [],
+        labelled = new Map();
+      let simple = true;
+      for (const cell of row.cells) {
+        if (cell.colSpan !== 1) simple = false;
+        if (cell.dataset.soColumn) continue;
+        own.push(cell);
+        const label = cell.tagName === 'TD' && cell.dataset.label;
+        if (label && !labelled.has(label)) labelled.set(label, cell);
+      }
+      const cellFor = (name) => labelled.get(name) || own[names.indexOf(name)];
+      if (!names[0]) item.check?.closest('td')?.classList.add('so-col-selection');
+      for (const [name, kind] of nativeColumns) cellFor(name)?.classList.add('so-col-' + kind);
+      parts = {
+        layout,
+        simple,
+        type: cellFor('Tipo'),
+        subject: row.querySelector('[data-so-column="subject"]'),
+        status: row.querySelector('[data-so-column="status"]'),
+        marker: row.querySelector('.so-status-marker'),
+      };
+      rowParts.set(row, parts);
+      return parts;
+    }
+    const nativeColumns = [
+      ['Seq.', 'sequence'],
+      ['Processo', 'process'],
+      ['Tipo', 'type'],
+      ['Anotações', 'notes'],
+      ['Ações', 'actions'],
+    ];
     function injectCopyButtons(loaded) {
       for (const { link } of loaded) {
         const container = link.closest('td') || link.parentElement;
@@ -471,25 +519,9 @@
         (groups.length && Array.from(groups[0].children).some((c) => c.span !== 1))
       )
         return;
-      if (!names[0]) {
-        native[0].classList.add('so-col-selection');
-        for (const { row } of loaded)
-          row.querySelector('input[type="checkbox"]')?.closest('td')?.classList.add('so-col-selection');
-      }
-      const cellFor = (row, name) =>
-        row.querySelector(`td[data-label="${name}"]`) ||
-        Array.from(row.cells).filter((c) => !c.dataset.soColumn)[names.indexOf(name)];
-      for (const [name, kind] of [
-        ['Seq.', 'sequence'],
-        ['Processo', 'process'],
-        ['Tipo', 'type'],
-        ['Anotações', 'notes'],
-        ['Ações', 'actions'],
-      ]) {
-        const h = native[names.indexOf(name)];
-        h?.classList.add('so-col-' + kind);
-        for (const { row } of loaded) cellFor(row, name)?.classList.add('so-col-' + kind);
-      }
+      if (!names[0]) native[0].classList.add('so-col-selection');
+      for (const [name, kind] of nativeColumns) native[names.indexOf(name)]?.classList.add('so-col-' + kind);
+      const layout = names.join('\n');
       const columns =
         active === null
           ? [
@@ -526,26 +558,33 @@
           previous = col;
         }
       }
-      for (const { row, id } of loaded) {
-        const type = cellFor(row, 'Tipo');
-        if (!type || Array.from(row.cells).some((c) => c.colSpan !== 1)) continue;
-        let previous = type;
+      const locked = !ready || busy || !state.tabs.length;
+      for (const item of loaded) {
+        const { row, id } = item,
+          parts = partsOf(item, names, layout);
+        if (!parts.type || !parts.simple) continue;
+        let previous = parts.type;
         for (const [key, label] of columns) {
-          let cell = row.querySelector(`[data-so-column="${key}"]`);
+          let cell = parts[key];
           if (!cell) {
-            cell = document.createElement('td');
+            cell = parts[key] = document.createElement('td');
             cell.dataset.soColumn = key;
             cell.dataset.label = label;
             cell.className = 'so-col-' + key;
-            previous.after(cell);
           }
+          // Also puts back the subject cell taken out while a subject tab was open.
+          if (cell.parentElement !== row) previous.after(cell);
           previous = cell;
         }
-        const cell = row.querySelector('[data-so-column="subject"]');
+        const cell = active === null ? parts.subject : null;
         if (!cell) continue;
-        const folders = ready ? state.tabs.filter((t) => (state.assignments[id] || []).includes(t.id)) : null;
+        const assigned = ready ? state.assignments[id] : null;
+        const folders = ready ? (assigned?.length ? state.tabs.filter((t) => assigned.includes(t.id)) : []) : null;
         const signature = JSON.stringify(folders?.map((t) => t.name) ?? null);
-        if (cell.dataset.soSubjects !== signature) {
+        const drawn = signature + (locked ? '|locked' : '') + (state.tabs.length ? '' : '|empty');
+        if (parts.drawn === drawn && parts.label?.parentElement === cell) continue;
+        parts.drawn = drawn;
+        if (cell.dataset.soSubjects !== signature || parts.label?.parentElement !== cell) {
           cell.dataset.soSubjects = signature;
           cell.replaceChildren();
           const names = folders?.map((t) => t.name);
@@ -569,6 +608,7 @@
             }
           });
           cell.append(label);
+          parts.label = label;
           if (names?.length > 1) {
             const more = document.createElement('span');
             more.className = 'so-subject-more';
@@ -578,11 +618,11 @@
           cell.title = names?.length ? names.join('\n') : label.textContent;
           cell.setAttribute('aria-label', names?.length ? `Assuntos: ${names.join(', ')}` : label.textContent);
         }
-        const control = cell.querySelector('.so-subject-label');
-        control.disabled = !ready || busy || !state.tabs.length;
+        const control = parts.label;
+        control.disabled = locked;
         control.setAttribute(
           'aria-label',
-          `Alterar assuntos do processo ${processNumber(row.querySelector('a[href*="id_procedimento="]'))}: ${cell.getAttribute('aria-label')}`,
+          `Alterar assuntos do processo ${item.number}: ${cell.getAttribute('aria-label')}`,
         );
         control.title = !state.tabs.length
           ? 'Crie um assunto para classificar'
@@ -606,13 +646,19 @@
       container.classList.add('so-table-scroll');
     }
     function injectStatusMarkers(loaded) {
+      const known = statusKnown();
       for (const target of loaded) {
-        const cell = target.row.querySelector('[data-so-column="status"]');
-        if (!cell) continue;
-        let marker = target.row.querySelector('.so-status-marker');
+        const parts = rowParts.get(target.row),
+          cell = parts?.status;
+        if (!cell || cell.parentElement !== target.row) continue;
+        let marker = parts.marker;
         if (marker && marker.parentElement !== cell) cell.append(marker);
+        const value = known ? state.statuses[target.id] || 'none' : null;
+        const shown = `${value}|${busy}`;
+        if (marker && parts.shown === shown) continue;
+        parts.shown = shown;
         if (!marker) {
-          marker = document.createElement('button');
+          marker = parts.marker = document.createElement('button');
           marker.type = 'button';
           marker.className = 'so-status-marker';
           marker.setAttribute('aria-haspopup', 'menu');
@@ -624,13 +670,12 @@
           marker.addEventListener('contextmenu', (e) => e.stopPropagation());
           cell.prepend(marker);
         }
-        const value = statusKnown() ? state.statuses[target.id] || 'none' : null;
         const text = value
           ? `${statusIcons[value] || '○'} ${seiStatusLabels[value] || 'Status desconhecido'}`
           : '○ Status indisponível';
         if (marker.textContent !== text) marker.textContent = text;
         marker.dataset.status = value || 'unknown';
-        marker.disabled = !statusKnown() || busy;
+        marker.disabled = !known || busy;
         marker.title = value
           ? `Status manual: ${seiStatusLabels[value]}. Clique para alterar.`
           : 'Status não sincronizado. Reinicie o serviço atualizado ou verifique a conexão.';
@@ -692,9 +737,11 @@
         rowCache = null;
         const loaded = rows(),
           valid = new Set(state.tabs.map((t) => t.id));
-        injectColumns(loaded);
-        injectCopyButtons(loaded);
-        injectStatusMarkers(loaded);
+        if (settled) {
+          injectColumns(loaded);
+          injectCopyButtons(loaded);
+          injectStatusMarkers(loaded);
+        }
         const ids = new Set(loaded.map((r) => r.id));
         // Each id's valid tabs are computed once; counts below reuse them instead of re-filtering.
         const linkCache = new Map();
@@ -717,11 +764,11 @@
               popup: row.getAttribute('aria-haspopup'),
             });
           if (!row.hasAttribute('tabindex')) row.tabIndex = 0;
-          row.setAttribute('aria-haspopup', 'menu');
+          if (row.getAttribute('aria-haspopup') !== 'menu') row.setAttribute('aria-haspopup', 'menu');
           const hide =
             (ready && !!active && (active === unassigned ? links(id).length > 0 : !links(id).includes(active))) ||
             !matchesStatus(id);
-          row.hidden = hide;
+          if (row.hidden !== hide) row.hidden = hide;
           // Through a click, so the SEI's own handler drops it from hdnInfraItensSelecionados too.
           if (hide && check?.checked) unselect(check);
         }
@@ -960,13 +1007,24 @@
     }
     async function api(extra = {}) {
       if (disposed) throw new Error('Página substituída');
-      const result = await chrome.runtime.sendMessage({
-        type: 'api',
-        identity: globalThis.seiWorkScope?.identity,
-        unit,
-        block,
-        ...extra,
-      });
+      let result;
+      try {
+        result = await chrome.runtime.sendMessage({
+          type: 'api',
+          identity: globalThis.seiWorkScope?.identity,
+          unit,
+          block,
+          ...extra,
+        });
+      } catch (e) {
+        // After the extension is updated or reloaded, the scripts of pages already open lose contact with it.
+        throw new Error(
+          /context invalidated/i.test(e?.message)
+            ? 'A extensão foi atualizada ou recarregada. Recarregue esta página (F5).'
+            : e?.message || 'A extensão não respondeu.',
+        );
+      }
+      if (!result) throw new Error('A extensão não respondeu. Recarregue esta página (F5).');
       if (result.error) throw new Error(result.error);
       return result.data;
     }
@@ -984,6 +1042,7 @@
         const changed = next.version !== state.version;
         if (next.version >= state.version) state = next;
         ready = true;
+        settle(false);
         if (resumeView) {
           // Back online: return to the tab and filter the user had before the failure.
           if (
@@ -1005,6 +1064,7 @@
         if (!ready) {
           // Already offline: no redraw every 10 s.
           if (status.textContent !== message) setStatus(message, 'sync');
+          settle();
           return;
         }
         closeMenu();

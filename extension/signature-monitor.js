@@ -96,7 +96,9 @@ globalThis.seiSignatureScanner = (() => {
       for (const [process, url] of shared?.processes || []) if (!processes.has(process)) remember(url);
     } catch {}
     remember(location.href);
-    for (const link of document.querySelectorAll('a[href*="id_procedimento="]')) remember(link.getAttribute('href'));
+    // Only history links can be kept: asking for those spares checking every process link of a long list.
+    for (const link of document.querySelectorAll('a[href*="procedimento_consultar_historico"]'))
+      remember(link.getAttribute('href'));
     try {
       const found = treeHistory();
       if (found) remember(found.url);

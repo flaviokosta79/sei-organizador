@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.23.1 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Blocos grandes abrem mais rápido:
+  - Num bloco interno de 1.000 processos, a extensão acrescentava cerca de 425 ms à abertura da página; agora acrescenta cerca de 127 ms (Chromium, mediana de 9 aberturas, sem latência do SEI). O tempo de script da extensão caiu de 157 ms para 33 ms.
+  - As linhas eram desenhadas duas vezes: primeiro como "Não sincronizado" e de novo quando o serviço respondia, e o navegador recalculava a tabela inteira nas duas. Agora as colunas Assunto e Status entram uma vez só, quando o serviço responde pela primeira vez. Se ele falhar ou não responder em 400 ms, as linhas aparecem como "Não sincronizado", como antes.
+  - A cada atualização, a extensão procurava de novo as células de todas as linhas. Agora ela guarda as células de cada linha e só mexe nas que mudaram. Mudar um status ou trocar de aba num bloco grande também fica mais leve.
+  - O rodapé de alertas e o aviso de edição percorriam todas as linhas a cada atualização, mesmo sem nada novo. O rodapé agora só percorre a tabela quando há processo novo para marcar ou desmarcar.
+  - O rodapé deixou de medir a própria altura a cada redesenho, o que forçava o navegador a recalcular a página.
+- Mensagem clara depois de atualizar a extensão:
+  - Com a extensão atualizada ou recarregada e uma aba do SEI ainda aberta, a barra do bloco e o rodapé mostravam "Extension context invalidated". Agora mostram "A extensão foi atualizada ou recarregada. Recarregue esta página (F5)."
+- 239 testes, todos passando. Os novos cobrem a entrada única das colunas, a espera de 400 ms, o reaproveitamento das células e as duas mensagens.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.0 — 2026-11-06
 
 **Extensão (não requer reimplantar a API)**
