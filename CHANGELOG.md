@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.14 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- A busca de chefes de seção obtém a lista de usuários sozinha:
+  - Com a lista ainda vazia, a primeira vez que a pessoa usa o campo "Buscar usuário pelo nome ou login" faz a extensão ler a tela **Atribuir Processo** do SEI e guardar o seletor de usuários. Não é mais preciso abrir essa tela à mão.
+  - A leitura só acontece a pedido (foco ou digitação no campo), uma tentativa por abertura das configurações, e nunca ao abrir a janela ou em segundo plano. Depois de obtida, a lista fica no navegador e não é lida de novo.
+  - São no máximo duas leituras: a tela de atribuição e, se a tela atual não tiver o endereço dela, o Controle de Processos do menu. Elas passam pela mesma fila das outras leituras da extensão, que cede a vez à navegação.
+  - Se o SEI não entregar o seletor, a janela informa e continua valendo abrir a tela Atribuir Processo ou digitar o login.
+- A lista continua só no navegador de cada pessoa e não vai para o servidor da extensão.
+- 259 testes, todos passando. Os novos cobrem a leitura a pedido, o caminho pelo Controle de Processos, a falha e endereços de outra unidade ou de outro site.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.13 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

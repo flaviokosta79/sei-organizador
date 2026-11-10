@@ -56,8 +56,8 @@ test('página comum não inicia observador de usuários nem acessa armazenamento
  }finally{f.close();}
 });
 
-function modal(storage=saved()){
- const f=fixture({storage}),w=f.w,calls=[];
+function modal(storage=saved(),html=''){
+ const f=fixture({storage,html}),w=f.w,calls=[];
  const view={sound:true,chiefLogins:[],chiefEligible:false,records:[]};
  w.eval(read('monitor-sounds.js'));w.eval(read('monitor-settings.js'));
  const settings=w.seiOrganizerSettings({getIdentity:()=>identity,getView:()=>view,onView:()=>{},call:async(type,extra)=>{
@@ -94,13 +94,59 @@ test('sugestões aceitam teclado e Escape fecha sugestões antes do modal',async
  }finally{f.close();}
 });
 
-test('sem catálogo capturado, a busca orienta a abrir a tela de atribuição e a digitação manual continua',async()=>{
+test('sem catálogo e sem endereço da tela de atribuição, a busca explica e a digitação manual continua',async()=>{
  const f=modal({});try{
-  await tick();assert.match(f.root.querySelector('.chief-search').textContent,/Abra uma vez a tela Atribuir Processo do SEI para ativar a busca/);
-  f.search('danilo');assert.equal(f.root.querySelector('[role=option]'),null);
-  assert.match(f.root.querySelector('.chief-search').textContent,/ainda não foi lida neste navegador/);assert.doesNotMatch(f.root.querySelector('.chief-search').textContent,/Nenhum usuário encontrado/);
+  await tick();assert.match(f.root.querySelector('.chief-search').textContent,/Na primeira busca, a lista de usuários é lida no SEI/);
+  f.search('danilo');await tick();assert.equal(f.root.querySelector('[role=option]'),null);
+  assert.match(f.root.querySelector('.chief-search').textContent,/Não foi possível obter a lista de usuários no SEI. Abra uma vez a tela Atribuir Processo/);
   assert.ok(f.root.querySelector('textarea'));
  }finally{f.close();}
+});
+
+const sei='https://sei.rj.gov.br/sei/controlador.php';
+const assignUrl=sei+'?acao=procedimento_atribuicao_cadastrar&acao_origem=procedimento_controlar&infra_unidade_atual='+unit+'&infra_hash=abc';
+const controlUrl=sei+'?acao=procedimento_controlar&reset=1&infra_unidade_atual='+unit+'&infra_hash=def';
+const assignLink=`<a href="#" onclick="return acaoControleProcessos('controlador.php?acao=procedimento_atribuicao_cadastrar&amp;acao_origem=procedimento_controlar&amp;infra_unidade_atual=${unit}&amp;infra_hash=abc')">Atribuição</a>`;
+const page=body=>new Response('<html><body>'+body+'</body></html>',{headers:{'content-type':'text/html; charset=utf-8'}});
+function searching(html,answers){
+ const f=modal({},html),asked=[];
+ Object.assign(f.w,{TextDecoder,fetch:async url=>{asked.push(String(url));const body=answers[String(url)];if(body===undefined)throw new TypeError('Failed to fetch');return page(body);}});
+ return {...f,asked};
+}
+
+test('primeira busca lê a lista na tela Atribuir Processo, uma vez, e guarda só no navegador',async()=>{
+ const f=searching(assignLink,{[assignUrl]:native});try{
+  await tick();assert.equal(f.asked.length,0,'abrir as configurações não consulta o SEI');
+  f.search('danilo');assert.match(f.root.querySelector('.chief-search').textContent,/Buscando a lista de usuários no SEI/);
+  await tick();assert.deepEqual(f.asked,[assignUrl]);
+  assert.match(f.root.querySelector('[role=option]').textContent,/Danilo Exemplo Pinheiro — danilo/);
+  assert.equal(f.storage.seiUnitUsers.users.length,5);assert.equal(f.storage.seiUnitUsers.unit,unit);
+  f.search('ana');f.search('zeca');await tick();assert.equal(f.asked.length,1,'não repete a leitura');
+ }finally{f.close();}
+});
+
+test('sem o link na tela atual, a busca passa pelo Controle de Processos do menu: duas leituras no total',async()=>{
+ const menu=`<a id="linkMenu8" href="controlador.php?acao=procedimento_controlar&amp;reset=1&amp;infra_unidade_atual=${unit}&amp;infra_hash=def">Controle de Processos</a>`;
+ const f=searching(menu,{[controlUrl]:assignLink,[assignUrl]:native});try{
+  await tick();f.search('zeca');await tick();
+  assert.deepEqual(f.asked,[controlUrl,assignUrl]);assert.match(f.root.querySelector('[role=option]').textContent,/Zeca Modelo/);
+ }finally{f.close();}
+});
+
+test('tela de atribuição sem o seletor, falha de rede e endereço de outra unidade não inventam usuários',async()=>{
+ for(const [html,answers,requests] of [
+  [assignLink,{[assignUrl]:'<p>Nenhum processo selecionado.</p>'},1],
+  [assignLink,{},1],
+  [assignLink.replace('infra_unidade_atual='+unit,'infra_unidade_atual=999'),{},0],
+  [`<a href="https://evil.test/sei/controlador.php?acao=procedimento_atribuicao_cadastrar&amp;infra_unidade_atual=${unit}">x</a>`,{},0],
+ ]){
+  const f=searching(html,answers);try{
+   await tick();f.search('danilo');await tick();
+   assert.equal(f.asked.length,requests);assert.equal(f.root.querySelector('[role=option]'),null);assert.equal(f.storage.seiUnitUsers,undefined);
+   assert.match(f.root.querySelector('.chief-search').textContent,/Não foi possível obter a lista de usuários no SEI/);
+   f.search('ana');await tick();assert.equal(f.asked.length,requests,'uma tentativa por abertura das configurações');
+  }finally{f.close();}
+ }
 });
 
 test('tela Atribuir Processo (procedimento_atribuicao_cadastrar) também alimenta o catálogo',async()=>{

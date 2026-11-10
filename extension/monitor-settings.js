@@ -198,7 +198,9 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     suggestions.hidden = true;
     const note = node('p', 'Carregando sugestões de usuários…', box);
     note.setAttribute('role', 'status');
-    let users = [],
+    let loaded = false,
+      searching = false,
+      users = [],
       found = [],
       active = -1;
     const fold = (value) =>
@@ -236,8 +238,27 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
     }
     // No list ships with the extension: say how to get one instead of "nobody found".
     const emptyCatalog =
-      'A lista de usuários ainda não foi lida neste navegador. Abra uma vez a tela Atribuir Processo do SEI para ativar a busca, ou digite o login abaixo.';
+      'Não foi possível obter a lista de usuários no SEI. Abra uma vez a tela Atribuir Processo para ativar a busca, ou digite o login abaixo.';
+    // With nothing captured yet, the first use of the search asks the SEI for the list, once.
+    let asked = false;
+    function ensureCatalog() {
+      if (asked || !loaded || users.length || typeof seiUnitUsers.fetchCatalog !== 'function') return;
+      asked = true;
+      searching = true;
+      note.textContent = 'Buscando a lista de usuários no SEI…';
+      seiUnitUsers
+        .fetchCatalog(identity)
+        .catch(() => [])
+        .then((result) => {
+          if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
+          searching = false;
+          users = result;
+          if (search.value.trim()) update();
+          else note.textContent = users.length ? 'Digite o nome ou login e selecione uma sugestão.' : emptyCatalog;
+        });
+    }
     function update() {
+      ensureCatalog();
       const query = fold(search.value.trim());
       suggestions.replaceChildren();
       active = -1;
@@ -261,7 +282,9 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         ? 'Selecione um usuário para adicionar o login.'
         : users.length
           ? 'Nenhum usuário encontrado. Você pode digitar o login abaixo.'
-          : emptyCatalog;
+          : searching
+            ? 'Buscando a lista de usuários no SEI…'
+            : emptyCatalog;
     }
     search.addEventListener('input', update);
     search.addEventListener('keydown', (event) => {
@@ -285,6 +308,7 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
         hide();
       }
     });
+    search.addEventListener('focus', ensureCatalog);
     search.addEventListener('blur', (event) => {
       if (!suggestions.contains(event.relatedTarget)) hide();
     });
@@ -293,8 +317,11 @@ globalThis.seiOrganizerSettings = ({ getIdentity, getView, call, onView }) => {
       .then((result) => {
         if (!search.isConnected || JSON.stringify(getIdentity()) !== JSON.stringify(identity)) return;
         users = result;
-        note.textContent = users.length ? 'Digite o nome ou login e selecione uma sugestão.' : emptyCatalog;
-        if (search.value.trim()) update();
+        loaded = true;
+        note.textContent = users.length
+          ? 'Digite o nome ou login e selecione uma sugestão.'
+          : 'Digite o nome ou login. Na primeira busca, a lista de usuários é lida no SEI.';
+        if (search.value.trim() || search.matches(':focus')) update();
       })
       .catch(() => {
         if (search.isConnected) note.textContent = 'Sugestões indisponíveis. Você pode digitar o login abaixo.';

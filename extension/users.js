@@ -69,7 +69,75 @@
       last = signature;
     } catch {}
   }
-  globalThis.seiUnitUsers = { list, parse };
+  // On request only (the user is searching and nothing was captured yet): read the native "Atribuir
+  // Processo" page once and keep its selector. At most two SEI reads, both paced like the other
+  // background reads, and never repeated while one is running.
+  const assignment = 'procedimento_atribuicao_cadastrar';
+  function seiUrl(value, base, action) {
+    try {
+      const url = new URL(value, base);
+      return url.origin === 'https://sei.rj.gov.br' &&
+        url.pathname === '/sei/controlador.php' &&
+        url.searchParams.get('acao') === action &&
+        url.searchParams.get('infra_unidade_atual') === config.unitId
+        ? url
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  function assignmentUrl(doc, base) {
+    for (const link of doc.querySelectorAll(`a[href*="${assignment}"],a[onclick*="${assignment}"]`)) {
+      const href = link.getAttribute('href') || '';
+      const raw = href.includes(assignment)
+        ? href
+        : (link.getAttribute('onclick') || '').match(/'([^']*procedimento_atribuicao_cadastrar[^']*)'/)?.[1];
+      const url = raw && seiUrl(raw, base, assignment);
+      if (url) return url;
+    }
+    return null;
+  }
+  async function read(url) {
+    const init = { credentials: 'same-origin', redirect: 'error' };
+    const response = globalThis.seiPacedFetch
+      ? await seiPacedFetch(url, { ...init, timeout: 15000 })
+      : await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw Error('SEI respondeu HTTP ' + response.status);
+    const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';
+    return new DOMParser().parseFromString(new TextDecoder(charset).decode(await response.arrayBuffer()), 'text/html');
+  }
+  let fetching = null;
+  function fetchCatalog(identity) {
+    if (!matches(identity)) return Promise.resolve([]);
+    fetching ||= (async () => {
+      // 1. A link already on this tab: Controle de Processos, or the process toolbar in a frame.
+      let url = assignmentUrl(document, location.href);
+      for (const frame of url ? [] : document.querySelectorAll('iframe')) {
+        try {
+          const inner = frame.contentDocument;
+          url = inner && assignmentUrl(inner, inner.location.href);
+        } catch {}
+        if (url) break;
+      }
+      // 2. Otherwise the menu's Controle de Processos page has it.
+      if (!url) {
+        const menu = document.querySelector('a[href*="acao=procedimento_controlar"]');
+        const control = menu && seiUrl(menu.getAttribute('href'), location.href, 'procedimento_controlar');
+        if (control) url = assignmentUrl(await read(control), control.href);
+      }
+      if (!url) return [];
+      const users = parse(await read(url));
+      if (!users.length) return [];
+      await chrome.storage.local.set({
+        [key]: { unit: identity.unit, org: identity.org, users, observed: Date.now() },
+      });
+      return users;
+    })().finally(() => {
+      fetching = null;
+    });
+    return fetching;
+  }
+  globalThis.seiUnitUsers = { list, parse, fetchCatalog };
   // Only the native assignment pages are observed; other pages do no background work. "Atribuir Processo"
   // (button of the process and of Controle de Processos) is procedimento_atribuicao_cadastrar; the list of
   // processes assigned to a user is procedimento_atribuicao_listar.
