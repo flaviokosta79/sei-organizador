@@ -163,3 +163,13 @@ test('falha de rede ou redirecionamento para o login vira mensagem clara; cancel
  const aborted=run(async()=>{throw new DOMException('The user aborted a request.','AbortError');});
  await assert.rejects(aborted.fetch('https://sei.rj.gov.br/sei/controlador.php'),e=>e.name==='AbortError');
 });
+
+test('leitura pedida pelo usuário não espera a navegação assentar, mas continua pedindo a vez',async()=>{
+ const slots=[];const context={Date,setTimeout,clearTimeout,AbortController,AbortSignal,DOMException,Response,fetch:async()=>new Response('ok'),chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:slot'){slots.push(msg.ignoreNavigation);return {id:'s',wait:0};}return {ok:true};}}}};
+ runInNewContext(read('pace.js'),context);
+ await context.seiPacedFetch('https://sei.rj.gov.br/sei/controlador.php',{urgent:true});
+ await context.seiPacedFetch('https://sei.rj.gov.br/sei/controlador.php',{});
+ assert.deepEqual(slots,[true,false]);
+ assert.match(read('users.js'),/urgent: true/);
+ for(const f of ['monitor-data.js','receipts-data.js','signature-data.js','scope.js'])assert.doesNotMatch(read(f),/urgent/,'leituras de fundo continuam cedendo a vez');
+});

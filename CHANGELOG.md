@@ -8,7 +8,9 @@
   - O campo continua guardando só os logins; os nomes vêm da lista de usuários deste navegador.
   - Um login que não está na lista da unidade aparece como "login · nome não encontrado na unidade", o que ajuda a perceber erro de digitação.
   - Se a lista de usuários ainda não foi lida neste navegador, aparecem só os logins; os nomes surgem depois da primeira busca.
-- 260 testes, todos passando.
+- A primeira busca de chefes ficou mais rápida. A leitura da lista de usuários esperava 2,5 s depois do último clique, como as leituras de fundo, e a pessoa ficava alguns segundos vendo "Buscando a lista de usuários no SEI…" sem sugestões. Como essa leitura é pedida pelo próprio usuário, ela não espera mais esse intervalo; continua entrando na fila de um pedido por vez. Numa página de demonstração sem atraso do SEI, as sugestões passaram a aparecer em cerca de 1 s.
+- Busca e lista de nomes conferidas no Chromium com a extensão carregada: lista vazia, leitura a pedido, escolha de sugestão, janela aberta por vários segundos e página recarregada.
+- 261 testes, todos passando.
 - Após atualizar, recarregar todas as abas do SEI.
 
 ## 0.23.14 — 2026-11-10

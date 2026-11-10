@@ -100,7 +100,7 @@
   async function read(url) {
     const init = { credentials: 'same-origin', redirect: 'error' };
     const response = globalThis.seiPacedFetch
-      ? await seiPacedFetch(url, { ...init, timeout: 15000 })
+      ? await seiPacedFetch(url, { ...init, timeout: 15000, urgent: true })
       : await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw Error('SEI respondeu HTTP ' + response.status);
     const charset = response.headers.get('content-type')?.match(/charset=([\w-]+)/i)?.[1] || 'iso-8859-1';

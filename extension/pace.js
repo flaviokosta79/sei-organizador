@@ -23,7 +23,9 @@ globalThis.seiPacedFetch = (() => {
       }, ms);
       signal?.addEventListener('abort', abort, { once: true });
     });
-  async function acquire(signal) {
+  // `urgent`: a read the user has just asked for (not a background scan) does not wait for the
+  // navigation to settle; it still takes its turn, one SEI request at a time.
+  async function acquire(signal, urgent = false) {
     const since = Date.now();
     let navigation = 0;
     if (!waiting++) waitingSince = since;
@@ -34,7 +36,7 @@ globalThis.seiPacedFetch = (() => {
         try {
           answer = await chrome.runtime.sendMessage({
             type: 'sei:slot',
-            ignoreNavigation: navigation >= navigationLimit,
+            ignoreNavigation: urgent || navigation >= navigationLimit,
           });
         } catch {
           return null;
@@ -50,8 +52,8 @@ globalThis.seiPacedFetch = (() => {
     }
   }
   // The slot is released only after the body arrived: the SEI is busy until the page is sent.
-  async function paced(url, { timeout, ...init } = {}) {
-    const id = await acquire(init.signal);
+  async function paced(url, { timeout, urgent, ...init } = {}) {
+    const id = await acquire(init.signal, urgent === true);
     const signal = timeout ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)].filter(Boolean)) : init.signal;
     const started = Date.now();
     try {
