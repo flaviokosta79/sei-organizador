@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.3
+# SEI Organizador — 0.23.4
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -190,7 +190,7 @@ npm run check
 Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-extension.zip -Force
 ```
 
-Resultado da entrega 0.23.3: **243 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
+Resultado da entrega 0.23.4: **245 testes passaram**, além das verificações de sintaxe e formatação. Histórico da 0.23.3: 243 testes passaram. Histórico da 0.23.2: 242 testes passaram. Histórico da 0.23.1: 239 testes passaram. Histórico da 0.23.0: 234 testes passaram. Histórico da 0.22.0: 226 testes passaram. Histórico da 0.16.0: 167 testes passaram, além das verificações de sintaxe e formatação. O leitor de Recebidos foi conferido nos dois HTMLs reais fornecidos, e a leitura completa de seis páginas/217 processos foi validada por simulação, integrada ao painel e à API. Dois navegadores, persistência, recebimento, reenvio e falhas foram testados. Uma nova chegada na sessão real do SEI ainda precisa de conferência.
 
 O container foi validado com usuário não root, limites de recursos, unidade restrita, acesso sem token e persistência após recriação. As camadas da imagem foram verificadas quanto a credenciais conhecidas, arquivos privados e banco. Na API implantada, testes sintéticos confirmaram autoria, preservação do colega no mesmo processo, conflitos e repetição; os registros técnicos foram removidos. HTTPS confiável, tarefa healthy e gestão pelo Portainer foram conferidos.
 
@@ -280,4 +280,4 @@ Com 100 processos, a página carrega em 75 ms com a extensão e 23 ms sem ela. O
 
 ### Estado em produção
 
-Extensão 0.23.3 (ZIP da release v0.23.3 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.3 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.4 (ZIP da release v0.23.4 e em `R:\sei-organizador`) e API 0.22.0. A API foi implantada em 2026-11-06; as versões 0.22.1 a 0.23.4 mudam só a extensão e não exigem reimplantar (imagem `flaviokosta/sei-organizador@sha256:38f11bb299741ec23c20a8c14d2c7bcd9adc7e16c3211ed71a26f090a59e9d93`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.4 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Aviso de processo novo não se perde mais quando dois colegas consultam o bloco ao mesmo tempo:
+  - Cada navegador confirma a leitura do bloco no serviço compartilhado antes de avisar. Se um colega confirmava a dele nos segundos entre o início e o fim da sua leitura, o serviço recusava a sua (HTTP 409). O processo novo aparecia no painel e no contador, mas o som e a notificação do sistema não tocavam nesse navegador, nem nas rodadas seguintes.
+  - O mesmo acontecia com um processo que chegava enquanto o serviço compartilhado estava fora do ar.
+  - Agora, sem a confirmação, a chegada fica fora da referência local e é detectada de novo na rodada seguinte (cerca de 1 minuto). O som e a notificação tocam uma vez, quando o serviço confirma. Se um colega já abriu o processo nesse intervalo, não há aviso, como antes.
+- "Atualizar lista do SEI", na engrenagem, informa quando a tela não tem o menu de Blocos Internos, em vez de dizer "Lista de blocos atualizada" sem ter lido nada.
+- Monitor de processos, sons, notificações e rodízio entre abas revisados; sem outras alterações.
+- 245 testes, todos passando. Os novos cobrem a recusa por leitura simultânea, o serviço fora do ar, o processo aberto por colega antes do aviso e a lista sem o menu.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.3 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

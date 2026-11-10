@@ -338,6 +338,9 @@
           } catch (e) {
             record.sharedError = e.message;
             // Never notify from an obsolete snapshot or before shared acknowledgement is checked.
+            // The arrivals stay out of the reference, so the next round detects and announces them.
+            const held = new Set(arrived.map((p) => p.id));
+            record.seen = ids.filter((id) => !held.has(id));
             arrived = [];
             try {
               applyShared(record, await shared(`blocks/${msg.block}/alerts`));

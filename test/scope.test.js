@@ -173,3 +173,12 @@ test('falha passageira ao ler o bloco de trabalho é tentada de novo, sem exigir
   assert.equal(w.seiWorkScope.block,'2');assert.equal(asked,2);
  }finally{w.close();}
 });
+
+test('atualizar lista sem o menu de Blocos Internos na tela informa em vez de dizer que atualizou',async()=>{
+ const state=worker(),source=url('2');let requests=0;
+ const html='<title>Processos do Bloco Interno</title><a id="lnkUsuarioSistema" title="Pessoa Teste (pessoa/SEPM)" href="?infra_unidade_atual=1"></a><form id="frmRelBlocoProtocoloLista"><input id="txtDescricao" value="Isto é descrição"></form>';
+ const dom=new JSDOM(html,{url:source,runScripts:'outside-only'}),w=dom.window,listeners=[];
+ Object.assign(w,{SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM'},TextDecoder,AbortSignal,fetch:async()=>{requests++;return new Response('');}});
+ w.chrome={runtime:{onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:msg=>state.send(msg,source)}};
+ try{w.eval(read('scope.js'));await tick();const response=await new Promise(resolve=>listeners[0]({type:'scope:catalog-request'},{},resolve));assert.match(response.error,/Menu de Blocos Internos não encontrado/);assert.equal(requests,0);await assert.rejects(w.seiWorkScope.refreshCatalog(),/Menu de Blocos Internos/);}finally{w.close();}
+});

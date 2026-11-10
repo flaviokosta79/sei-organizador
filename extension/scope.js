@@ -102,10 +102,9 @@
     if (!current) throw Error('Abra o SEI na unidade atendida.');
     state.identity = current;
     const link = document.querySelector('a[href*="acao=bloco_interno_listar"]');
-    if (!link) {
-      await refresh(true);
-      return;
-    }
+    // Without the menu link nothing can be read: say so instead of reporting an updated list.
+    if (!link)
+      throw Error('Menu de Blocos Internos não encontrado nesta tela. Abra o Controle de Processos e tente de novo.');
     const url = new URL(link.getAttribute('href'), location.href);
     if (
       url.origin !== location.origin ||

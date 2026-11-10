@@ -510,3 +510,41 @@ test('leitura longa de bloco renova a reserva do monitor',async t=>{
  await f.call({type:'monitor:progress',lease:'outra'});
  assert.equal(Object.values(Object.values(f.session).find(v=>v?.leases).leases)[0].until,renewed,'reserva alheia não é renovada');
 });
+
+test('aviso de processo novo não se perde quando a confirmação compartilhada falha na rodada da chegada',async()=>{
+ const store=createStore(':memory:');let offline=false;
+ const sharedFetch=async(url,options={})=>{
+  if(offline)throw Error('Offline');const path=new URL(url).pathname,body=options.body?JSON.parse(options.body):null;
+  try{
+   const match=path.match(/blocks\/(\d+)\/alerts/);
+   const data=match?(body?store.alerts.snapshot('1',match[1],body):store.alerts.read('1',match[1])):store.alerts.openedMany('1',body.processes,body.actor);
+   return {ok:true,json:async()=>data};
+  }catch(e){return {ok:false,status:e.status||400};}
+ };
+ const a=worker({sharedFetch}),b=worker({sharedFetch});
+ const result=(f,poll,ids)=>f.call({type:'monitor:result',block:'2',lease:poll.id,sharedVersion:poll.targets[0].sharedVersion,items:ids.map(item)});
+ const round=async(f,ids)=>{const {poll}=await f.poll();try{return await result(f,poll,ids);}finally{await f.call({type:'monitor:done',lease:poll.id});}};
+ try{
+  await round(a,['100']);await round(b,['100']);
+  // Both colleagues start a round on the same shared version; A confirms first and B is refused (HTTP 409).
+  const pa=(await a.poll()).poll,pb=(await b.poll()).poll;
+  await result(a,pa,['100','200']);await a.call({type:'monitor:done',lease:pa.id});assert.equal(a.notices.length,1);
+  let view=await result(b,pb,['100','200']);await b.call({type:'monitor:done',lease:pb.id});
+  assert.equal(b.notices.length,0,'sem confirmação, não avisa nesta rodada');assert.match(view.records[0].sharedError,/409/);
+  assert.deepEqual(plain(view.records[0].pending.map(p=>p.id)),['200']);
+  view=await round(b,['100','200']);
+  assert.equal(b.notices.length,1,'avisa na rodada seguinte');assert.equal(b.sounds.length,1);assert.equal(view.records[0].sharedError,'');
+  await round(b,['100','200']);assert.equal(b.notices.length,1,'e só uma vez');
+  // Service unreachable when the process arrives: the alert sounds when it is back.
+  offline=true;view=await round(b,['100','200','300']);assert.equal(b.notices.length,1);
+  assert.deepEqual(plain(view.records[0].pending.map(p=>p.id)).sort(),['200','300']);
+  offline=false;await round(b,['100','200','300']);assert.equal(b.notices.length,2);assert.match(b.notices[1].data.message,/\/300\//);
+  // A colleague opened the process before the retry: nothing to announce any more.
+  const pc=(await a.poll()).poll,pd=(await b.poll()).poll;
+  await result(a,pc,['100','200','300','400']);await a.call({type:'monitor:done',lease:pc.id});
+  await result(b,pd,['100','200','300','400']);await b.call({type:'monitor:done',lease:pd.id});
+  await a.call({type:'monitor:opened',process:'400'},{url:item('400').url});
+  view=await round(b,['100','200','300','400']);assert.equal(b.notices.length,2);
+  assert.equal(view.records[0].pending.some(p=>p.id==='400'),false);
+ }finally{store.close();}
+});
