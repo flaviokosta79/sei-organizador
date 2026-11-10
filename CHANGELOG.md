@@ -2,7 +2,7 @@
 
 ## 0.23.10 — 2026-11-10
 
-**Extensão (não requer reimplantar a API). Ajuste pequeno, sem release própria: segue com a próxima versão distribuída.**
+**Extensão (não requer reimplantar a API). Inclui as mudanças da 0.23.9, que não teve release.**
 
 - Quando uma leitura automática do SEI falha por falta de conexão ou sessão expirada, o painel mostra "o SEI não respondeu (sem conexão ou sessão expirada). Recarregue a página do SEI." no lugar de "Failed to fetch", a mensagem interna do navegador. Vale para a leitura do bloco, dos recebidos e dos andamentos de assinatura.
 - Assinaturas com mais de 3 dias não geram mais aviso de "documento assinado": desde a 0.23.5 a extensão lê primeiro o andamento dos processos abertos há pouco e passou a encontrar assinaturas antigas, avisando com dias de atraso. Agora elas não tocam som, não geram notificação e não entram no painel; as que já estavam no painel saem ao completar 3 dias.
