@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.23.17 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Corrigido: a extensão podia derrubar o acesso ao SEI repetidamente. O SEI assina cada endereço com o acesso (login) em que ele foi gerado e encerra a sessão de quem pede um endereço assinado por outro acesso. A extensão guardava, enquanto o Chrome ficava aberto, o endereço do bloco, dos recebidos e dos andamentos de até 300 processos; depois que a sessão caía uma vez e a pessoa entrava de novo, as leituras automáticas continuavam usando esses endereços antigos e derrubavam cada novo acesso. O aviso "o SEI não respondeu (sem conexão ou sessão expirada)" era sintoma disso.
+  - A extensão agora reconhece que o acesso mudou, comparando a assinatura de dois links fixos do cabeçalho do SEI, e descarta na hora os endereços guardados do acesso anterior.
+  - Uma aba que ficou aberta desde o acesso anterior não faz mais leituras nem registra endereços; ela só mostra o painel. Recarregar a aba (F5) a devolve ao normal.
+  - Depois de entrar de novo no SEI sem fechar o Chrome, é preciso abrir o bloco interno uma vez para o acompanhamento voltar, como já acontece ao reabrir o navegador. Os avisos pendentes não se perdem.
+- Leitura da assinatura conferida nas páginas reais de amostra (Controle de Processos, blocos de assinatura, lista de usuários e processo). A correção ainda não foi exercitada num SEI real com troca de acesso.
+- 263 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.16 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

@@ -26,7 +26,7 @@ function clock(){
 }
 function background(c=clock(),stored={}){
  let listener;
- const session={get:async k=>({[k]:structuredClone(stored[k])}),set:async v=>Object.assign(stored,structuredClone(v))};
+ const session={get:async k=>({[k]:structuredClone(stored[k])}),set:async v=>Object.assign(stored,structuredClone(v)),remove:async keys=>{for(const k of keys)delete stored[k];}};
  const context={Date:{now:c.now},crypto,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}},storage:{session}}};
  runInNewContext(read('activity-background.js'),context);
  const send=(msg,sender=sei)=>{let reply;listener(msg,sender,r=>reply=r);return reply;};
@@ -176,4 +176,50 @@ test('leitura pedida pelo usuário não espera a navegação assentar, mas conti
  assert.deepEqual(slots,[true,false]);
  assert.match(read('users.js'),/urgent: true/);
  for(const f of ['monitor-data.js','receipts-data.js','signature-data.js','scope.js'])assert.doesNotMatch(read(f),/urgent/,'leituras de fundo continuam cedendo a vez');
+});
+
+test('novo acesso ao SEI descarta os endereços guardados do acesso anterior e recusa leituras de abas antigas',async()=>{
+ const h=c=>c.repeat(64),stores=()=>({seiBlockTargets:{targets:{a:{url:'x'}}},seiSecretariatReceiptTargets:{o:{url:'y'}},seiSignatureProcesses:{o:[['1','z',1]]},seiSignatureScans:{o:{}},seiActivityIntervals:{k:110000}});
+ const stored=stores(),b=background(clock(),stored);
+ assert.equal(await b.A.checkSession({u:h('a'),t:h('b')},1000),false);
+ assert.equal(await b.A.checkSession({u:h('a')},2000),false,'mesma sessão em outra página');
+ assert.ok(stored.seiBlockTargets&&stored.seiSignatureProcesses,'sem troca de sessão nada é descartado');
+ assert.equal(await b.A.checkSession({t:'curto'},3000),false,'marca inválida é ignorada');assert.ok(stored.seiBlockTargets);
+ assert.equal(await b.A.checkSession({u:h('c'),t:h('d')},5000),false,'página mais nova com outra assinatura: novo acesso');
+ for(const k of ['seiBlockTargets','seiSecretariatReceiptTargets','seiSignatureProcesses','seiSignatureScans'])assert.equal(stored[k],undefined,k);
+ assert.deepEqual(stored.seiActivityIntervals,{k:110000},'o que não guarda endereço permanece');
+ assert.equal(await b.A.checkSession({u:h('a'),t:h('b')},2000),true,'aba carregada no acesso anterior não lê o SEI');
+ assert.equal(await b.A.checkSession({t:h('b')},1500),true);
+ Object.assign(stored,{seiBlockTargets:{targets:{n:{url:'novo'}}}});
+ assert.equal(await b.A.checkSession({u:h('a')},2000),true);assert.ok(stored.seiBlockTargets,'aba antiga não apaga os endereços do acesso atual');
+ assert.equal(await b.A.checkSession({t:h('d')},6000),false);assert.ok(stored.seiBlockTargets);
+ const restarted=background(clock(),stored);
+ assert.equal(await restarted.A.checkSession({u:h('a')},2000),true,'a marca sobrevive ao reinício do service worker');
+ const reply=await new Promise(r=>{let listener;const session={get:async k=>({[k]:stored[k]}),set:async v=>Object.assign(stored,v),remove:async()=>{}};
+  runInNewContext(read('activity-background.js'),{Date,crypto,chrome:{runtime:{onMessage:{addListener:fn=>listener=fn}},storage:{session}}});
+  assert.equal(listener({type:'sei:session',marks:{u:h('a')},loaded:2000},sei,r),true);});
+ assert.equal(reply.stale,true);
+ const only=background(clock(),{});await only.A.checkSession({u:h('a')},1000);
+ assert.equal(await only.A.checkSession({t:h('e')},500),false,'sem marca em comum não há como comparar: nada muda');
+ assert.equal(await only.A.checkSession({u:h('a'),t:h('e')},1200),false);
+});
+
+test('leitura parte da página só se ela for do acesso atual; a marca vem de links fixos do cabeçalho',async()=>{
+ const base='https://sei.rj.gov.br/sei/controlador.php',hash='ab'.repeat(32),other='cd'.repeat(32);
+ const page=(links,stale)=>{const sent=[];let fetches=0;const context={Date,setTimeout,clearTimeout,AbortController,AbortSignal,DOMException,Response,URL,
+   SEI_ORGANIZADOR_CONFIG:{unitId:'1'},location:{href:base+'?acao=procedimento_controlar'},performance:{timeOrigin:1234.6},
+   document:{querySelector:sel=>links[sel]?{getAttribute:name=>links[sel][name]??null}:null},
+   fetch:async()=>{fetches++;return new Response('ok');},
+   chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:session'){sent.push(msg);return {stale};}if(msg.type==='sei:slot')return {id:'s',wait:0};return {ok:true};}}}};
+  runInNewContext(read('pace.js'),context);return {fetch:context.seiPacedFetch,sent,fetches:()=>fetches};};
+ const links={'#lnkUsuarioSistema':{href:'controlador.php?acao=infra_acesso_usuario_listar&infra_sistema=100000100&infra_unidade_atual=1&infra_hash='+hash},
+  '#lnkInfraUnidade':{href:'#',onclick:"window.location.href='controlador.php?acao=infra_trocar_unidade&infra_sistema=100000100&infra_unidade_atual=1&infra_hash="+other+"';"}};
+ const fresh=page(links,false);assert.equal(await (await fresh.fetch(base)).text(),'ok');
+ assert.deepEqual(JSON.parse(JSON.stringify(fresh.sent)),[{type:'sei:session',marks:{u:hash,t:other},loaded:1235}]);
+ const old=page(links,true);await assert.rejects(old.fetch(base),/acesso anterior ao SEI/);assert.equal(old.fetches(),0,'nenhum pedido chega ao SEI');
+ assert.equal(await old.fetch.staleSession(),true);
+ const extra=page({'#lnkUsuarioSistema':{href:links['#lnkUsuarioSistema'].href.replace('&infra_sistema','&id_bloco=9&infra_sistema')}},true);
+ assert.equal(await (await extra.fetch(base)).text(),'ok','link com parâmetro da tela não serve de marca');assert.equal(extra.sent.length,0);
+ const unit=page({'#lnkUsuarioSistema':{href:links['#lnkUsuarioSistema'].href.replace('infra_unidade_atual=1','infra_unidade_atual=2')}},true);
+ await unit.fetch(base);assert.equal(unit.sent.length,0,'outra unidade não gera marca');
 });

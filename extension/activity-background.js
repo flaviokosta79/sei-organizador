@@ -8,7 +8,12 @@ globalThis.seiActivity = (() => {
     base = 55000,
     longest = 300000,
     slotLease = 30000,
-    storageKey = 'seiActivityIntervals';
+    storageKey = 'seiActivityIntervals',
+    sessionKey = 'seiSessionMarks',
+    // Everything kept per browser session that holds SEI addresses (they are signed per SEI login).
+    sessionStores = ['seiBlockTargets', 'seiSecretariatReceiptTargets', 'seiSignatureProcesses', 'seiSignatureScans'];
+  let session = null,
+    sessionQueue = Promise.resolve();
   let last = 0,
     lastEnd = 0,
     slot = null,
@@ -20,7 +25,41 @@ globalThis.seiActivity = (() => {
     .then((stored) => {
       intervals = { ...(stored?.[storageKey] || {}), ...intervals };
     })
+    .catch(() => {})
+    .then(() => chrome.storage.session.get(sessionKey))
+    .then((stored) => {
+      session = stored?.[sessionKey] || null;
+    })
     .catch(() => {});
+  // The SEI signs every address with the login session (infra_hash) and ends the session of whoever
+  // asks for an address signed by another one. Each page reports the signature of fixed header links
+  // ("marks"): when a newer page shows different marks the user logged in again, so the addresses kept
+  // from the previous login are dropped; a page older than that belongs to the previous login and must
+  // not read the SEI. Resolves to true for such a stale page.
+  const checkSession = (marks, pageLoaded) =>
+    (sessionQueue = sessionQueue
+      .then(() => loaded)
+      .then(async () => {
+        if (!marks || typeof marks !== 'object' || !Number.isFinite(pageLoaded)) return false;
+        const seen = Object.fromEntries(
+          ['u', 't'].filter((k) => /^[0-9a-f]{16,128}$/.test(marks[k] || '')).map((k) => [k, marks[k]]),
+        );
+        const common = Object.keys(seen).filter((k) => session?.marks[k]);
+        if (!Object.keys(seen).length || (session && !common.length)) return false;
+        const changed = common.some((k) => session.marks[k] !== seen[k]);
+        if (changed && pageLoaded <= session.loaded) return true;
+        if (changed) await chrome.storage.session.remove(sessionStores);
+        const next =
+          changed || !session
+            ? { marks: seen, loaded: pageLoaded }
+            : { marks: { ...session.marks, ...seen }, loaded: Math.max(session.loaded, pageLoaded) };
+        if (JSON.stringify(next) !== JSON.stringify(session)) {
+          session = next;
+          await chrome.storage.session.set({ [sessionKey]: session });
+        }
+        return false;
+      })
+      .catch(() => false));
   const gap = () => Math.min(Math.max(1000, latencies.at(-1) || 0), 10000);
   // Median of the recent background responses; null until there are enough of them.
   function slow() {
@@ -31,6 +70,10 @@ globalThis.seiActivity = (() => {
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!sender.tab?.url?.startsWith('https://sei.rj.gov.br/')) return;
     const now = Date.now();
+    if (msg?.type === 'sei:session') {
+      checkSession(msg.marks, msg.loaded).then((stale) => reply({ stale }));
+      return true;
+    }
     if (msg?.type === 'sei:activity') last = now;
     else if (msg?.type === 'sei:slot') {
       if (slot && slot.until <= now) slot = null;
@@ -73,5 +116,6 @@ globalThis.seiActivity = (() => {
     // Longest normal gap between two cycles of `kind`, for freshness checks of their results.
     longestGap: (kind) => Math.max(starvation, interval(kind)),
     slow,
+    checkSession,
   };
 })();

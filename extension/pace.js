@@ -24,6 +24,51 @@ globalThis.seiPacedFetch = (() => {
       }, ms);
       signal?.addEventListener('abort', abort, { once: true });
     });
+  // Signature (infra_hash) of two header links whose address is the same on every page: it changes
+  // only when the SEI login changes. Used to tell a page of a previous login (activity-background.js).
+  function marks() {
+    if (typeof document === 'undefined') return null;
+    const hash = (value, action) => {
+      try {
+        const url = new URL(value, location.href),
+          params = url.searchParams;
+        return url.origin === 'https://sei.rj.gov.br' &&
+          url.pathname === '/sei/controlador.php' &&
+          params.get('acao') === action &&
+          params.get('infra_unidade_atual') === globalThis.SEI_ORGANIZADOR_CONFIG?.unitId &&
+          [...params.keys()].sort().join() === 'acao,infra_hash,infra_sistema,infra_unidade_atual' &&
+          /^[0-9a-f]{16,128}$/.test(params.get('infra_hash'))
+          ? params.get('infra_hash')
+          : '';
+      } catch {
+        return '';
+      }
+    };
+    const u = hash(document.querySelector('#lnkUsuarioSistema')?.getAttribute('href'), 'infra_acesso_usuario_listar'),
+      t = hash(
+        document
+          .querySelector('#lnkInfraUnidade')
+          ?.getAttribute('onclick')
+          ?.match(/'([^']*acao=infra_trocar_unidade[^']*)'/)?.[1],
+        'infra_trocar_unidade',
+      );
+    return u || t ? { ...(u && { u }), ...(t && { t }) } : null;
+  }
+  // True when this page was loaded under a previous SEI login: reading from it would end the new one.
+  async function staleSession() {
+    const found = marks();
+    if (!found) return false;
+    try {
+      const answer = await chrome.runtime.sendMessage({
+        type: 'sei:session',
+        marks: found,
+        loaded: Math.round(performance.timeOrigin),
+      });
+      return answer?.stale === true;
+    } catch {
+      return false;
+    }
+  }
   // `urgent`: a read the user has just asked for (not a background scan) does not wait for the
   // navigation to settle; it still takes its turn, one SEI request at a time.
   async function acquire(signal, urgent = false) {
@@ -54,6 +99,7 @@ globalThis.seiPacedFetch = (() => {
   }
   // The slot is released only after the body arrived: the SEI is busy until the page is sent.
   async function paced(url, { timeout, urgent, ...init } = {}) {
+    if (await staleSession()) throw new Error('esta aba é de um acesso anterior ao SEI. Recarregue a página (F5).');
     const id = await acquire(init.signal, urgent === true);
     const started = Date.now();
     const attempt = async () => {
@@ -101,5 +147,6 @@ globalThis.seiPacedFetch = (() => {
     setTimeout(check, limit);
     return controller.signal;
   };
+  paced.staleSession = staleSession;
   return paced;
 })();

@@ -31,6 +31,7 @@
     busy = false,
     controller,
     registered = '',
+    staleTab = false,
     stopped = false;
   const key = (value) => JSON.stringify(value);
   async function call(type, extra = {}) {
@@ -523,9 +524,13 @@
     const reg = registration(),
       regKey = key(reg);
     try {
-      await syncReceipts(poll);
+      // A page loaded under a previous SEI login only shows the panel: its addresses would end the
+      // current login, so it neither reads the SEI nor records addresses (pace.js).
+      staleTab = (await globalThis.seiPacedFetch?.staleSession?.()) === true;
+      if (staleTab) poll = false;
+      else await syncReceipts(poll);
       if (scopePending || stopped) return;
-      if (globalThis.seiSignatureScanner) {
+      if (globalThis.seiSignatureScanner && !staleTab) {
         const selected = globalThis.seiWorkScope?.block;
         const owner = key([identity, selected]);
         if (owner !== signatureOwner) {
@@ -548,8 +553,11 @@
         await call('monitor:opened', { process });
         openedProcess = openKey;
       }
-      const view = await call('monitor:sync', { poll, registration: reg && regKey !== registered ? reg : undefined });
-      if (reg) registered = regKey;
+      const view = await call('monitor:sync', {
+        poll,
+        registration: reg && !staleTab && regKey !== registered ? reg : undefined,
+      });
+      if (reg && !staleTab) registered = regKey;
       render(view);
       if (view.poll) {
         controller = new AbortController();
@@ -678,7 +686,7 @@
     if (msg?.type === 'monitor:tick') {
       if (msg.lead === true) {
         // Accept the poll only if this tab can actually scan the SEI right now.
-        const accepted = pollingReady && !busy && !stopped && !nativeProcessPage() && !!D.context();
+        const accepted = pollingReady && !busy && !stopped && !staleTab && !nativeProcessPage() && !!D.context();
         reply({ accepted });
         if (accepted) sync();
         return;
