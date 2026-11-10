@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.16 — 2026-11-10
+
+**Extensão (não requer reimplantar a API)**
+
+- Uma falha momentânea de rede não gera mais o aviso vermelho "Sem atualização: o SEI não respondeu (sem conexão ou sessão expirada). Recarregue a página do SEI." no painel. Antes, bastava uma única leitura automática falhar (troca de rede, computador voltando do repouso, oscilação da conexão) para o aviso aparecer e ficar no painel até o ciclo seguinte, mesmo com o SEI funcionando.
+  - Agora a leitura que falha na rede é repetida uma vez, 3 s depois, dentro da mesma vez na fila. O aviso só aparece se a segunda tentativa também falhar.
+  - Vale para a leitura do bloco, dos recebidos, dos andamentos de assinatura e da lista de usuários.
+  - Sessão expirada e falta de conexão que dura mais que isso continuam mostrando o aviso, que some sozinho na próxima leitura bem-sucedida. Cancelamentos e tempo esgotado não são repetidos.
+- 261 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.15 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

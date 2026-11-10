@@ -156,12 +156,16 @@ test('esperas sobrepostas na mesma aba não quebram o tempo limite e a vez só v
 });
 
 test('falha de rede ou redirecionamento para o login vira mensagem clara; cancelamento mantém o erro próprio',async()=>{
- const run=fetch=>{const done=[];const context={Date,setTimeout,clearTimeout,AbortController,AbortSignal,DOMException,Response,fetch,chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:slot')return {id:'s1',wait:0};done.push(msg);return {ok:true};}}}};runInNewContext(read('pace.js'),context);return {fetch:context.seiPacedFetch,done};};
- const failed=run(async()=>{throw new TypeError('Failed to fetch');});
+ const run=fetch=>{const done=[],pauses=[];const context={Date,setTimeout:(fn,ms)=>{pauses.push(ms);return setTimeout(fn,0);},clearTimeout,AbortController,AbortSignal,DOMException,Response,fetch,chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:slot')return {id:'s1',wait:0};done.push(msg);return {ok:true};}}}};runInNewContext(read('pace.js'),context);return {fetch:context.seiPacedFetch,done,pauses};};
+ let calls=0;const failed=run(async()=>{calls++;throw new TypeError('Failed to fetch');});
  await assert.rejects(failed.fetch('https://sei.rj.gov.br/sei/controlador.php'),e=>/o SEI não respondeu \(sem conexão ou sessão expirada\)/.test(e.message)&&!/Failed to fetch/.test(e.message));
+ assert.equal(calls,2,'uma única nova tentativa antes de acusar a falha');assert.deepEqual(failed.pauses,[3000]);
  assert.equal(failed.done.filter(m=>m.type==='sei:slot-done').length,1,'a vez é devolvida mesmo na falha');
- const aborted=run(async()=>{throw new DOMException('The user aborted a request.','AbortError');});
- await assert.rejects(aborted.fetch('https://sei.rj.gov.br/sei/controlador.php'),e=>e.name==='AbortError');
+ calls=0;const blip=run(async()=>{if(!calls++)throw new TypeError('Failed to fetch');return new Response('ok');});
+ assert.equal(await (await blip.fetch('https://sei.rj.gov.br/sei/controlador.php')).text(),'ok','falha momentânea de rede não vira erro');
+ assert.equal(calls,2);assert.equal(blip.done.filter(m=>m.type==='sei:slot-done').length,1);
+ calls=0;const aborted=run(async()=>{calls++;throw new DOMException('The user aborted a request.','AbortError');});
+ await assert.rejects(aborted.fetch('https://sei.rj.gov.br/sei/controlador.php'),e=>e.name==='AbortError');assert.equal(calls,1,'cancelamento não é repetido');
 });
 
 test('leitura pedida pelo usuário não espera a navegação assentar, mas continua pedindo a vez',async()=>{

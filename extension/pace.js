@@ -4,7 +4,8 @@
 // Timeouts count only the time spent reading, never the time spent waiting for a slot.
 globalThis.seiPacedFetch = (() => {
   const navigationLimit = 5000, // per request, waiting for the user's navigation
-    slotLimit = 30000; // per request, waiting for other tabs' reads; then read anyway
+    slotLimit = 30000, // per request, waiting for other tabs' reads; then read anyway
+    retryPause = 3000; // before the single retry of a read that failed on the network
   // Time during which at least one read of this page was waiting (overlapping waits count once).
   let waited = 0,
     waiting = 0,
@@ -54,9 +55,11 @@ globalThis.seiPacedFetch = (() => {
   // The slot is released only after the body arrived: the SEI is busy until the page is sent.
   async function paced(url, { timeout, urgent, ...init } = {}) {
     const id = await acquire(init.signal, urgent === true);
-    const signal = timeout ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)].filter(Boolean)) : init.signal;
     const started = Date.now();
-    try {
+    const attempt = async () => {
+      const signal = timeout
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)].filter(Boolean))
+        : init.signal;
       const response = await fetch(url, { ...init, signal });
       const body = [101, 204, 205, 304].includes(response.status) ? null : await response.arrayBuffer();
       return new Response(body, {
@@ -64,6 +67,17 @@ globalThis.seiPacedFetch = (() => {
         statusText: response.statusText,
         headers: response.headers,
       });
+    };
+    try {
+      try {
+        return await attempt();
+      } catch (e) {
+        // A momentary network failure (network change, computer waking up) is tried once more
+        // before it becomes an error on the panel. The reads are read-only, so repeating is safe.
+        if (e?.name !== 'TypeError') throw e;
+        await sleep(retryPause, init.signal);
+        return await attempt();
+      }
     } catch (e) {
       // The browser reports "Failed to fetch" for no connection and for a blocked redirect (the SEI
       // sends an expired session to the login page). Aborts and timeouts keep their own errors.
