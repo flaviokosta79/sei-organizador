@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.18 — 2026-11-11
+
+**Extensão (não requer reimplantar a API)**
+
+- O aviso de "documento assinado" (rodapé, notificação e som) só aparece se a assinatura tiver sido feita na última hora. Antes o prazo era de 3 dias, e um andamento lido com atraso avisava assinaturas de dias anteriores como se fossem novas.
+  - Continua valendo para os usuários do bloco interno de quem incluiu o documento no bloco de assinatura.
+  - Um aviso que já apareceu no rodapé permanece até ser marcado como visto, por no máximo 3 dias; ele não toca som de novo.
+  - Assinaturas encontradas depois de 1 hora não entram no painel.
+- 263 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.17 — 2026-11-10
 
 **Extensão (não requer reimplantar a API)**

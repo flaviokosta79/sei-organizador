@@ -253,19 +253,21 @@ test('fila de processos aguardando assinatura é da sessão do navegador, por us
  }finally{store.close();}
 });
 
-test('assinatura com mais de 3 dias não avisa nem fica no painel; a de até 3 dias avisa',async()=>{
+test('assinatura de mais de 1 hora não avisa; a da última hora avisa e fica no painel até 3 dias',async()=>{
  const store=createStore(':memory:');const a=browser(store),b=browser(store),c=browser(store);
  try{
   for(const x of [a,b,c])await x.call('signature:sync');
   await a.call('signature:observe',{observations:[observation()]});
-  // B only reads the shared events 4 days later: too old to be news.
-  b.later(4*86400000);let view=await b.call('signature:sync');
+  // B only reads the shared events 2 hours later: too old to be news.
+  b.later(2*3600000);let view=await b.call('signature:sync');
   assert.equal(view.events.length,0);assert.equal(b.sounds.length,0);assert.equal(b.notices.length,0);
   // The cursor moved on: the old event does not come back on later syncs.
   b.later();view=await b.call('signature:sync');assert.equal(view.events.length,0);assert.equal(b.sounds.length,0);
-  // C reads 2 days later: still within the window.
+  // C reads 30 minutes later: still within the hour.
+  c.later(1800000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);assert.equal(c.notices.length,1);
+  // An alert already in the panel stays past the hour, without a new sound...
   c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);
-  // An event already in the panel leaves it once it is older than 3 days.
+  // ...and leaves it once it is older than 3 days.
   c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,0);assert.equal(c.sounds.length,1);
  }finally{store.close();}
 });

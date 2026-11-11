@@ -7,8 +7,10 @@
     // Processes whose last history read left a document in a signature block still unsigned.
     waitingKey = 'seiSignatureWaiting',
     recentWindow = 1800000,
-    // A signature found long after it happened (a history read late) is no longer news: no alert.
-    alertWindow = 3 * 86400000;
+    // A signature found more than an hour after it happened (a history read late) is no longer news: no alert.
+    alertWindow = 3600000,
+    // An alert already in the panel stays until acknowledged, for at most 3 days.
+    panelWindow = 3 * 86400000;
   const serial = seiCreateQueue();
   // Each SEI page load syncs signatures: the shared answer is reused for 20 s (new events arrive at most
   // 20 s later); observations sent from this browser clear it.
@@ -165,10 +167,10 @@
           !Number.isSafeInteger(e.signedAt)
         )
           throw Error('Assinatura compartilhada inválida.');
-      const recent = (e) => Date.now() - e.signedAt <= alertWindow;
-      const pending = new Map(record.events.filter(recent).map((e) => [e.id, e]));
+      const within = (e, window) => Date.now() - e.signedAt <= window;
+      const pending = new Map(record.events.filter((e) => within(e, panelWindow)).map((e) => [e.id, e]));
       const arrived = events.filter(
-        (e) => recent(e) && !pending.has(e.id) && e.id > (record.cursor ?? response.cursor),
+        (e) => within(e, alertWindow) && !pending.has(e.id) && e.id > (record.cursor ?? response.cursor),
       );
       for (const event of arrived) pending.set(event.id, event);
       record.events = [...pending.values()];
