@@ -5,7 +5,7 @@
 O usuário autorizou uso sem configuração manual e sem token. A extensão tem
 endereço HTTPS e unidade fixos e é utilizada simplesmente após instalar e abrir
 a lista de bloco interno do SEI. Opções permitem escolher o bloco de trabalho, sem campos de endereço, unidade ou token.
-Extensão distribuída na versão 0.23.8 e API na versão 0.23.9. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
+Extensão distribuída na versão 0.23.19 e API na versão 0.23.19. Incluem alertas compartilhados de assinatura efetiva por grupo definido pelo bloco interno escolhido nas opções, além de presença, vistos e classificações isolados por bloco.
 
 API: https://ext.5cpa.com.br. Registro A na Cloudflare para 212.85.19.248,
 DNS only, com HTTPS confiável via Traefik. A API aceita leitura e gravação sem
@@ -14,12 +14,22 @@ não autentica o usuário; autor do SEI continua sendo informativo. Validação
 JSON, conflitos de versão, limite de corpo e rate limit foram preservados.
 
 Imagem pública: https://hub.docker.com/r/flaviokosta/sei-organizador.
-Imagem da stack: flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758 (tag 0.23.9).
-Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:4ffa82cd47672ae8a4575fdb51e7576b72dd5c7b1dab9486fa34a379fe8569fd (0.23.6).
+Imagem da stack: flaviokosta/sei-organizador@sha256:c5b5bdb611612df2e4f3ca6aee3a5491bf723679d89804285d2a9f5574bf65ae (tag 0.23.19).
+Imagem anterior, para rollback: flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758 (0.23.9).
 O conteúdo da imagem é restrito a package.json e server/ em /app, sem .env, instruções privadas,
 credenciais conhecidas, configurações operacionais ou banco.
 
 Em 2026-11-10 a pasta local `artifacts/` foi limpa: ficaram os backups do banco (`artifacts/backups/`) e os arquivos das implantações 0.23.6 e 0.23.9. Os arquivos `stack-before-*`, logs e evidências citados nas seções de versões anteriores não existem mais; para voltar além da 0.23.6, use a imagem pelo digest registrado em cada seção.
+
+## Atualização 0.23.19 — 2026-11-11
+
+Visto compartilhado dos avisos de assinatura: rota `signatures/ack`, campo `acked` em `signatures/sync` e tabela `signature_acks`, criada na primeira execução (sem migração de dados). Extensões anteriores continuam funcionando com esta API.
+
+Backup consistente em /data/backups/before-0.23.19-20261111.sqlite (VACUUM INTO, quick_check ok), com cópia local em artifacts/backups/before-0.23.19-20261111.tar. Arquivo e Env anteriores em artifacts/stack-before-0.23.19.json.
+
+Imagem gerada na KVM2 a partir do commit 36e95df (fim de linha LF) e validada em containers isolados, sem rede, com raiz somente leitura e sem capabilities: regras do servidor, incluindo o visto compartilhado, e o servidor real com página de privacidade e teto do banco. Stack 18 atualizada pelo Portainer trocando somente SEI_IMAGE; o arquivo da stack e as demais variáveis não mudaram. Evidência em artifacts/deployment-0.23.19.json: stack com acesso só de administradores e editor disponível, serviço atualizado, container healthy, arquivos do servidor iguais aos do commit, /healthz 200 e unidade não permitida 403.
+
+Rollback: reaplicar pelo Portainer o Env de artifacts/stack-before-0.23.19.json (imagem 0.23.9), preservando o volume. A API 0.23.9 ignora a tabela signature_acks; a extensão 0.23.19 continua lendo os avisos, mas o botão de visto de assinaturas falha até a API voltar. Não restaurar o banco para apenas voltar a imagem.
 
 ## Atualização 0.23.9 — 2026-11-10
 

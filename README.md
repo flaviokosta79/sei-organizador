@@ -233,4 +233,4 @@ Um bloco interno sintético de 1.000 processos abre em cerca de 0,18 s com a ext
 
 ## Estado em produção
 
-Extensão 0.23.18 (ZIP da release v0.23.18 e em `R:\sei-organizador`) e API 0.23.9, implantada em 2026-11-10 (imagem `flaviokosta/sei-organizador@sha256:8fd112e42c5774abba3354c14fdcbbd49aa394cdcf555c9e46d28fdef1ddf758`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 foi enviada à Chrome Web Store como não listada em 2026-11-10 e aguarda análise; a 0.23.18 vai para a loja depois da aprovação. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.19 (ZIP da release v0.23.19 e em `R:\sei-organizador`) e API 0.23.19, implantada em 2026-11-11 (imagem `flaviokosta/sei-organizador@sha256:c5b5bdb611612df2e4f3ca6aee3a5491bf723679d89804285d2a9f5574bf65ae`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 foi enviada à Chrome Web Store como não listada em 2026-11-10 e aguarda análise; a 0.23.19 vai para a loja depois da aprovação. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
