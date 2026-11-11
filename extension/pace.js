@@ -57,7 +57,6 @@ globalThis.seiPacedFetch = (() => {
   // True when this page was loaded under a previous SEI login: reading from it would end the new one.
   async function staleSession() {
     const found = marks();
-    if (!found) return false;
     try {
       const answer = await chrome.runtime.sendMessage({
         type: 'sei:session',
@@ -106,7 +105,13 @@ globalThis.seiPacedFetch = (() => {
       const signal = timeout
         ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)].filter(Boolean))
         : init.signal;
-      const response = await fetch(url, { ...init, signal });
+      // The SEI answers an ended session with a redirect to the login page. Seen as such (not followed),
+      // it tells the worker that every address and page from before this moment belongs to a dead login.
+      const response = await fetch(url, { ...init, redirect: 'manual', signal });
+      if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+        await chrome.runtime.sendMessage({ type: 'sei:session-ended' }).catch(() => {});
+        throw new Error('a sessão do SEI terminou. Entre de novo no SEI e recarregue esta página (F5).');
+      }
       const body = [101, 204, 205, 304].includes(response.status) ? null : await response.arrayBuffer();
       return new Response(body, {
         status: response.status,

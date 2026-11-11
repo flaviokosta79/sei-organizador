@@ -40,19 +40,27 @@ globalThis.seiActivity = (() => {
     (sessionQueue = sessionQueue
       .then(() => loaded)
       .then(async () => {
-        if (!marks || typeof marks !== 'object' || !Number.isFinite(pageLoaded)) return false;
+        if (!Number.isFinite(pageLoaded)) return false;
+        // A page from before the SEI ended a session (endSession) is stale whatever its marks are.
+        const ended = session?.ended || 0;
+        if (pageLoaded <= ended) return true;
+        if (!marks || typeof marks !== 'object') return false;
         const seen = Object.fromEntries(
           ['u', 't'].filter((k) => /^[0-9a-f]{16,128}$/.test(marks[k] || '')).map((k) => [k, marks[k]]),
         );
-        const common = Object.keys(seen).filter((k) => session?.marks[k]);
-        if (!Object.keys(seen).length || (session && !common.length)) return false;
-        const changed = common.some((k) => session.marks[k] !== seen[k]);
+        const known = session?.marks || {},
+          first = !Object.keys(known).length;
+        const common = Object.keys(seen).filter((k) => known[k]);
+        if (!Object.keys(seen).length || (!first && !common.length)) return false;
+        const changed = common.some((k) => known[k] !== seen[k]);
         if (changed && pageLoaded <= session.loaded) return true;
         if (changed) await chrome.storage.session.remove(sessionStores);
-        const next =
-          changed || !session
+        const next = {
+          ...(changed || first
             ? { marks: seen, loaded: pageLoaded }
-            : { marks: { ...session.marks, ...seen }, loaded: Math.max(session.loaded, pageLoaded) };
+            : { marks: { ...known, ...seen }, loaded: Math.max(session.loaded, pageLoaded) }),
+          ...(ended && { ended }),
+        };
         if (JSON.stringify(next) !== JSON.stringify(session)) {
           session = next;
           await chrome.storage.session.set({ [sessionKey]: session });
@@ -60,6 +68,22 @@ globalThis.seiActivity = (() => {
         return false;
       })
       .catch(() => false));
+  // A background read was answered with a redirect: the SEI ended the session (expired, logged out or
+  // taken down). The addresses kept so far are dropped and the pages loaded so far stop reading, even
+  // when the new login cannot be told by the marks (e.g. it lands on another unit).
+  const endSession = (at) =>
+    (sessionQueue = sessionQueue
+      .then(() => loaded)
+      .then(async () => {
+        await chrome.storage.session.remove(sessionStores);
+        session = {
+          marks: session?.marks || {},
+          loaded: session?.loaded || 0,
+          ended: Math.max(session?.ended || 0, at),
+        };
+        await chrome.storage.session.set({ [sessionKey]: session });
+      })
+      .catch(() => {}));
   const gap = () => Math.min(Math.max(1000, latencies.at(-1) || 0), 10000);
   // Median of the recent background responses; null until there are enough of them.
   function slow() {
@@ -72,6 +96,10 @@ globalThis.seiActivity = (() => {
     const now = Date.now();
     if (msg?.type === 'sei:session') {
       checkSession(msg.marks, msg.loaded).then((stale) => reply({ stale }));
+      return true;
+    }
+    if (msg?.type === 'sei:session-ended') {
+      endSession(now).then(() => reply({ ok: true }));
       return true;
     }
     if (msg?.type === 'sei:activity') last = now;
@@ -117,5 +145,6 @@ globalThis.seiActivity = (() => {
     longestGap: (kind) => Math.max(starvation, interval(kind)),
     slow,
     checkSession,
+    endSession,
   };
 })();

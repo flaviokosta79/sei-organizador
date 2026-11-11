@@ -210,7 +210,7 @@ test('leitura parte da página só se ela for do acesso atual; a marca vem de li
    SEI_ORGANIZADOR_CONFIG:{unitId:'1'},location:{href:base+'?acao=procedimento_controlar'},performance:{timeOrigin:1234.6},
    document:{querySelector:sel=>links[sel]?{getAttribute:name=>links[sel][name]??null}:null},
    fetch:async()=>{fetches++;return new Response('ok');},
-   chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:session'){sent.push(msg);return {stale};}if(msg.type==='sei:slot')return {id:'s',wait:0};return {ok:true};}}}};
+   chrome:{runtime:{sendMessage:async msg=>{if(msg.type==='sei:session'){sent.push(msg);return {stale:stale&&!!msg.marks};}if(msg.type==='sei:slot')return {id:'s',wait:0};return {ok:true};}}}};
   runInNewContext(read('pace.js'),context);return {fetch:context.seiPacedFetch,sent,fetches:()=>fetches};};
  const links={'#lnkUsuarioSistema':{href:'controlador.php?acao=infra_acesso_usuario_listar&infra_sistema=100000100&infra_unidade_atual=1&infra_hash='+hash},
   '#lnkInfraUnidade':{href:'#',onclick:"window.location.href='controlador.php?acao=infra_trocar_unidade&infra_sistema=100000100&infra_unidade_atual=1&infra_hash="+other+"';"}};
@@ -219,7 +219,26 @@ test('leitura parte da página só se ela for do acesso atual; a marca vem de li
  const old=page(links,true);await assert.rejects(old.fetch(base),/acesso anterior ao SEI/);assert.equal(old.fetches(),0,'nenhum pedido chega ao SEI');
  assert.equal(await old.fetch.staleSession(),true);
  const extra=page({'#lnkUsuarioSistema':{href:links['#lnkUsuarioSistema'].href.replace('&infra_sistema','&id_bloco=9&infra_sistema')}},true);
- assert.equal(await (await extra.fetch(base)).text(),'ok','link com parâmetro da tela não serve de marca');assert.equal(extra.sent.length,0);
+ assert.equal(await (await extra.fetch(base)).text(),'ok','link com parâmetro da tela não serve de marca');assert.ok(extra.sent.length&&extra.sent.every(m=>m.marks===null),'sem marca, a página ainda pergunta se é anterior ao fim de uma sessão');
  const unit=page({'#lnkUsuarioSistema':{href:links['#lnkUsuarioSistema'].href.replace('infra_unidade_atual=1','infra_unidade_atual=2')}},true);
- await unit.fetch(base);assert.equal(unit.sent.length,0,'outra unidade não gera marca');
+ await unit.fetch(base);assert.ok(unit.sent.every(m=>m.marks===null),'outra unidade não gera marca');
+});
+
+test('redirecionamento do SEI numa leitura de fundo encerra o uso dos endereços e das abas daquele acesso',async()=>{
+ const h=c=>c.repeat(64),stored={seiBlockTargets:{targets:{a:{url:'x'}}},seiSecretariatReceiptTargets:{o:{url:'y'}},seiSignatureProcesses:{o:[['1','z',1]]},seiSignatureScans:{o:{}},seiActivityIntervals:{k:110000}};
+ const c=clock(),b=background(c,stored);
+ assert.equal(await b.A.checkSession({u:h('a')},c.now()-5000),false);
+ // The page reads the SEI and gets the redirect to the login page: not followed, not retried.
+ let calls=0;const sent=[];const context={Date,setTimeout,clearTimeout,AbortController,AbortSignal,DOMException,Response,fetch:async(url,init)=>{calls++;assert.equal(init.redirect,'manual');return {type:'opaqueredirect',status:0};},chrome:{runtime:{sendMessage:async msg=>{sent.push(msg.type);if(msg.type==='sei:slot')return {id:'s',wait:0};if(msg.type==='sei:session-ended'){b.send(msg);await b.A.endSession(c.now());}return {ok:true};}}}};
+ runInNewContext(read('pace.js'),context);
+ await assert.rejects(context.seiPacedFetch('https://sei.rj.gov.br/sei/controlador.php',{redirect:'error'}),/a sessão do SEI terminou/);
+ assert.equal(calls,1);assert.ok(sent.includes('sei:session-ended'));assert.ok(sent.includes('sei:slot-done'),'a vez é devolvida');
+ for(const k of ['seiBlockTargets','seiSecretariatReceiptTargets','seiSignatureProcesses','seiSignatureScans'])assert.equal(stored[k],undefined,k);
+ assert.deepEqual(stored.seiActivityIntervals,{k:110000});
+ // Pages loaded before that moment stop reading, with or without marks, even with the same marks.
+ assert.equal(await b.A.checkSession({u:h('a')},c.now()-5000),true);assert.equal(await b.A.checkSession(null,c.now()-1),true);
+ // The new login may land on another unit (no marks to compare): its pages are newer, so they read.
+ c.advance(60000);assert.equal(await b.A.checkSession(null,c.now()),false);
+ assert.equal(await b.A.checkSession({u:h('b')},c.now()),false,'novo acesso');assert.equal(await b.A.checkSession({u:h('a')},c.now()-70000),true,'a aba antiga continua parada depois do novo acesso');
+ const restarted=background(c,stored);assert.equal(await restarted.A.checkSession(null,c.now()-70000),true,'sobrevive ao reinício do service worker');assert.equal(await restarted.A.checkSession({u:h('b')},c.now()),false);
 });

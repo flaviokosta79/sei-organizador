@@ -115,7 +115,7 @@ test('dois navegadores recebem som e alerta uma vez, visto de um vale para o blo
  }finally{store.close();}
 });
 
-test('scanner lê só andamentos já abertos, sem a lista de blocos de assinatura, e preserva acompanhamento ao navegar',async()=>{
+test('scanner lê só andamentos já abertos, sem a lista de blocos de assinatura, e não guarda endereços na aba',async()=>{
  const {w,D}=reader('120000124');
  const calls=[];
  w.document.body.innerHTML='<a id="lnkInfraUnidade">SEPM/P3</a><a href="?acao=bloco_assinatura_listar&infra_unidade_atual=120000124">Assinatura</a>';
@@ -132,10 +132,19 @@ test('scanner lê só andamentos já abertos, sem a lista de blocos de assinatur
   const found=result.observations.find(o=>o.signature?.signer.login==='chefe');assert.ok(found);assert.equal(found.signatureBlock,'1420987');
   // Only the history is read: no signature block list, no block or process page.
   assert.deepEqual([...new Set(calls.map(c=>c.action))],['procedimento_consultar_historico']);
-  const key='seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2']);assert.ok(w.sessionStorage.getItem(key));
-  // Another page of the same tab (no tree) keeps following the process saved in the session.
-  frame.remove();w.eval(read('signature-monitor.js'));result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
+  const key='seiSignatureScanner:'+JSON.stringify([actor('p3a'),'2']);assert.equal(w.sessionStorage.getItem(key),null,'nenhum endereço fica no sessionStorage da aba');
+  // Addresses left in the tab by earlier versions (they survive a new SEI login in the same tab, and
+  // reading one ends the new login) are removed and never read.
+  const old=`${base}?acao=procedimento_consultar_historico&id_procedimento=555&infra_unidade_atual=120000124&infra_hash=antigo`;
+  w.sessionStorage.setItem(key,JSON.stringify({processes:[['555',old],[process,old.replace('555',process)]],processCursor:0}));w.sessionStorage.setItem('seiOrganizador:outro','1');
+  // Another page of the same tab (no tree) follows what the worker recorded for the current login.
+  const fresh=`${base}?acao=procedimento_consultar_historico&id_procedimento=${process}&infra_unidade_atual=120000124&infra_hash=novo`;
+  w.chrome={runtime:{sendMessage:async msg=>({data:msg.type==='signature:processes'?{processes:[[process,fresh]],waiting:[],recent:[]}:{ok:true}})}};
+  frame.remove();const urls=[];const realFetch=w.fetch;w.fetch=async(url,options)=>{urls.push(String(url));return realFetch(url,options);};
+  w.eval(read('signature-monitor.js'));assert.equal(w.sessionStorage.getItem(key),null);assert.equal(w.sessionStorage.getItem('seiOrganizador:outro'),'1');
+  result=await w.seiSignatureScanner.scan(actor('p3a'),'2',new AbortController().signal);
   assert.equal(result.processes,1);assert.ok(result.observations.some(o=>o.signature?.signer.login==='chefe'));
+  assert.ok(urls.length&&urls.every(u=>!u.includes('antigo')&&!u.includes('=555')),'endereço do acesso anterior não é lido');assert.ok(urls[0].includes('infra_hash=novo'));assert.equal(w.sessionStorage.getItem(key),null);
   assert.ok(!calls.some(c=>c.action==='bloco_assinatura_listar'));
   assert.throws(()=>D.address(base+'?acao=documento_assinar&infra_unidade_atual=120000124',undefined,['rel_bloco_protocolo_listar']),/inválido/);
  }finally{w.close();}

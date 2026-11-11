@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.20 — 2026-11-11
+
+**Extensão (não requer reimplantar a API)**
+
+- Corrigido: a extensão ainda podia derrubar o acesso ao SEI depois de um novo login. A 0.23.17 passou a descartar os endereços do acesso anterior, mas dois caminhos ficaram de fora.
+  - O acompanhamento de assinaturas guardava os endereços de andamento também na própria aba, num lugar que sobrevive a um novo login feito na mesma aba (o caso mais comum: a sessão expira, o SEI leva a aba para a tela de login e a pessoa entra ali mesmo). A cada minuto a extensão lia até cinco desses endereços antigos, e o SEI encerra a sessão de quem pede um endereço assinado por outro acesso. Agora esses endereços não ficam mais na aba, e o que versões anteriores deixaram é apagado ao carregar a página.
+  - A troca de acesso só era percebida comparando links do cabeçalho na unidade atendida. Quem entrava de novo e caía em outra unidade não era reconhecido, e uma aba antiga continuava lendo com endereços vencidos. Agora, quando uma leitura automática recebe do SEI o redirecionamento para o login, a extensão entende que aquela sessão acabou: descarta os endereços guardados e para as leituras de todas as abas abertas até aquele momento, até serem recarregadas (F5).
+- A leitura automática que encontra a sessão encerrada não é mais repetida 3 s depois, e o painel passa a dizer "a sessão do SEI terminou" em vez de "sem conexão ou sessão expirada".
+- 264 testes, todos passando. Ainda não confirmado em uso real.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.19 — 2026-11-11
 
 **Extensão e API (requer reimplantar a API antes de distribuir a extensão)**

@@ -8,15 +8,17 @@ globalThis.seiSignatureScanner = (() => {
   let owner = '',
     processCursor = 0,
     recentCursor = 0;
+  // History addresses live only in this page's memory and in the worker's session store, which is
+  // emptied when the SEI login changes. Up to 0.23.19 they were also kept in the tab's sessionStorage:
+  // that survives a new login in the same tab, and reading an address of the previous login ends the
+  // new one. Whatever earlier versions left there is removed.
   let processes = new Map();
-  const save = () => {
-    try {
-      sessionStorage.setItem(
-        'seiSignatureScanner:' + owner,
-        JSON.stringify({ processes: [...processes], processCursor }),
-      );
-    } catch {}
-  };
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('seiSignatureScanner:')) sessionStorage.removeItem(key);
+    }
+  } catch {}
   const remember = (value, base = location.href) => {
     try {
       const url = D.address(value, base, ['procedimento_consultar_historico']);
@@ -72,22 +74,6 @@ globalThis.seiSignatureScanner = (() => {
       owner = next;
       processes = new Map();
       processCursor = 0;
-      try {
-        const saved = JSON.parse(sessionStorage.getItem('seiSignatureScanner:' + owner));
-        if (saved) {
-          processes = new Map(
-            saved.processes.filter(([, url]) => {
-              try {
-                D.address(url, location.href, ['procedimento_consultar_historico']);
-                return true;
-              } catch {
-                return false;
-              }
-            }),
-          );
-          processCursor = saved.processCursor || 0;
-        }
-      } catch {}
     }
     const unit = document.querySelector('#lnkInfraUnidade')?.textContent.trim();
     if (!unit) throw Error('Unidade do SEI indisponível para acompanhar assinaturas.');
@@ -96,7 +82,8 @@ globalThis.seiSignatureScanner = (() => {
       recent = [];
     try {
       const shared = await message('signature:processes', { identity, block });
-      for (const [process, url] of shared?.processes || []) if (!processes.has(process)) remember(url);
+      // The worker's address is the most recent one recorded for the process: it replaces ours.
+      for (const [, url] of shared?.processes || []) remember(url);
       waiting = Array.isArray(shared?.waiting) ? shared.waiting : [];
       recent = Array.isArray(shared?.recent) ? shared.recent : [];
     } catch {}
@@ -111,7 +98,6 @@ globalThis.seiSignatureScanner = (() => {
     const errors = [];
     const observations = [],
       ids = [...processes.keys()];
-    save();
     // Five histories per round. Up to three go to the processes most likely to get a signature soon:
     // two with a document still unsigned in a signature block, one opened in the last 30 minutes. The
     // rest follows the general rotation, which still reaches every process (e.g. a second signature).
@@ -155,7 +141,6 @@ globalThis.seiSignatureScanner = (() => {
         }
       }
     }
-    save();
     // The processes just read are reclassified for every tab of this browser.
     if (read.length)
       try {
