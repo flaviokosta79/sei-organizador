@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.21 — 2026-11-11
+
+**Extensão (não requer reimplantar a API)**
+
+- Novo botão **Ir para o fim da página**, no canto inferior esquerdo, do lado oposto ao botão "Voltar ao Topo" do SEI (que continua à direita, no lugar de sempre). Ele aparece e some junto com o botão do SEI (ao começar a rolar a página), tem a mesma aparência e leva ao fim da página com rolagem suave.
+  - Fica na mesma altura do "Voltar ao Topo", acima da faixa de alertas.
+  - Vale para as páginas do SEI que têm o botão "Voltar ao Topo"; não aparece na impressão.
+- Os dois botões somem 2 segundos depois que a página para de rolar, para não cobrir o conteúdo, e voltam na rolagem seguinte. Enquanto o mouse estiver sobre um deles, eles permanecem.
+- 268 testes, todos passando. Confirmado em uso real.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.20 — 2026-11-11
 
 **Extensão (não requer reimplantar a API)**

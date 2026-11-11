@@ -92,7 +92,8 @@
     const height = Math.ceil((observedHeight === null ? summary.getBoundingClientRect().height : observedHeight) || 34);
     spacer.style.height = `${height}px`;
     // The SEI's fixed "back to top" button otherwise overlaps the strip (native bottom: 1rem).
-    const rules = `@media screen { #btnInfraTopo { bottom:calc(${height}px + 1rem)!important; } } @media print { #sei-organizador-alertas-spacer { display:none!important; } }`;
+    // The variable places the "go to the bottom" button at the same height (content.css).
+    const rules = `@media screen { :root { --so-alerts-height:${height}px; } #btnInfraTopo { bottom:calc(${height}px + 1rem)!important; } } @media print { #sei-organizador-alertas-spacer { display:none!important; } }`;
     const style = spacer.querySelector('style');
     if (style.textContent !== rules) style.textContent = rules;
   }

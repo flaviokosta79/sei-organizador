@@ -1,4 +1,4 @@
-# SEI Organizador — 0.23.20
+# SEI Organizador — 0.23.21
 
 Extensão Chrome MV3 para organizar os processos de blocos internos do SEI-RJ por assunto e status manual. A API Node.js/SQLite compartilha as classificações entre colegas da unidade. A extensão preserva os controles, as anotações e as operações nativas do SEI.
 
@@ -203,7 +203,7 @@ Compress-Archive -Path extension/* -DestinationPath artifacts/sei-organizador-ex
 node tools/build-store.mjs
 ```
 
-A suíte tem 264 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
+A suíte tem 268 testes. Cinco deles dependem de páginas reais do SEI, que contêm dados pessoais e ficam só na máquina do autor (`referencias/amostras/`, fora do Git); sem elas, são pulados.
 
 A cada entrega da extensão: incrementar a versão no manifesto, no `package.json` e no lockfile, registrar no CHANGELOG e gerar os pacotes. Para o ZIP da unidade, criar a release no GitHub como "Latest" (o arquivo se chama sempre `sei-organizador-extension.zip`) e copiar o mesmo ZIP para `R:\sei-organizador`. Para a loja, enviar `artifacts/sei-organizador-store.zip` no painel. Os arquivos em `artifacts/` são resultados locais, fora do Git.
 
@@ -233,4 +233,4 @@ Um bloco interno sintético de 1.000 processos abre em cerca de 0,18 s com a ext
 
 ## Estado em produção
 
-Extensão 0.23.20 (ZIP da release v0.23.20 e em `R:\sei-organizador`) e API 0.23.19, implantada em 2026-11-11 (imagem `flaviokosta/sei-organizador@sha256:c5b5bdb611612df2e4f3ca6aee3a5491bf723679d89804285d2a9f5574bf65ae`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A 0.23.9 foi enviada à Chrome Web Store como não listada em 2026-11-10 e aguarda análise; a 0.23.20 vai para a loja depois da aprovação. Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).
+Extensão 0.23.21 (ZIP da release v0.23.21 e em `R:\sei-organizador`) e API 0.23.19, implantada em 2026-11-11 (imagem `flaviokosta/sei-organizador@sha256:c5b5bdb611612df2e4f3ca6aee3a5491bf723679d89804285d2a9f5574bf65ae`), com a política de privacidade em https://ext.5cpa.com.br/privacidade. A extensão, enviada à Chrome Web Store como não listada em 2026-11-10, foi aprovada e publicada; novas versões são enviadas à loja pelo painel (`artifacts/sei-organizador-store.zip`). Detalhes, backup e rollback em [deploy/KMV2.md](deploy/KMV2.md).

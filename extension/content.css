@@ -545,3 +545,52 @@
     justify-content: flex-start;
   }
 }
+/* "Go to the bottom" button (scroll-bottom.js): same shape as the SEI's #btnInfraTopo, in the opposite (left) corner. */
+@media screen {
+  #sei-organizador-base {
+    position: fixed;
+    left: 2.2rem;
+    bottom: calc(var(--so-alerts-height, 0px) + 1rem);
+    z-index: 99;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+  }
+  #sei-organizador-base[hidden] {
+    display: none;
+  }
+  #sei-organizador-base:hover {
+    background: #000;
+  }
+  #sei-organizador-base:focus {
+    outline: none;
+  }
+  #sei-organizador-base:focus-visible {
+    outline: 1px dotted #fff;
+    outline-offset: -5px;
+  }
+  #sei-organizador-base > img {
+    transform: rotate(180deg);
+  }
+  #btnInfraTopo:has(~ #sei-organizador-base) {
+    transition: opacity 0.3s;
+  }
+  #sei-organizador-base {
+    transition: opacity 0.3s;
+  }
+  /* Set by scroll-bottom.js 2 s after the last scroll. */
+  :root[data-so-scroll-idle] #btnInfraTopo:has(~ #sei-organizador-base),
+  :root[data-so-scroll-idle] #sei-organizador-base {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+}
+@media print {
+  #sei-organizador-base {
+    display: none !important;
+  }
+}
