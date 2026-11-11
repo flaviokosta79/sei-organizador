@@ -61,7 +61,9 @@ test('API HTTP: saúde, unidade restrita, criação e conflito',async()=>{
  assert.equal((await signaturePost('sync',{actor:signatureActor,after:-1})).status,400);
  const observations=[{process:'10',document:'11',number:'555',signatureBlock:'99',includedAt:Date.now()-60000,includedBy:{login:'teste',name:'Pessoa'},signature:{time:Date.now(),signer:{login:'chefe',name:'Nome do Chefe'}}}];
  const observed=await signaturePost('observe',{actor:signatureActor,observations});assert.equal(observed.status,200);assert.equal((await observed.json()).accepted,1);
- const signatures=await(await signaturePost('sync',{actor:signatureActor,after:0})).json();assert.equal(signatures.events[0].signer.name,'Nome do Chefe');assert.equal(signatures.events[0].document,'11');
+ const signatures=await(await signaturePost('sync',{actor:signatureActor,after:0})).json();assert.equal(signatures.events[0].signer.name,'Nome do Chefe');assert.equal(signatures.events[0].document,'11');assert.equal(signatures.acked,0);
+ assert.equal((await signaturePost('ack',{actor:signatureActor,upTo:-1})).status,400);assert.equal((await signaturePost('ack',{actor:{login:'outro',org:'SEPM'},upTo:1})).status,409);
+ assert.equal((await(await signaturePost('ack',{actor:signatureActor,upTo:99})).json()).acked,1);assert.equal((await(await signaturePost('ack',{actor:signatureActor,upTo:0})).json()).acked,1);assert.equal((await(await signaturePost('sync',{actor:signatureActor,after:0})).json()).acked,1);
  const receiptUrl=base+'/v1/units/1/secretariat/receipts';
  const receiptPost=data=>apiFetch(receiptUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
  assert.equal((await fetch(receiptUrl)).status,401);assert.equal((await apiFetch(base+'/v1/units/2/secretariat/receipts')).status,403);assert.equal((await apiFetch(receiptUrl,{method:'DELETE'})).status,405);

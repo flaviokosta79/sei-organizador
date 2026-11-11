@@ -91,13 +91,13 @@ function browser(store,{local={},session={}}={}){
  const Clock=class extends Date{static now(){return Date.now()+offset;}};
  const area=data=>({get:async key=>({[key]:structuredClone(data[key])}),set:async value=>Object.assign(data,structuredClone(value))});
  const chrome={runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.push(fn)},openOptionsPage:async()=>{}},storage:{local:area(local),session:area(session)},notifications:{create:async(id,data)=>notices.push({id,data}),clear:async()=>{},onClicked:{addListener:()=>{}}}};
- const context={chrome,URL,AbortSignal,Date:Clock,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(identity,block)=>{if(block!=='2')throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>sounds.push(id),fetch:async(url,options)=>{if(offline)throw Error('Offline');const m=new URL(url).pathname.match(/blocks\/(\d+)\/signatures\/(sync|observe)$/);try{return {ok:true,json:async()=>store.signatures[m[2]]('1',m[1],JSON.parse(options.body))};}catch(e){return {ok:false,status:e.status||400};}}};
+ const context={chrome,URL,AbortSignal,Date:Clock,SEI_ORGANIZADOR_CONFIG:{unitId:'1',org:'SEPM',serviceUrl:'https://ext.5cpa.com.br'},seiWorkScopeStore:{requireBlock:async(identity,block)=>{if(block!=='2')throw Error('Bloco não escolhido');}},seiPlayAlertSound:async id=>sounds.push(id),fetch:async(url,options)=>{if(offline)throw Error('Offline');const m=new URL(url).pathname.match(/blocks\/(\d+)\/signatures\/(sync|observe|ack)$/);try{return {ok:true,json:async()=>store.signatures[m[2]]('1',m[1],JSON.parse(options.body))};}catch(e){return {ok:false,status:e.status||400};}}};
  runInNewContext(read('service-client.js')+';'+read('signature-background.js'),context);
  const call=async(type,extra={},sender={tab:{url:base,id:1},frameId:0})=>{const result=await new Promise(resolve=>listeners[0]({type,identity:actor('p3a'),block:'2',...extra},sender,resolve));if(result.error)throw Error(result.error);return result.data;};
  return {call,local,session,notices,sounds,later(ms=21000){offset+=ms;},set offline(v){offline=v;}};
 }
 
-test('dois navegadores recebem som e alerta uma vez, vistos são individuais e offline não perde cursor',async()=>{
+test('dois navegadores recebem som e alerta uma vez, visto de um vale para o bloco e offline não perde cursor',async()=>{
  const store=createStore(':memory:');const a=browser(store),b=browser(store);
  try{
   await a.call('signature:sync',{poll:true});await b.call('signature:sync');
@@ -105,8 +105,11 @@ test('dois navegadores recebem som e alerta uma vez, vistos são individuais e o
   // The browser that observed sees it at once (its write cleared the cache); the other one within 20 s.
   const av=await a.call('signature:sync');assert.equal((await b.call('signature:sync')).events.length,0);b.later();const bv=await b.call('signature:sync');assert.equal(av.events.length,1);assert.equal(bv.events.length,1);assert.equal(a.sounds[0],'assinar');assert.equal(b.sounds[0],'assinar');assert.match(b.notices[0].data.message,/555 assinado por Nome do Chefe \(chefe\)/);
   await a.call('signature:sync');assert.equal(a.sounds.length,1);
-  await b.call('signature:ack');a.later();assert.equal((await a.call('signature:sync')).events.length,1);assert.equal((await b.call('signature:sync')).events.length,0);
-  const restarted=browser(store,{local:a.local,session:a.session});await restarted.call('signature:sync');assert.equal(restarted.sounds.length,0);
+  const restarted=browser(store,{local:a.local,session:a.session});assert.equal((await restarted.call('signature:sync')).events.length,1);assert.equal(restarted.sounds.length,0);
+  // B marks as seen: the alert leaves A's panel too, on its next sync.
+  assert.equal((await b.call('signature:ack')).events.length,0);a.later();assert.equal((await a.call('signature:sync')).events.length,0);assert.equal((await b.call('signature:sync')).events.length,0);
+  // Offline, the alert cannot be marked as seen for the block: it stays.
+  await a.call('signature:observe',{observations:[observation({document:'13'})]});assert.equal((await a.call('signature:sync')).events.length,1);a.offline=true;await assert.rejects(a.call('signature:ack'),/Offline/);a.offline=false;a.later();assert.equal((await a.call('signature:sync')).events.length,1);await a.call('signature:ack');
   b.later();b.offline=true;assert.match((await b.call('signature:sync')).error,/Offline/);await a.call('signature:observe',{observations:[observation({document:'12'})]});b.offline=false;assert.equal((await b.call('signature:sync')).events.length,1);assert.equal(b.sounds.length,2);
   await assert.rejects(a.call('signature:sync',{block:'3'}),/não escolhido/);await assert.rejects(a.call('signature:sync',{}, {tab:{url:'https://evil.test'},frameId:0}),/Origem/);
  }finally{store.close();}
@@ -149,7 +152,7 @@ test('sem lista de blocos, inclusão de processo em bloco interno não vira acom
  }finally{w.close();}
 });
 
-test('rodapé mostra documento e assinante sem exigir registro de um bloco aberto, e permite visto local',async()=>{
+test('rodapé mostra documento e assinante sem exigir registro de um bloco aberto, e permite marcar como visto',async()=>{
  const dom=new JSDOM('<a id="lnkInfraUnidade">SEPM/P3</a>',{url:base+'?acao=procedimento_controlar&infra_unidade_atual=1',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
  let events=[{id:1,process:'10',document:'11',number:'555',signatureBlock:'99',signer:{login:'chefe',name:'Nome do Chefe'},signedAt:Date.now()}];
  const listeners=[];
@@ -253,7 +256,7 @@ test('fila de processos aguardando assinatura é da sessão do navegador, por us
  }finally{store.close();}
 });
 
-test('assinatura de mais de 1 hora não avisa; a da última hora avisa e fica no painel até 3 dias',async()=>{
+test('assinatura de mais de 1 hora não avisa; a da última hora avisa e fica no painel até alguém do bloco marcar como vista',async()=>{
  const store=createStore(':memory:');const a=browser(store),b=browser(store),c=browser(store);
  try{
   for(const x of [a,b,c])await x.call('signature:sync');
@@ -265,9 +268,11 @@ test('assinatura de mais de 1 hora não avisa; a da última hora avisa e fica no
   b.later();view=await b.call('signature:sync');assert.equal(view.events.length,0);assert.equal(b.sounds.length,0);
   // C reads 30 minutes later: still within the hour.
   c.later(1800000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);assert.equal(c.notices.length,1);
-  // An alert already in the panel stays past the hour, without a new sound...
-  c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);
-  // ...and leaves it once it is older than 3 days.
-  c.later(2*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,0);assert.equal(c.sounds.length,1);
+  // An alert already in the panel stays, however old, without a new sound...
+  c.later(10*86400000);view=await c.call('signature:sync');assert.equal(view.events.length,1);assert.equal(c.sounds.length,1);
+  // B never showed it: its "seen" does not take the alert away from C.
+  b.later(11*86400000);await b.call('signature:ack');c.later();assert.equal((await c.call('signature:sync')).events.length,1);
+  // ...until a user of the block who has it in the panel marks it as seen (here A).
+  assert.equal((await a.call('signature:sync')).events.length,1);await a.call('signature:ack');c.later();view=await c.call('signature:sync');assert.equal(view.events.length,0);assert.equal(c.sounds.length,1);
  }finally{store.close();}
 });

@@ -325,6 +325,7 @@
       }
       const seen = node('button', 'Marcar assinaturas como vistas', body);
       seen.type = 'button';
+      seen.title = 'Retira estes avisos do rodapé de todos os usuários do bloco';
       seen.addEventListener('click', async () => {
         try {
           signatures = await call('signature:ack', { block: seiWorkScope.block });

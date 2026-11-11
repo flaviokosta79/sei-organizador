@@ -5,7 +5,8 @@ export function createSignatures(db) {
     CREATE TABLE IF NOT EXISTS signature_watches (unit TEXT, process TEXT, document TEXT, signature_block TEXT, block TEXT, included_by TEXT, included_at INTEGER, PRIMARY KEY(unit,process,document,signature_block,included_at));
     CREATE TABLE IF NOT EXISTS signature_events (id INTEGER PRIMARY KEY, unit TEXT, block TEXT, process TEXT, document TEXT, number TEXT, signature_block TEXT, included_by TEXT, signer TEXT, signed_at INTEGER, UNIQUE(unit,block,process,document,signer,signed_at));
     CREATE INDEX IF NOT EXISTS signature_event_group ON signature_events(unit,block,id);
-    CREATE UNIQUE INDEX IF NOT EXISTS signature_event_once ON signature_events(unit,block,process,document,json_extract(signer,'$.login'),signed_at); COMMIT;`);
+    CREATE UNIQUE INDEX IF NOT EXISTS signature_event_once ON signature_events(unit,block,process,document,json_extract(signer,'$.login'),signed_at);
+    CREATE TABLE IF NOT EXISTS signature_acks (unit TEXT, block TEXT, acked INTEGER, PRIMARY KEY(unit,block)); COMMIT;`);
   const q={
     group:db.prepare('INSERT OR IGNORE INTO signature_groups VALUES(?,?,?)'),
     member:db.prepare('INSERT INTO signature_members VALUES(?,?,?,?) ON CONFLICT(unit,org,login) DO UPDATE SET block=excluded.block WHERE block IS NOT excluded.block'),
@@ -16,6 +17,8 @@ export function createSignatures(db) {
     watch:db.prepare('SELECT * FROM signature_watches WHERE unit=? AND process=? AND document=? AND signature_block=? AND included_at=?'),
     addWatch:db.prepare('INSERT OR IGNORE INTO signature_watches VALUES(?,?,?,?,?,?,?)'),
     started:db.prepare('SELECT started FROM signature_groups WHERE unit=? AND block=?'),
+    acked:db.prepare('SELECT acked FROM signature_acks WHERE unit=? AND block=?'),
+    ack:db.prepare('INSERT INTO signature_acks VALUES(?,?,?) ON CONFLICT(unit,block) DO UPDATE SET acked=excluded.acked WHERE excluded.acked>acked'),
     addEvent:db.prepare('INSERT OR IGNORE INTO signature_events(unit,block,process,document,number,signature_block,included_by,signer,signed_at) VALUES(?,?,?,?,?,?,?,?,?)'),
   };
   const actor = (a) => {
@@ -34,7 +37,8 @@ export function createSignatures(db) {
       q.member.run(unit,user.org,user.login,block);
       const latest=q.latest.get(unit,block).id;
       const rows=data.after===null?[]:q.events.all(unit,block,data.after);
-      return {cursor:rows.length?rows.at(-1).id:latest,members:q.members.all(unit,user.org,block).map(r=>r.login),events:rows.map(r=>({id:r.id,process:r.process,document:r.document,number:r.number,signatureBlock:r.signature_block,includedBy:JSON.parse(r.included_by),signer:JSON.parse(r.signer),signedAt:r.signed_at}))};
+      // acked: the group's alerts up to this event were marked as seen by one of its members.
+      return {cursor:rows.length?rows.at(-1).id:latest,acked:q.acked.get(unit,block)?.acked||0,members:q.members.all(unit,user.org,block).map(r=>r.login),events:rows.map(r=>({id:r.id,process:r.process,document:r.document,number:r.number,signatureBlock:r.signature_block,includedBy:JSON.parse(r.included_by),signer:JSON.parse(r.signer),signedAt:r.signed_at}))};
     });
   }
   function observe(unit, block, data) {
@@ -64,7 +68,17 @@ export function createSignatures(db) {
       return {accepted};
     });
   }
-  return {sync,observe};
+  // Marking as seen is shared: it clears the alerts for every member of the group.
+  function ack(unit, block, data) {
+    const user=actor(data.actor);
+    if (!id(block) || !Number.isSafeInteger(data.upTo) || data.upTo < 0) throw Error('Visto inválido');
+    return transaction(() => {
+      if(q.memberBlock.get(unit,user.org,user.login)?.block!==block) throw Object.assign(Error('Bloco de trabalho mudou; atualize a consulta.'),{status:409});
+      q.ack.run(unit,block,Math.min(data.upTo,q.latest.get(unit,block).id));
+      return {acked:q.acked.get(unit,block)?.acked||0};
+    });
+  }
+  return {sync,observe,ack};
 }
 const id=v=>typeof v==='string'&&/^\d{1,30}$/.test(v);
 // Errors such as SQLITE_FULL end the transaction by themselves: a failing ROLLBACK must not hide the cause.

@@ -38,7 +38,7 @@ const server=http.createServer(async(req,res)=>{
       const body=await readJson(req,2097152);if(body.status)return send(body.status,{error:body.error});
       return send(200,store.receipts.snapshot(unit,body.data));
     }
-    const signatures=url.pathname.match(/^\/v1\/units\/(\d+)\/blocks\/(\d{1,30})\/signatures\/(sync|observe)$/);
+    const signatures=url.pathname.match(/^\/v1\/units\/(\d+)\/blocks\/(\d{1,30})\/signatures\/(sync|observe|ack)$/);
     if(signatures){
       if(signatures[1]!==unit)return send(403,{error:'Unidade não permitida'});
       if(req.method!=='POST')return send(405,{error:'Método inválido'});

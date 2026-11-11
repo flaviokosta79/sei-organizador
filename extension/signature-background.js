@@ -1,4 +1,4 @@
-// Each browser keeps its own acknowledgement; events are shared by the selected internal block.
+// Events and their acknowledgement are shared by the users of the selected internal block.
 (() => {
   const storageKey = 'seiCompletedSignatures',
     scanKey = 'seiSignatureScans',
@@ -8,9 +8,7 @@
     waitingKey = 'seiSignatureWaiting',
     recentWindow = 1800000,
     // A signature found more than an hour after it happened (a history read late) is no longer news: no alert.
-    alertWindow = 3600000,
-    // An alert already in the panel stays until acknowledged, for at most 3 days.
-    panelWindow = 3 * 86400000;
+    alertWindow = 3600000;
   const serial = seiCreateQueue();
   // Each SEI page load syncs signatures: the shared answer is reused for 20 s (new events arrive at most
   // 20 s later); observations sent from this browser clear it.
@@ -115,6 +113,12 @@
     };
     all[owner] = record;
     if (msg.type === 'signature:ack') {
+      // Seen by one user of the block: the alert leaves the panel of all of them.
+      // Only what this browser shows is marked: an alert it never showed stays for the others.
+      if (record.events.length) {
+        recentSync.clear();
+        await request(block, 'ack', { actor: identity, upTo: Math.max(...record.events.map((e) => e.id)) });
+      }
       await seiCompletedSignatures.ack(identity, block);
       return { ...view(record), events: [] };
     }
@@ -151,6 +155,7 @@
       if (
         !Number.isSafeInteger(response.cursor) ||
         response.cursor < 0 ||
+        !Number.isSafeInteger(response.acked ?? 0) ||
         !Array.isArray(response.events) ||
         response.events.length > 100 ||
         !Array.isArray(response.members)
@@ -167,13 +172,20 @@
           !Number.isSafeInteger(e.signedAt)
         )
           throw Error('Assinatura compartilhada inválida.');
-      const within = (e, window) => Date.now() - e.signedAt <= window;
-      const pending = new Map(record.events.filter((e) => within(e, panelWindow)).map((e) => [e.id, e]));
+      // An alert stays in the panel until a user of the block marks it as seen (response.acked).
+      const unseen = (e) => e.id > (response.acked ?? 0);
+      const shown = record.events.length;
+      const pending = new Map(record.events.filter(unseen).map((e) => [e.id, e]));
       const arrived = events.filter(
-        (e) => within(e, alertWindow) && !pending.has(e.id) && e.id > (record.cursor ?? response.cursor),
+        (e) =>
+          unseen(e) &&
+          Date.now() - e.signedAt <= alertWindow &&
+          !pending.has(e.id) &&
+          e.id > (record.cursor ?? response.cursor),
       );
       for (const event of arrived) pending.set(event.id, event);
-      record.events = [...pending.values()];
+      record.events = [...pending.values()].slice(-100);
+      if (shown && !record.events.length) await chrome.notifications.clear(`sei-signed:${owner}`);
       record.cursor = response.cursor;
       record.members = response.members;
       record.error = '';

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.19 — 2026-11-11
+
+**Extensão e API (requer reimplantar a API antes de distribuir a extensão)**
+
+- O aviso de "documento assinado" só sai do rodapé quando um usuário do bloco o marca como visto. Antes cada navegador tinha o seu visto, e o aviso sumia sozinho depois de 3 dias.
+  - **Marcar assinaturas como vistas** e **Marcar todos como vistos** agora valem para o bloco: o aviso sai do rodapé de todos os usuários do bloco interno, na leitura seguinte de cada um (cerca de um minuto).
+  - Só são marcados os avisos que o navegador de quem clicou está mostrando; um aviso que ele não chegou a exibir continua para os colegas.
+  - Sem conexão com a API o visto não é registrado: o painel mostra o erro e o aviso continua.
+  - O aviso continua sendo gerado só para assinaturas feitas na última hora (0.23.18).
+- API: nova rota `signatures/ack` e campo `acked` na resposta de `signatures/sync`, guardado na tabela `signature_acks` (criada na primeira execução, sem migração). Extensões anteriores continuam funcionando com a API nova, com o visto individual de antes.
+- 263 testes, todos passando.
+- Após atualizar, recarregar todas as abas do SEI.
+
 ## 0.23.18 — 2026-11-11
 
 **Extensão (não requer reimplantar a API)**
